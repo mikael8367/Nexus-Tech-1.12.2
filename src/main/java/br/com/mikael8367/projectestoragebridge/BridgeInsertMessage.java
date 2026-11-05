@@ -1,6 +1,8 @@
 package br.com.mikael8367.projectestoragebridge;
 
 import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import io.netty.buffer.ByteBuf;
 import mrriegel.storagenetwork.block.master.TileMaster;
@@ -24,6 +26,11 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
  * item count or network position is trusted.
  */
 public final class BridgeInsertMessage implements IMessage {
+    // The server processes packet handlers on the main thread. A weak-key map
+    // avoids retaining disconnected player objects and limits repeated clicks.
+    private static final Map<EntityPlayerMP, Long> LAST_DEPOSIT_TICK =
+            new WeakHashMap<EntityPlayerMP, Long>();
+    private static final long DEPOSIT_COOLDOWN_TICKS = 2L;
     private int mouseButton;
 
     public BridgeInsertMessage() {
@@ -81,6 +88,13 @@ public final class BridgeInsertMessage implements IMessage {
                 return;
             }
 
+            long now = player.world.getTotalWorldTime();
+            Long last = LAST_DEPOSIT_TICK.get(player);
+            if (last != null && now - last.longValue() < DEPOSIT_COOLDOWN_TICKS) {
+                return;
+            }
+            LAST_DEPOSIT_TICK.put(player, now);
+
             ItemStack offered = cursor.copy();
             if (mouseButton == 1) {
                 offered.setCount(1);
@@ -90,6 +104,10 @@ public final class BridgeInsertMessage implements IMessage {
             // TileMaster returns the exact number of items it could not insert.
             int remainder = master.insertStack(offered, false);
             if (remainder < 0 || remainder > offeredCount) {
+                // Never alter the cursor when a storage implementation returns
+                // an invalid remainder. Ask the client to restore server state.
+                PacketRegistry.INSTANCE.sendTo(
+                        new StackResponseClientMessage(player.inventory.getItemStack().copy()), player);
                 return;
             }
 
