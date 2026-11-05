@@ -85,15 +85,20 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     }
 
     @Override
-    public ItemStack extractStack(IItemStackMatcher matcher, int size, boolean simulate) {
+    public synchronized ItemStack extractStack(IItemStackMatcher matcher, int size, boolean simulate) {
         if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote
                 || matcher == null || size <= 0) {
+            return ItemStack.EMPTY;
+        }
+        MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        // EMC changes and item delivery must run in the same serialized server tick.
+        if (server == null || !server.isCallingFromMinecraftThread()) {
             return ItemStack.EMPTY;
         }
         EntityPlayerMP player = getUnambiguousPlayer();
         IKnowledgeProvider knowledge = getKnowledge(player);
         IEMCProxy emc = ProjectEAPI.getEMCProxy();
-        if (player == null || knowledge == null || emc == null) {
+        if (player == null || player.world != world || knowledge == null || emc == null) {
             return ItemStack.EMPTY;
         }
 
@@ -117,12 +122,30 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             if (cost <= 0L || cost > balance) {
                 continue;
             }
+
+            // Re-read immediately before committing. The server-thread guard plus this
+            // synchronized method prevents concurrent bridge callbacks from spending
+            // the same EMC snapshot more than once.
+            long currentBalance = knowledge.getEmc();
+            if (currentBalance < cost || currentBalance != balance) {
+                continue;
+            }
+
             ItemStack result = one.copy();
             result.setCount(count);
-            if (!simulate) {
-                knowledge.setEmc(balance - cost);
-                knowledge.sync(player);
+            if (simulate) {
+                return result;
             }
+
+            // Commit the EMC debit before returning the stack to SSN. Never return
+            // deliverable items if the balance could not be debited.
+            knowledge.setEmc(currentBalance - cost);
+            if (knowledge.getEmc() != currentBalance - cost) {
+                knowledge.setEmc(currentBalance);
+                knowledge.sync(player);
+                return ItemStack.EMPTY;
+            }
+            knowledge.sync(player);
             return result;
         }
         return ItemStack.EMPTY;
