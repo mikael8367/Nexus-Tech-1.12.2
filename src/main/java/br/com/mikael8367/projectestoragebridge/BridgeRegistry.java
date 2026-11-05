@@ -20,7 +20,6 @@ public final class BridgeRegistry {
     @SubscribeEvent
     public void registerBlocks(RegistryEvent.Register<Block> event) {
         CABLE = new ProjectEStorageCableBlock("projecte_storage_cable");
-        CABLE.setRegistryName(ProjectEStorageBridge.MOD_ID, "projecte_storage_cable");
         event.getRegistry().register(CABLE);
         GameRegistry.registerTileEntity(
                 ProjectEStorageCableTile.class,
