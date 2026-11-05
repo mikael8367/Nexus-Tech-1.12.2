@@ -121,7 +121,12 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
         ItemStack one = stack.copy();
         one.setCount(1);
-        long emcPerItem = emc.getSellValue(one);
+        // Never credit more EMC than the same item costs to withdraw.
+        // ProjectE exposes separate sell and transmutation values; using only the
+        // sell value could create an EMC arbitrage loop if the mappings differ.
+        long sellValue = emc.getSellValue(one);
+        long transmutationValue = emc.getValue(one);
+        long emcPerItem = Math.min(sellValue, transmutationValue);
         if (emcPerItem <= 0L) {
             return stack;
         }
