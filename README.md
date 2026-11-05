@@ -40,3 +40,13 @@ O arquivo `config/projectestoragebridge.cfg` é criado automaticamente.
 O GitHub Actions compila com Java 8 e Gradle 4.10.3. O JAR só deve ser considerado pronto após o workflow passar e os testes de integração no Minecraft real serem concluídos.
 
 Ainda precisam ser testados: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo e servidor dedicado.
+
+
+## Ambiente do Minecraft e runtime
+
+- Perfil do jogo: Minecraft Java Edition 1.12.2 + Forge 14.23.5.2864.
+- Runtime de execução esperado: Java 8 (1.8), preferencialmente 64 bits em PC.
+- ProjectE e Simple Storage Network são dependências obrigatórias e devem estar na pasta `mods`.
+- O runtime Java não é incluído no JAR: ele é fornecido e selecionado pelo launcher. Em Android, a compatibilidade depende do runtime e da arquitetura suportados pelo launcher.
+- `instance/manifest.json` registra a versão do Minecraft, Forge e os dois mods necessários.
+- Consulte `docs/MINECRAFT_1.12.2_RUNTIME.md` para instalação e configuração do runtime.
