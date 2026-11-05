@@ -60,6 +60,11 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             return Collections.emptyList();
         }
         EntityPlayerMP player = getUnambiguousPlayer();
+        // SSN can query this cable from a different dimension than the sole online
+        // player. Do not expose a remote player's EMC as if it belonged to this network.
+        if (player == null || player.world != world) {
+            return Collections.emptyList();
+        }
         IKnowledgeProvider knowledge = getKnowledge(player);
         IEMCProxy emc = ProjectEAPI.getEMCProxy();
         if (knowledge == null || emc == null) {
