@@ -186,7 +186,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
                 && isAdjacentToTransmutationTable();
     }
 
-    private boolean isAdjacentToTransmutationTable() {
+    boolean isAdjacentToTransmutationTable() {
         for (EnumFacing facing : EnumFacing.values()) {
             BlockPos adjacent = pos.offset(facing);
             if (!world.isBlockLoaded(adjacent)) {
@@ -223,6 +223,13 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             }
             TileEntity connectedTile = connectedPos.getTileEntity(TileEntity.class);
             if (!(connectedTile instanceof ProjectEStorageCableTile)) {
+                continue;
+            }
+            // Elect only among bridge cables physically linked to a ProjectE table.
+            // Otherwise a lower-position cable elsewhere on the SSN network could
+            // become primary and suppress the one cable that actually touches the table.
+            ProjectEStorageCableTile bridgeTile = (ProjectEStorageCableTile) connectedTile;
+            if (!bridgeTile.isAdjacentToTransmutationTable()) {
                 continue;
             }
 
