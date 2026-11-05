@@ -12,6 +12,8 @@ Integração entre ProjectE e Simple Storage Network para Minecraft Java 1.12.2.
 - O cabo precisa ficar encostado na Transmutation Table e conectado à rede SSN.
 - Retirada virtual de itens aprendidos cobra EMC do jogador.
 - Inserção na rede converte itens com valor de venda EMC em EMC do jogador e aprende o item quando necessário.
+- A área de itens da interface SSN também aceita depósito com o item no cursor: clique esquerdo deposita a pilha e clique direito deposita um item.
+- A entrada pela interface é tratada no servidor e consome somente a quantidade confirmada como aceita pela rede.
 - Inserção e retirada respeitam simulação, saldo máximo e validação no thread principal do servidor.
 - Apenas um cabo principal por rede; simulação não debita EMC.
 
@@ -22,4 +24,4 @@ Minecraft 1.12.2, Forge 14.23.5.2860 ou superior, Java 8, ProjectE PE1.4.1 e Sim
 A API IConnectableLink da SSN 1.8.3 não informa o jogador solicitante. Por segurança, a ponte só fica ativa com exatamente um jogador conectado.
 
 ## Testes pendentes
-A compilação não substitui testes no jogo. Verificar renderização em seis direções, reload de chunks, resource packs, item da aba criativa, retirada EMC, saldo insuficiente, múltiplos cabos e multiplayer.
+A compilação não substitui testes no jogo. Verificar depósito com clique esquerdo/direito, item sem valor EMC, saldo máximo, cursor com pilha parcial, retirada, renderização em seis direções, reload de chunks, resource packs, múltiplos cabos e multiplayer.
