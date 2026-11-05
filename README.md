@@ -1,5 +1,7 @@
 # ProjectE Storage Bridge
 
+![Capa do ProjectE Storage Bridge](docs/projecte-storage-bridge-cover.svg)
+
 Mod de integração entre ProjectE e Simple Storage Network para Minecraft Java 1.12.2.
 
 ## Recursos no código
