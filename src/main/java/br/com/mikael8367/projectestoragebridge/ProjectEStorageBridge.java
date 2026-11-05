@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 public final class ProjectEStorageBridge {
     public static final String MOD_ID = "projectestoragebridge";
     public static final String MOD_NAME = "ProjectE Storage Bridge";
-    public static final String VERSION = "0.5.2";
+    public static final String VERSION = "0.5.3";
 
     @SidedProxy(
             clientSide = "br.com.mikael8367.projectestoragebridge.ClientProxy",
@@ -30,6 +30,7 @@ public final class ProjectEStorageBridge {
         logger = event.getModLog();
         BridgeConfig.load(event.getSuggestedConfigurationFile());
         MinecraftForge.EVENT_BUS.register(new BridgeRegistry());
+        BridgeNetwork.registerMessages();
         proxy.preInit(event);
         logger.info("ProjectE Storage Bridge registering its Simple Storage Network cable.");
     }
