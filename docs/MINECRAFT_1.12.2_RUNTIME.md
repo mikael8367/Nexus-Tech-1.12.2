@@ -7,7 +7,7 @@ Este projeto é um **mod para Minecraft Java Edition**, não um launcher e não 
 | Componente | Versão |
 |---|---|
 | Minecraft Java Edition | 1.12.2 |
-| Forge para executar | 14.23.5.2864 |
+| Forge para executar | 14.23.5.2860 |
 | Java Runtime | Java 8, 64 bits |
 | Arquitetura recomendada | x86_64 em PC |
 | ProjectE | 1.12.2-PE1.4.1 |
@@ -22,7 +22,7 @@ Em launchers Android, use somente um runtime Java 8 compatível com o próprio l
 ## Instalação manual
 
 1. Crie uma instância Minecraft Java 1.12.2.
-2. Instale Forge 14.23.5.2864.
+2. Instale Forge 14.23.5.2860.
 3. Configure o launcher para usar Java 8.
 4. Inicie uma vez e feche o jogo.
 5. Coloque os arquivos JAR de ProjectE e Simple Storage Network na pasta `mods`.
@@ -39,4 +39,4 @@ Distribuir o Java Runtime junto com o mod não é necessário nem recomendado: o
 
 ## Compilação
 
-O workflow usa Java 8 e Gradle 4.10.3. O ForgeGradle 2.3 é configurado com o Forge 14.23.5.2847 para obter o artefato legado de desenvolvimento; o mod exige Forge 14.23.5.2864 ou superior em execução. Essa combinação deve passar pelo build e por teste real no launcher antes de ser declarada compatível.
+O workflow usa Java 8 e Gradle 4.10.3. O ForgeGradle 2.3 é configurado com o Forge 14.23.5.2847 apenas para obter o artefato legado de desenvolvimento. O mod declara Forge 14.23.5.2860 como requisito mínimo de execução. Como o ambiente de compilação usa uma versão anterior, a compatibilidade final deve ser confirmada em teste real no launcher.
