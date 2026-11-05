@@ -9,7 +9,9 @@ Source branch inspected: `Lothrazar/Storage-Network`, `trunk/1.12`.
 - `TileMaster` traverses neighboring blocks through that capability and stores each connectable position.
 - `TileMaster.getConnectableStorage()` includes a node only when it exposes both `CONNECTABLE_CAPABILITY` and `CONNECTABLE_ITEM_STORAGE_CAPABILITY`.
 
-The bridge tile extends SSN's `TileCable` and additionally exposes `IConnectableLink` through the second capability. This makes it a direct cable node; no Storage Link block is involved.
+The bridge block extends SSN's `BlockCable`, and its tile extends SSN's `TileCable` while additionally exposing `IConnectableLink` through the item-storage capability. This makes it a direct cable node; no Storage Link block is involved.
+
+The bridge block deliberately does not override the parent's render type or side-rendering behavior. Those overrides can bypass SSN's cable model/state behavior and make the connector look disconnected or render as a generic cube. The inherited SSN behavior is retained.
 
 ## Virtual inventory contract
 
@@ -44,5 +46,7 @@ A future multiplayer implementation needs a tested request-context hook in the S
 - ForgeGradle compilation with Java 8.
 - Runtime test in Minecraft 1.12.2 with ProjectE PE1.4.1 and SSN 1.8.3.
 - Single-player request-table extraction, remote extraction, insufficient EMC, unknown item, NBT variants, and stack-limit tests.
+- Visual inspection that the bridge cable joins adjacent SSN cables and preserves the SSN cable connection model.
+- Confirm that the Transmutation Table remains a ProjectE interface and that the bridge uses the same player's learned-item set and EMC balance rather than treating the table block as a storage inventory.
 - Two-player server test proving the bridge stays unavailable and never debits either player's EMC.
 - Chunk unload/reload and world save/restart.
