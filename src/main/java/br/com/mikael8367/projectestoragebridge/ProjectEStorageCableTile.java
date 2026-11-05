@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import mrriegel.storagenetwork.block.master.TileMaster;
+
 import mrriegel.storagenetwork.api.capability.IConnectableLink;
 import mrriegel.storagenetwork.api.data.DimPos;
 import mrriegel.storagenetwork.api.data.EnumStorageDirection;
@@ -16,6 +18,8 @@ import moze_intel.projecte.api.proxy.IEMCProxy;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumFacing;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -39,7 +43,8 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public List<ItemStack> getStoredStacks() {
-        if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote) {
+        if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote
+                || !isPrimaryBridgeForNetwork()) {
             return Collections.emptyList();
         }
         EntityPlayerMP player = getUnambiguousPlayer();
@@ -87,7 +92,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     @Override
     public synchronized ItemStack extractStack(IItemStackMatcher matcher, int size, boolean simulate) {
         if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote
-                || matcher == null || size <= 0) {
+                || matcher == null || size <= 0 || !isPrimaryBridgeForNetwork()) {
             return ItemStack.EMPTY;
         }
         MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
@@ -169,6 +174,41 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     // Optional SSN API method in newer 1.12 builds; no @Override so 1.8.3 compiles.
     public DimPos getTargetPos() {
         return null;
+    }
+
+    /**
+     * Every bridge cable sees the same player's ProjectE knowledge and EMC pool.
+     * Expose that virtual inventory from exactly one cable per SSN network, otherwise
+     * TileMaster.getStacks() sums the same virtual stock once for every bridge cable.
+     */
+    private boolean isPrimaryBridgeForNetwork() {
+        DimPos masterPos = getMaster();
+        if (masterPos == null || !masterPos.isLoaded()) {
+            return false;
+        }
+
+        TileMaster master = masterPos.getTileEntity(TileMaster.class);
+        if (master == null || master.getWorld() != world) {
+            return false;
+        }
+
+        BlockPos primaryPos = null;
+        for (DimPos connectedPos : master.getConnectablePositions()) {
+            if (connectedPos == null || !connectedPos.isLoaded()) {
+                continue;
+            }
+            TileEntity connectedTile = connectedPos.getTileEntity(TileEntity.class);
+            if (!(connectedTile instanceof ProjectEStorageCableTile)) {
+                continue;
+            }
+
+            BlockPos candidatePos = connectedPos.getBlockPos();
+            if (primaryPos == null || candidatePos.compareTo(primaryPos) < 0) {
+                primaryPos = candidatePos;
+            }
+        }
+
+        return primaryPos != null && primaryPos.equals(pos);
     }
 
     private IKnowledgeProvider getKnowledge(EntityPlayerMP player) {
