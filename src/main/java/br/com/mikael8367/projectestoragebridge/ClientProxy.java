@@ -7,22 +7,29 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 public final class ClientProxy extends CommonProxy {
+    private static final ResourceLocation CABLE_TEXTURE = new ResourceLocation(
+            ProjectEStorageBridge.MOD_ID, "textures/tile/projecte_storage_cable.png");
+
+    private static void registerCableTexture() {
+        if (BridgeRegistry.CABLE != null) {
+            TesrCable.addCableRender(BridgeRegistry.CABLE, CABLE_TEXTURE);
+        }
+    }
+
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
-        // Reuse SSN's own TESR so its cable geometry, neighbor logic and UV layout
-        // stay identical to the version of Simple Storage Network in use.
+        // Use the dedicated renderer: SSN's render map is static and shared by
+        // all cable blocks, so the Bridge entry must be restored before each draw.
         ClientRegistry.bindTileEntitySpecialRenderer(
-                ProjectEStorageCableTile.class, new TesrCable());
+                ProjectEStorageCableTile.class, new BridgeCableRenderer());
     }
 
     @Override
     public void init(FMLInitializationEvent event) {
         super.init(event);
-        if (BridgeRegistry.CABLE != null) {
-            TesrCable.addCableRender(BridgeRegistry.CABLE,
-                    new ResourceLocation(ProjectEStorageBridge.MOD_ID,
-                            "textures/tile/projecte_storage_cable.png"));
-        }
+        // Block registry events have completed by init; this installs the
+        // initial mapping. BridgeCableRenderer refreshes it before every render.
+        registerCableTexture();
     }
 }
