@@ -4,10 +4,14 @@ Mod de integração entre ProjectE e Simple Storage Network para Minecraft Java 
 
 ## Recursos no código
 
-- Cabo de rede próprio derivado de `TileCable` da SSN; não precisa de Storage Link.
+- Cabo de rede próprio derivado de `BlockCable` e `TileCable` da SSN; não precisa de Storage Link.
+- Mantém o comportamento herdado de renderização/conexão do cabo da SSN, sem forçar um modelo de bloco genérico.
+- O cabo entra na rede SSN; a Storage Request Table e os Remotes acessam o inventário virtual como qualquer outro nó de armazenamento.
 - Capability de armazenamento da SSN para expor o inventário virtual.
 - Lista de itens aprendidos no ProjectE, limitada a variantes com EMC positivo.
 - Retirada virtual com débito de EMC no servidor.
+- O saldo é consultado no jogador conectado e a ponte fecha com segurança quando não consegue identificar um único jogador.
+- O bloco não tenta conectar fisicamente à Transmutation Table: a tabela é uma interface do ProjectE; o vínculo usa o conhecimento e o saldo EMC do jogador.
 - Simulação sem cobrança e bloqueio de saldo insuficiente.
 - Cabo disponível na aba Redstone e receita de fabricação.
 - Configuração local para ativar/desativar a ponte e limitar quantas variantes são listadas.
@@ -39,7 +43,7 @@ O arquivo `config/projectestoragebridge.cfg` é criado automaticamente.
 
 O GitHub Actions compila com Java 8 e Gradle 4.10.3. O JAR só deve ser considerado pronto após o workflow passar e os testes de integração no Minecraft real serem concluídos.
 
-Ainda precisam ser testados: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo e servidor dedicado.
+Ainda precisam ser testados dentro do jogo: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo, servidor dedicado e renderização/conexão em diferentes configurações gráficas. O sucesso da compilação não substitui esses testes.
 
 
 ## Ambiente do Minecraft e runtime
