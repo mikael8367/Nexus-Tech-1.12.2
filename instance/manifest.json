@@ -1,0 +1,29 @@
+{
+  "minecraft": {
+    "version": "1.12.2",
+    "modLoaders": [
+      {
+        "id": "forge-14.23.5.2864",
+        "primary": true
+      }
+    ]
+  },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "ProjectE Storage Bridge - 1.12.2",
+  "version": "0.3.0",
+  "author": "Mikael8367",
+  "files": [
+    {
+      "projectID": 226410,
+      "fileID": 2702991,
+      "required": true
+    },
+    {
+      "projectID": 268495,
+      "fileID": 3655827,
+      "required": true
+    }
+  ],
+  "overrides": "overrides"
+}
