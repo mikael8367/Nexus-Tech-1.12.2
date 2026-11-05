@@ -16,6 +16,7 @@ import moze_intel.projecte.api.capabilities.IKnowledgeProvider;
 import moze_intel.projecte.api.proxy.IEMCProxy;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -24,6 +25,22 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 
 public final class ProjectEStorageCableTile extends TileCable implements IConnectableLink {
+
+    @Override
+    public IBlockState getFacadeState() {
+        return null;
+    }
+
+    @Override
+    public void setFacadeState(IBlockState facadeState) {
+        // Fixed Bridge texture: do not accept SSN facade skins.
+    }
+
+    @Override
+    public void setFacadeState(String block, int meta) {
+        // Ignore old facade data and facade packets.
+    }
+
 
     @Override
     public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
