@@ -7,7 +7,7 @@ import net.minecraftforge.fml.relauncher.Side;
 /** Dedicated channel for safe client-to-server bridge GUI actions. */
 public final class BridgeNetwork {
     public static final SimpleNetworkWrapper CHANNEL =
-            NetworkRegistry.INSTANCE.newSimpleChannel(ProjectEStorageBridge.MOD_ID);
+            NetworkRegistry.INSTANCE.newSimpleChannel("pe_storage_bridge");
 
     private BridgeNetwork() {
     }
