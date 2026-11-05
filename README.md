@@ -13,6 +13,9 @@ Mod de integração entre ProjectE e Simple Storage Network para Minecraft Java 
 - O saldo é consultado no jogador conectado e a ponte fecha com segurança quando não consegue identificar um único jogador.
 - O bloco não tenta conectar fisicamente à Transmutation Table: a tabela é uma interface do ProjectE; o vínculo usa o conhecimento e o saldo EMC do jogador.
 - Simulação sem cobrança e bloqueio de saldo insuficiente.
+- Proteção contra extrações concorrentes: a retirada é sincronizada, só executa na thread principal do servidor e confirma o débito antes de devolver itens à SSN.
+- Revalidação do saldo imediatamente antes do débito; falha fechada se o saldo mudar ou não puder ser confirmado.
+- Testes adicionais para saldo exato, limites de pilha e valores extremos de EMC.
 - Cabo disponível na aba Redstone e receita de fabricação.
 - Configuração local para ativar/desativar a ponte e limitar quantas variantes são listadas.
 - Traduções em português do Brasil e inglês.
@@ -43,7 +46,7 @@ O arquivo `config/projectestoragebridge.cfg` é criado automaticamente.
 
 O GitHub Actions compila com Java 8 e Gradle 4.10.3. O JAR só deve ser considerado pronto após o workflow passar e os testes de integração no Minecraft real serem concluídos.
 
-Ainda precisam ser testados dentro do jogo: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo, servidor dedicado e renderização/conexão em diferentes configurações gráficas. O sucesso da compilação não substitui esses testes.
+Ainda precisam ser testados dentro do jogo: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo, servidor dedicado e renderização/conexão em diferentes configurações gráficas. O sucesso da compilação não substitui esses testes. Nenhum mod consegue prometer ausência absoluta de duplicações sem testes no jogo e auditoria do fluxo completo da SSN; estas proteções evitam os principais caminhos de extração grátis/concorrente no código da ponte.
 
 
 ## Ambiente do Minecraft e runtime
