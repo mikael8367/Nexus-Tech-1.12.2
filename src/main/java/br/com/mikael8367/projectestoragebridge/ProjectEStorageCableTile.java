@@ -21,8 +21,7 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 
 /**
- * A virtual, output-only SSN storage endpoint backed by one ProjectE player's
- * learned transmutation entries and EMC balance.
+ * Virtual output-only SSN storage backed by one ProjectE player's learned items and EMC.
  */
 public final class ProjectEStorageCableTile extends TileCable implements IConnectableLink {
 
@@ -46,7 +45,12 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         EntityPlayerMP player = getUnambiguousPlayer();
         IKnowledgeProvider knowledge = getKnowledge(player);
         IEMCProxy emc = ProjectEAPI.getEMCProxy();
-        if (knowledge == null || emc == null || knowledge.getEmc() <= 0L) {
+        if (knowledge == null || emc == null) {
+            return Collections.emptyList();
+        }
+
+        long balance = knowledge.getEmc();
+        if (balance <= 0L) {
             return Collections.emptyList();
         }
 
@@ -62,12 +66,11 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
                 continue;
             }
             int available = EmcWithdrawalCalculator.maxAffordable(
-                    knowledge.getEmc(), value, one.getMaxStackSize(), one.getMaxStackSize());
-            if (available <= 0) {
-                continue;
+                    balance, value, one.getMaxStackSize(), one.getMaxStackSize());
+            if (available > 0) {
+                one.setCount(available);
+                visible.add(one);
             }
-            one.setCount(available);
-            visible.add(one);
         }
         return visible;
     }
@@ -116,7 +119,8 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             ItemStack result = one.copy();
             result.setCount(count);
             if (!simulate) {
-                // Server-thread operation: update balance before returning the item.
+                // SSN calls this synchronously on the server while servicing a request.
+                // Debit before returning the stack so a successful extraction cannot be free.
                 knowledge.setEmc(balance - cost);
                 knowledge.sync(player);
             }
@@ -132,7 +136,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public EnumStorageDirection getSupportedTransferDirection() {
-        // OUT permits extraction by the SSN network and rejects network insertion.
+        // OUT lets SSN extract virtual items; it does not let SSN insert items here.
         return EnumStorageDirection.OUT;
     }
 
@@ -154,8 +158,8 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     }
 
     /**
-     * SSN 1.8.3's IConnectableLink API does not pass the requester to
-     * extractStack(). Fail closed unless the server has exactly one player.
+     * SSN 1.8.3's IConnectableLink callbacks do not include the requesting player.
+     * Fail closed unless exactly one player is online; never charge an arbitrary player.
      */
     private EntityPlayerMP getUnambiguousPlayer() {
         MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
