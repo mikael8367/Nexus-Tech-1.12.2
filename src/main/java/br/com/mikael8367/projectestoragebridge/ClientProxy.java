@@ -10,8 +10,10 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
+        // Reuse SSN's own TESR so its cable geometry, neighbor logic and UV layout
+        // stay identical to the version of Simple Storage Network in use.
         ClientRegistry.bindTileEntitySpecialRenderer(
-                ProjectEStorageCableTile.class, new BridgeCableRenderer());
+                ProjectEStorageCableTile.class, new TesrCable());
     }
 
     @Override
