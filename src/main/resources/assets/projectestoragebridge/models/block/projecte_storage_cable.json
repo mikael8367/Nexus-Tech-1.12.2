@@ -1,8 +1,8 @@
 {
   "parent": "block/block",
   "textures": {
-    "particle": "minecraft:blocks/iron_block",
-    "cable": "minecraft:blocks/iron_block"
+    "particle": "projectestoragebridge:blocks/projecte_storage_cable",
+    "cable": "projectestoragebridge:blocks/projecte_storage_cable"
   },
   "elements": [
     {

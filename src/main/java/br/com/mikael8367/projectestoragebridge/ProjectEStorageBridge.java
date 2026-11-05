@@ -2,6 +2,7 @@ package br.com.mikael8367.projectestoragebridge;
 
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.apache.logging.log4j.Logger;
@@ -15,7 +16,12 @@ import org.apache.logging.log4j.Logger;
 public final class ProjectEStorageBridge {
     public static final String MOD_ID = "projectestoragebridge";
     public static final String MOD_NAME = "ProjectE Storage Bridge";
-    public static final String VERSION = "0.3.0";
+    public static final String VERSION = "0.4.0";
+
+    @SidedProxy(
+            clientSide = "br.com.mikael8367.projectestoragebridge.ClientProxy",
+            serverSide = "br.com.mikael8367.projectestoragebridge.CommonProxy")
+    public static CommonProxy proxy;
 
     private static Logger logger;
 
@@ -24,12 +30,14 @@ public final class ProjectEStorageBridge {
         logger = event.getModLog();
         BridgeConfig.load(event.getSuggestedConfigurationFile());
         MinecraftForge.EVENT_BUS.register(new BridgeRegistry());
+        proxy.preInit(event);
         logger.info("ProjectE Storage Bridge registering its Simple Storage Network cable.");
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        logger.info("ProjectE Storage Bridge initialized. EMC withdrawals are server-side and fail closed if player context is ambiguous.");
+        proxy.init(event);
+        logger.info("ProjectE Storage Bridge initialized. The cable requires a neighboring ProjectE Transmutation Table and an SSN network.");
     }
 
     public static Logger logger() {

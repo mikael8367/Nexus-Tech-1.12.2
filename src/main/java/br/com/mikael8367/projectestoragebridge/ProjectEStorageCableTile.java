@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 
 import mrriegel.storagenetwork.block.master.TileMaster;
-
 import mrriegel.storagenetwork.api.capability.IConnectableLink;
 import mrriegel.storagenetwork.api.data.DimPos;
 import mrriegel.storagenetwork.api.data.EnumStorageDirection;
@@ -43,8 +42,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public List<ItemStack> getStoredStacks() {
-        if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote
-                || !isPrimaryBridgeForNetwork()) {
+        if (!isBridgeActive()) {
             return Collections.emptyList();
         }
         EntityPlayerMP player = getUnambiguousPlayer();
@@ -91,8 +89,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public synchronized ItemStack extractStack(IItemStackMatcher matcher, int size, boolean simulate) {
-        if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote
-                || matcher == null || size <= 0 || !isPrimaryBridgeForNetwork()) {
+        if (!isBridgeActive() || matcher == null || size <= 0) {
             return ItemStack.EMPTY;
         }
         MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
@@ -174,6 +171,32 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     // Optional SSN API method in newer 1.12 builds; no @Override so 1.8.3 compiles.
     public DimPos getTargetPos() {
         return null;
+    }
+
+    /**
+     * The ProjectE 1.12.2 table is not a storage tile or capability provider.
+     * The bridge therefore requires physical adjacency to the real table, then
+     * uses the single online player's ProjectE knowledge/EMC capability.
+     */
+    private boolean isBridgeActive() {
+        return BridgeConfig.enableVirtualStorage
+                && world != null
+                && !world.isRemote
+                && isPrimaryBridgeForNetwork()
+                && isAdjacentToTransmutationTable();
+    }
+
+    private boolean isAdjacentToTransmutationTable() {
+        for (EnumFacing facing : EnumFacing.values()) {
+            BlockPos adjacent = pos.offset(facing);
+            if (!world.isBlockLoaded(adjacent)) {
+                continue;
+            }
+            if (ProjectEStorageCableBlock.isTransmutationTable(world.getBlockState(adjacent))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
