@@ -1,9 +1,6 @@
 package br.com.mikael8367.projectestoragebridge;
 
 import mrriegel.storagenetwork.block.cable.BlockCable;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
