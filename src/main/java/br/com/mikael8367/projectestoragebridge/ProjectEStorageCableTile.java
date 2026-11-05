@@ -108,12 +108,13 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             int count = EmcWithdrawalCalculator.maxAffordable(
                     balance, emcPerItem, size, one.getMaxStackSize());
             if (count <= 0) {
-                return ItemStack.EMPTY;
+                // A broad matcher may match another learned variant with a lower EMC cost.
+                continue;
             }
 
             long cost = EmcWithdrawalCalculator.costFor(emcPerItem, count);
             if (cost <= 0L || cost > balance) {
-                return ItemStack.EMPTY;
+                continue;
             }
 
             ItemStack result = one.copy();
