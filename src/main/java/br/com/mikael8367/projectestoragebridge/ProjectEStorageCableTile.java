@@ -97,8 +97,89 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     }
 
     @Override
-    public ItemStack insertStack(ItemStack stack, boolean simulate) {
-        return stack;
+    public synchronized ItemStack insertStack(ItemStack stack, boolean simulate) {
+        if (stack == null || stack.isEmpty() || !isBridgeActive()) {
+            return stack == null ? ItemStack.EMPTY : stack;
+        }
+
+        MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        if (server == null || !server.isCallingFromMinecraftThread()) {
+            return stack;
+        }
+
+        EntityPlayerMP player = getUnambiguousPlayer();
+        IKnowledgeProvider knowledge = getKnowledge(player);
+        IEMCProxy emc = ProjectEAPI.getEMCProxy();
+        if (player == null || player.world != world || knowledge == null || emc == null) {
+            return stack;
+        }
+
+        ItemStack one = stack.copy();
+        one.setCount(1);
+        long emcPerItem = emc.getSellValue(one);
+        if (emcPerItem <= 0L) {
+            return stack;
+        }
+
+        long balance = knowledge.getEmc();
+        if (balance < 0L) {
+            return stack;
+        }
+        long room = Long.MAX_VALUE - balance;
+        int accepted = (int) Math.min((long) stack.getCount(), room / emcPerItem);
+        if (accepted <= 0) {
+            return stack;
+        }
+
+        long credit = emcPerItem * (long) accepted;
+        boolean needsKnowledge = !knowledge.hasFullKnowledge() && !knowledge.hasKnowledge(one);
+
+        if (simulate) {
+            return remainder(stack, accepted);
+        }
+
+        // Learn before crediting, but roll the knowledge back if the EMC update fails.
+        boolean learnedNow = false;
+        if (needsKnowledge) {
+            learnedNow = knowledge.addKnowledge(one);
+            if (!learnedNow && !knowledge.hasKnowledge(one)) {
+                return stack;
+            }
+        }
+
+        // Recheck the balance immediately before committing the deposit.
+        long currentBalance = knowledge.getEmc();
+        if (currentBalance != balance || currentBalance > Long.MAX_VALUE - credit) {
+            if (learnedNow) {
+                knowledge.removeKnowledge(one);
+                knowledge.sync(player);
+            }
+            return stack;
+        }
+
+        knowledge.setEmc(currentBalance + credit);
+        if (knowledge.getEmc() != currentBalance + credit) {
+            knowledge.setEmc(currentBalance);
+            if (learnedNow) {
+                knowledge.removeKnowledge(one);
+            }
+            knowledge.sync(player);
+            return stack;
+        }
+
+        knowledge.sync(player);
+        markDirty();
+        return remainder(stack, accepted);
+    }
+
+    private static ItemStack remainder(ItemStack original, int accepted) {
+        int remaining = original.getCount() - accepted;
+        if (remaining <= 0) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack result = original.copy();
+        result.setCount(remaining);
+        return result;
     }
 
     @Override
@@ -174,7 +255,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public EnumStorageDirection getSupportedTransferDirection() {
-        return EnumStorageDirection.OUT;
+        return EnumStorageDirection.BOTH;
     }
 
     @Override

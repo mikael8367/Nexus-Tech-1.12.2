@@ -10,7 +10,9 @@ Integração entre ProjectE e Simple Storage Network para Minecraft Java 1.12.2.
 - Facades herdadas da SSN são desativadas no cabo Bridge, inclusive dados antigos salvos.
 - Aba criativa própria: ProjectE Storage Bridge, com o cabo como ícone.
 - O cabo precisa ficar encostado na Transmutation Table e conectado à rede SSN.
-- Retirada virtual de itens aprendidos cobra EMC do jogador; inserção é bloqueada.
+- Retirada virtual de itens aprendidos cobra EMC do jogador.
+- Inserção na rede converte itens com valor de venda EMC em EMC do jogador e aprende o item quando necessário.
+- Inserção e retirada respeitam simulação, saldo máximo e validação no thread principal do servidor.
 - Apenas um cabo principal por rede; simulação não debita EMC.
 
 ## Instalação

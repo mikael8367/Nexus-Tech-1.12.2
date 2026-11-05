@@ -31,14 +31,14 @@ The SSN `IConnectableLink` API requires:
 - `getSupportedTransferDirection()`
 - `getEmptySlots()`
 
-The bridge is output-only: `EnumStorageDirection.OUT`. It does not accept inserted items.
+The bridge supports both directions: `EnumStorageDirection.BOTH`. On insertion, it uses ProjectE `IEMCProxy.getSellValue` on a one-item copy, credits the single online player's knowledge provider, and learns the item when it is not already known. Items with no positive sell value are rejected and returned.
 
 ## Duplication and transaction safeguards
 
 - Exactly one bridge cable per SSN network is elected as the inventory provider.
 - Real extraction is synchronized per bridge tile and rejected outside the server main thread.
 - The requester ambiguity check remains fail-closed (exactly one online player).
-- Simulation returns a candidate stack without changing EMC.
+- Simulation returns the accepted/remainder split without changing EMC or knowledge. Real deposits are serialized on the server thread, bounded against long overflow, and roll back newly added knowledge if the EMC write fails. Extraction remains serialized and charges EMC before returning items.
 - Real extraction re-reads and validates the EMC balance, debits first, confirms the debit, synchronizes the player, and only then returns the stack.
 - The virtual inventory is not exposed unless the cable is connected to an SSN network and is physically adjacent to the ProjectE Transmutation Table.
 - These controls mitigate bridge-side race/free-extraction paths; they do not prove the absence of bugs in SSN request processing or other mods. Full in-game testing remains mandatory.
