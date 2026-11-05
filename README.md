@@ -31,12 +31,12 @@ A API pública `IConnectableLink.extractStack(...)` da SSN 1.8.3 não informa qu
 ## Versões
 
 - Minecraft 1.12.2
-- Forge de execução mínimo: 14.23.5.2864
+- Forge de execução mínimo: 14.23.5.2860
 - Java 8
 - ProjectE 1.12.2-PE1.4.1 (CurseForge file 2702991)
 - Simple Storage Network 1.12.2-1.8.3 (CurseForge file 3655827)
 
-O ambiente de compilação usa Forge 14.23.5.2847 porque o ForgeGradle 2.3 espera o artefato antigo `userdev`; versões posteriores publicam `userdev3`, incompatível com ForgeGradle 2.3. O mod mantém Forge 14.23.5.2864 como requisito mínimo de execução. Essa compatibilidade binária ainda precisa ser validada em jogo.
+O ambiente de compilação usa Forge 14.23.5.2847 apenas para obter o artefato legado `userdev` exigido pelo ForgeGradle 2.3. O mod declara Forge 14.23.5.2860 como versão mínima de execução. Como a compilação usa uma versão anterior do Forge, a compatibilidade em 2860 ainda precisa ser confirmada em teste real.
 
 ## Configuração
 
@@ -54,7 +54,7 @@ Ainda precisam ser testados dentro do jogo: retirada pela Request Table e Remote
 
 ## Ambiente do Minecraft e runtime
 
-- Perfil do jogo: Minecraft Java Edition 1.12.2 + Forge 14.23.5.2864.
+- Perfil do jogo: Minecraft Java Edition 1.12.2 + Forge 14.23.5.2860.
 - Runtime de execução esperado: Java 8 (1.8), preferencialmente 64 bits em PC.
 - ProjectE e Simple Storage Network são dependências obrigatórias e devem estar na pasta `mods`.
 - O runtime Java não é incluído no JAR: ele é fornecido e selecionado pelo launcher. Em Android, a compatibilidade depende do runtime e da arquitetura suportados pelo launcher.
