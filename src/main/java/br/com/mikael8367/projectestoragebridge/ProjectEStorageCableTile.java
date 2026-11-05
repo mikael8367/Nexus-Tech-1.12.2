@@ -192,6 +192,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             return false;
         }
 
+        int primaryDimension = Integer.MAX_VALUE;
         BlockPos primaryPos = null;
         for (DimPos connectedPos : master.getConnectablePositions()) {
             if (connectedPos == null || !connectedPos.isLoaded()) {
@@ -202,13 +203,18 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
                 continue;
             }
 
+            int candidateDimension = connectedPos.getWorld().provider.getDimension();
             BlockPos candidatePos = connectedPos.getBlockPos();
-            if (primaryPos == null || candidatePos.compareTo(primaryPos) < 0) {
+            if (primaryPos == null || candidateDimension < primaryDimension
+                    || (candidateDimension == primaryDimension && candidatePos.compareTo(primaryPos) < 0)) {
+                primaryDimension = candidateDimension;
                 primaryPos = candidatePos;
             }
         }
 
-        return primaryPos != null && primaryPos.equals(pos);
+        return primaryPos != null
+                && world.provider.getDimension() == primaryDimension
+                && primaryPos.equals(pos);
     }
 
     private IKnowledgeProvider getKnowledge(EntityPlayerMP player) {
