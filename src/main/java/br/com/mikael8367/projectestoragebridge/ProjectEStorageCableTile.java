@@ -143,7 +143,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         return 0;
     }
 
-    @Override
+    // Optional SSN API method in newer 1.12 builds; no @Override so 1.8.3 compiles.
     public DimPos getTargetPos() {
         return null;
     }
