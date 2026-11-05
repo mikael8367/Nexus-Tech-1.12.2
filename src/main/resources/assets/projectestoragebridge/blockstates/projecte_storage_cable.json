@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "normal": {
+      "model": "projectestoragebridge:projecte_storage_cable"
+    }
+  }
+}
