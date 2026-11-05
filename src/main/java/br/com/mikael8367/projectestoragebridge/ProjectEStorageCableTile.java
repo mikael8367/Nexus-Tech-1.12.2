@@ -39,7 +39,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
 
     @Override
     public List<ItemStack> getStoredStacks() {
-        if (!BridgeConfig.enableVirtualStorage) {
+        if (!BridgeConfig.enableVirtualStorage || world == null || world.isRemote) {
             return Collections.emptyList();
         }
         EntityPlayerMP player = getUnambiguousPlayer();
@@ -149,7 +149,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
     }
 
     private IKnowledgeProvider getKnowledge(EntityPlayerMP player) {
-        if (player == null || ProjectEAPI.KNOWLEDGE_CAPABILITY == null) {
+        if (player == null || !player.isEntityAlive() || ProjectEAPI.KNOWLEDGE_CAPABILITY == null) {
             return null;
         }
         return player.getCapability(ProjectEAPI.KNOWLEDGE_CAPABILITY, null);
