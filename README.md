@@ -1,40 +1,42 @@
 # ProjectE Storage Bridge
 
-Integra ProjectE e Simple Storage Network no Minecraft Java 1.12.2 / Forge.
+Mod de integração entre ProjectE e Simple Storage Network para Minecraft Java 1.12.2.
 
-## O que já foi implementado
+## Recursos no código
 
-- Bloco-cabo próprio que herda a estrutura de cabo do Simple Storage Network.
-- Capability `IConnectable` herdada de `TileCable`, permitindo que o grafo da SSN atravesse o bloco.
-- Capability `IConnectableLink` para apresentar itens conhecidos no ProjectE como armazenamento virtual.
-- Retirada virtual com cobrança de EMC no servidor.
-- Simulação sem cobrança; retirada real debita EMC antes de devolver o item.
-- Limite de retirada calculado sem permitir saldo negativo.
-- Itens sem valor EMC ou sem conhecimento não são disponibilizados.
-- Testes unitários para os limites de retirada.
+- Cabo de rede próprio derivado de `TileCable` da SSN; não precisa de Storage Link.
+- Capability de armazenamento da SSN para expor o inventário virtual.
+- Lista de itens aprendidos no ProjectE, limitada a variantes com EMC positivo.
+- Retirada virtual com débito de EMC no servidor.
+- Simulação sem cobrança e bloqueio de saldo insuficiente.
+- Cabo disponível na aba Redstone e receita de fabricação.
+- Configuração local para ativar/desativar a ponte e limitar quantas variantes são listadas.
+- Traduções em português do Brasil e inglês.
+- Testes unitários do cálculo de retirada.
 
-## Limitação importante da API da SSN
+## Limitação multiplayer
 
-A interface pública `IConnectableLink.extractStack(...)` não recebe o jogador que solicitou o item. Por segurança, esta versão só expõe o inventário virtual quando existe exatamente um jogador conectado ao servidor. Em servidor com dois ou mais jogadores, a ponte fica indisponível em vez de cobrar EMC da pessoa errada. O suporte multiplayer com contas independentes exige uma integração adicional no fluxo de requisições da SSN.
+A API pública `IConnectableLink.extractStack(...)` da SSN 1.8.3 não informa quem solicitou o item. Por segurança, a ponte só funciona quando existe exatamente um jogador conectado. Com dois ou mais jogadores, ela não disponibiliza o inventário. Não existe opção para desativar essa proteção.
 
-## Requisitos fixados
+## Versões
 
 - Minecraft 1.12.2
-- Forge 14.23.5.2864
+- Forge de execução mínimo: 14.23.5.2864
 - Java 8
 - ProjectE 1.12.2-PE1.4.1 (CurseForge file 2702991)
 - Simple Storage Network 1.12.2-1.8.3 (CurseForge file 3655827)
 
-## Compilar
+O ambiente de compilação usa Forge 14.23.5.2847 porque o ForgeGradle 2.3 espera o artefato antigo `userdev`; versões posteriores publicam `userdev3`, incompatível com ForgeGradle 2.3. O mod mantém Forge 14.23.5.2864 como requisito mínimo de execução. Essa compatibilidade binária ainda precisa ser validada em jogo.
 
-O workflow do GitHub Actions compila com Java 8 e Gradle 4.10.3. O JAR só deve ser usado depois de o workflow concluir com sucesso e de testes em jogo.
+## Configuração
 
-## Auditoria de segurança
+O arquivo `config/projectestoragebridge.cfg` é criado automaticamente.
 
-- Todas as operações de EMC são executadas no servidor.
-- A simulação não altera o saldo.
-- A retirada real verifica saldo e conhecimento novamente.
-- A quantidade é limitada pelo saldo e pelo limite de stack do item.
-- A ponte não aceita inserções de itens.
-- Não há fallback para jogador aleatório em ambiente multiplayer.
-- Ainda é necessário testar em cliente real 1.12.2, inclusive reconexão, recarga de chunks e interação com remotes da SSN.
+- `enableVirtualStorage=true`: ativa ou desativa o armazenamento virtual.
+- `maxListedItemTypes=256`: limita a quantidade de variantes exibidas (1–4096).
+
+## Compilação e testes
+
+O GitHub Actions compila com Java 8 e Gradle 4.10.3. O JAR só deve ser considerado pronto após o workflow passar e os testes de integração no Minecraft real serem concluídos.
+
+Ainda precisam ser testados: retirada pela Request Table e Remote, NBT/metadata, saldo insuficiente, recarga de chunk, salvar/reabrir mundo e servidor dedicado.
