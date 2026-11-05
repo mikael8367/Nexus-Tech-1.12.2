@@ -6,6 +6,15 @@ import static org.junit.Assert.assertEquals;
 public class EmcWithdrawalCalculatorTest {
 
     @Test
+    public void depositCreditCannotExceedWithdrawalValue() {
+        assertEquals(10L, EmcWithdrawalCalculator.safeDepositValue(15L, 10L));
+        assertEquals(10L, EmcWithdrawalCalculator.safeDepositValue(10L, 15L));
+        assertEquals(0L, EmcWithdrawalCalculator.safeDepositValue(0L, 15L));
+        assertEquals(0L, EmcWithdrawalCalculator.safeDepositValue(15L, 0L));
+        assertEquals(0L, EmcWithdrawalCalculator.safeDepositValue(-1L, 15L));
+    }
+
+    @Test
     public void rejectsInvalidBalancesAndRequests() {
         assertEquals(0, EmcWithdrawalCalculator.maxAffordable(0, 10, 64, 64));
         assertEquals(0, EmcWithdrawalCalculator.maxAffordable(100, 0, 64, 64));
