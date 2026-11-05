@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "projectestoragebridge",
+    "name": "ProjectE Storage Bridge",
+    "description": "A bridge between ProjectE knowledge/EMC and Simple Storage Network. Integration is under development.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://github.com/mikael8367/ProjectE-Storage-Bridge",
+    "authorList": ["Mikael8367"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": ["projecte", "storagenetwork"]
+  }
+]
