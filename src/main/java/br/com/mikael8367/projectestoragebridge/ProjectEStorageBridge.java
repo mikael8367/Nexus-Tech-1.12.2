@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger;
     modid = ProjectEStorageBridge.MOD_ID,
     name = ProjectEStorageBridge.MOD_NAME,
     version = ProjectEStorageBridge.VERSION,
-    dependencies = "required-after:forge@[14.23.5.2864,);required-after:projecte;required-after:storagenetwork"
+    dependencies = "required-after:forge@[14.23.5.2860,);required-after:projecte;required-after:storagenetwork"
 )
 public final class ProjectEStorageBridge {
     public static final String MOD_ID = "projectestoragebridge";
