@@ -14,12 +14,15 @@ public final class EmcWithdrawalCalculator {
         return (int) Math.min(affordable, limit);
     }
 
+    /**
+     * Returns -1 when the multiplication would overflow; callers must reject that cost.
+     */
     public static long costFor(long emcPerItem, int count) {
         if (emcPerItem <= 0L || count <= 0) {
             return 0L;
         }
         if (emcPerItem > Long.MAX_VALUE / count) {
-            return Long.MAX_VALUE;
+            return -1L;
         }
         return emcPerItem * count;
     }
