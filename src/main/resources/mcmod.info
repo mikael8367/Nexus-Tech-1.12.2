@@ -2,7 +2,7 @@
   {
     "modid": "projectestoragebridge",
     "name": "ProjectE Storage Bridge",
-    "description": "A bridge between ProjectE knowledge/EMC and Simple Storage Network. Integration is under development.",
+    "description": "A server-side virtual storage cable connecting ProjectE knowledge and EMC to Simple Storage Network.",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "https://github.com/mikael8367/ProjectE-Storage-Bridge",
