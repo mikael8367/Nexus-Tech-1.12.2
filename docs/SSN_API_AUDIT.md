@@ -27,6 +27,7 @@ The bridge is output-only: `EnumStorageDirection.OUT`. It does not accept insert
 
 ## Duplication and transaction safeguards
 
+- Exactly one bridge cable per SSN network is elected as the inventory provider (lowest connected BlockPos); all other bridge cables in that network return an empty virtual inventory and reject extraction. This prevents SSN's TileMaster.getStacks() from summing the same global ProjectE inventory once per cable.
 - Real extraction is synchronized per bridge tile.
 - Extraction is rejected outside the server's main thread; this keeps EMC read/modify/write serialized with normal world operations.
 - The requester ambiguity check remains fail-closed (exactly one online player), and the selected player's world must match the cable world.
@@ -58,5 +59,6 @@ A future multiplayer implementation needs a tested request-context hook in the S
 - Single-player request-table extraction, remote extraction, insufficient EMC, unknown item, NBT variants, and stack-limit tests.
 - Visual inspection that the bridge cable joins adjacent SSN cables and preserves the SSN cable connection model.
 - Confirm that the Transmutation Table remains a ProjectE interface and that the bridge uses the same player's learned-item set and EMC balance rather than treating the table block as a storage inventory.
+- Place two or more bridge cables on the same SSN network and verify the virtual stock is listed only once and repeated requests always debit EMC.
 - Two-player server test proving the bridge stays unavailable and never debits either player's EMC.
 - Chunk unload/reload and world save/restart.
