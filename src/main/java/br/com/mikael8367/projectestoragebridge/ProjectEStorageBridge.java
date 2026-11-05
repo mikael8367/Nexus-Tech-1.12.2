@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 public final class ProjectEStorageBridge {
     public static final String MOD_ID = "projectestoragebridge";
     public static final String MOD_NAME = "ProjectE Storage Bridge";
-    public static final String VERSION = "0.5.3";
+    public static final String VERSION = "0.5.4";
 
     @SidedProxy(
             clientSide = "br.com.mikael8367.projectestoragebridge.ClientProxy",
