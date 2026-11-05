@@ -29,7 +29,7 @@ public class EmcWithdrawalCalculatorTest {
     public void exactBalanceCanPayForExactlyOneOrMoreItems() {
         assertEquals(1, EmcWithdrawalCalculator.maxAffordable(10, 10, 64, 64));
         assertEquals(2, EmcWithdrawalCalculator.maxAffordable(20, 10, 64, 64));
-        assertEquals(0, EmcWithdrawalCalculator.maxAffordable(19, 10, 64, 64));
+        assertEquals(1, EmcWithdrawalCalculator.maxAffordable(19, 10, 64, 64));
     }
 
     @Test
