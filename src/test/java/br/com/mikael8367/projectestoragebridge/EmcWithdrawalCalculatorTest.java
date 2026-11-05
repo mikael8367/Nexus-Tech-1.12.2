@@ -26,8 +26,8 @@ public class EmcWithdrawalCalculatorTest {
     }
 
     @Test
-    public void guardsCostOverflow() {
-        assertEquals(Long.MAX_VALUE, EmcWithdrawalCalculator.costFor(Long.MAX_VALUE, 2));
+    public void rejectsCostOverflow() {
+        assertEquals(-1L, EmcWithdrawalCalculator.costFor(Long.MAX_VALUE, 2));
         assertEquals(30L, EmcWithdrawalCalculator.costFor(10L, 3));
     }
 }
