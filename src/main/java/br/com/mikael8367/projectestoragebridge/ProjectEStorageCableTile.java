@@ -26,17 +26,14 @@ import net.minecraftforge.fml.common.FMLCommonHandler;
 
 public final class ProjectEStorageCableTile extends TileCable implements IConnectableLink {
 
-    @Override
     public IBlockState getFacadeState() {
         return null;
     }
 
-    @Override
     public void setFacadeState(IBlockState facadeState) {
         // Fixed Bridge texture: do not accept SSN facade skins.
     }
 
-    @Override
     public void setFacadeState(String block, int meta) {
         // Ignore old facade data and facade packets.
     }

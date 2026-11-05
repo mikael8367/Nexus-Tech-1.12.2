@@ -11,7 +11,7 @@ public final class BridgeCreativeTab extends CreativeTabs {
     }
 
     @Override
-    public ItemStack getTabIconItem() {
+    public ItemStack createIcon() {
         return BridgeRegistry.CABLE == null ? ItemStack.EMPTY : new ItemStack(BridgeRegistry.CABLE);
     }
 }
