@@ -1,6 +1,5 @@
 package br.com.mikael8367.projectestoragebridge;
 
-import mrriegel.storagenetwork.StorageNetwork;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;
