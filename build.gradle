@@ -35,7 +35,11 @@ repositories {
 }
 
 dependencies {
-    // ProjectE and Simple Storage Network APIs will be pinned after their exact 1.12.2 artifacts are verified.
+    // Exact 1.12.2 releases; deobfuscated for ForgeGradle 2.3 compilation.
+    deobfCompile 'curse.maven:projecte-226410:2702991'
+    deobfCompile 'curse.maven:simple-storage-network-268495:3655827'
+
+    testCompile 'junit:junit:4.13.2'
 }
 
 processResources {
