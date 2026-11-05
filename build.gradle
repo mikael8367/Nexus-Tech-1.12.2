@@ -1,0 +1,63 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+
+version = "${mc_version}-${mod_version}"
+group = 'br.com.mikael8367.projectestoragebridge'
+archivesBaseName = 'ProjectE-Storage-Bridge'
+
+sourceCompatibility = targetCompatibility = '1.8'
+compileJava {
+    sourceCompatibility = targetCompatibility = '1.8'
+    options.encoding = 'UTF-8'
+}
+
+minecraft {
+    version = "${mc_version}-${forge_version}"
+    runDir = 'run'
+    mappings = "${mappings_version}"
+    makeObfSourceJar = false
+}
+
+getAssets.enabled = false
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://www.cursemaven.com' }
+}
+
+dependencies {
+    // ProjectE and Simple Storage Network APIs will be pinned after their exact 1.12.2 artifacts are verified.
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', project.minecraft.version
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+            'Specification-Title': 'ProjectE Storage Bridge',
+            'Specification-Vendor': 'Mikael8367',
+            'Specification-Version': '1',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version
+        )
+    }
+}
