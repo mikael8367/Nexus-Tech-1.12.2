@@ -126,7 +126,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         // sell value could create an EMC arbitrage loop if the mappings differ.
         long sellValue = emc.getSellValue(one);
         long transmutationValue = emc.getValue(one);
-        long emcPerItem = Math.min(sellValue, transmutationValue);
+        long emcPerItem = EmcWithdrawalCalculator.safeDepositValue(sellValue, transmutationValue);
         if (emcPerItem <= 0L) {
             return stack;
         }
