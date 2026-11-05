@@ -25,6 +25,16 @@ The SSN `IConnectableLink` API requires:
 
 The bridge is output-only: `EnumStorageDirection.OUT`. It does not accept inserted items.
 
+## Duplication and transaction safeguards
+
+- Real extraction is synchronized per bridge tile.
+- Extraction is rejected outside the server's main thread; this keeps EMC read/modify/write serialized with normal world operations.
+- The requester ambiguity check remains fail-closed (exactly one online player), and the selected player's world must match the cable world.
+- Simulation returns the candidate stack without changing EMC.
+- For a real extraction, the code re-reads the EMC balance immediately before commit, verifies that it has not changed since calculation, debits first, confirms the resulting balance, syncs the player, and only then returns the stack to SSN.
+- If the debit cannot be confirmed, no item stack is returned.
+- These controls mitigate bridge-side race/free-extraction paths; they do not prove the absence of bugs in SSN request processing or other mods. Full in-game testing remains mandatory.
+
 ## ProjectE 1.12.2 API audit
 
 Source branch inspected: `sinkillerj/ProjectE`, `mc1.12.x`.
