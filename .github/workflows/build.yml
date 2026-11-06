@@ -1,71 +1,20 @@
-name: Build Nexus Tech 1.12.2
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
+name: Build Nexus Tech
+on: [push, workflow_dispatch]
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Java 8
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '8'
-      - name: Set up Gradle 4.10.3
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '4.10.3'
-      - name: Build and test
-        run: gradle --no-daemon clean build
-      - name: Verify JAR output
-        run: |
-          test -n "$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"
-          ls -lh build/libs/*.jar
-      - name: Upload mod JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: Nexus-Tech-Core
-          path: build/libs/*.jar
-          if-no-files-found: error
-          retention-days: 14
-      - name: Assemble CurseForge modpack
-        run: |
-          mkdir -p build/modpack/overrides/mods
-          cp instance/manifest.json build/modpack/manifest.json
-          cp build/libs/Nexus-Tech-Core*.jar build/modpack/overrides/mods/
-          cd build/modpack
-          zip -r ../Nexus-Tech-1.12.2.zip manifest.json overrides
-      - name: Upload modpack ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: Nexus-Tech-1.12.2-Pack
-          path: build/Nexus-Tech-1.12.2.zip
-          if-no-files-found: error
-          retention-days: 14
-      - name: Publish GitHub Release with JAR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: nexus-tech-build-${{ github.run_number }}
-          name: Nexus Tech 1.12.2 - Build ${{ github.run_number }}
-          body: |
-            Release automática gerada após compilação bem-sucedida.
-
-            Commit: ${{ github.sha }}
-
-            O JAR anexado foi produzido pelo workflow de build.
-          files: |
-            build/libs/*.jar
-            build/Nexus-Tech-1.12.2.zip
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+      runs-on: ubuntu-latest
+          steps:
+                - uses: actions/checkout@v4
+                      - name: Set up JDK 8
+                              uses: actions/setup-java@v4
+                                      with: { java-version: '8', distribution: 'temurin' }
+                                            - name: Build Mod
+                                                    run: chmod +x gradlew && ./gradlew build --no-daemon
+                                                          - name: Upload JAR
+                                                                  uses: actions/upload-artifact@v4
+                                                                          with: { name: Nexus-Tech-JAR, path: build/libs/*.jar, retention-days: 30 }
+                                                                                - name: Create Release
+                                                                                        if: github.ref == 'refs/heads/main'
+                                                                                                uses: softprops/action-gh-release@v1
+                                                                                                        with: { tag_name: v${{ github.run_number }}, name: Build ${{ github.run_number }}, files: build/libs/*.jar }
+                                                                                                                env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
