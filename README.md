@@ -1,27 +1,50 @@
-# ProjectE Storage Bridge
+# Nexus Tech 1.12.2
 
-![Capa do ProjectE Storage Bridge](docs/projecte-storage-bridge-cover.svg)
+![Capa oficial do Nexus Tech 1.12.2](docs/nexus-tech-cover.svg)
 
-Integração entre ProjectE e Simple Storage Network para Minecraft Java 1.12.2.
+**Nexus Tech 1.12.2** é um modpack para Minecraft Java 1.12.2 que reúne diferentes mods em uma experiência de tecnologia, magia, automação, armazenamento e exploração.
 
-- Cabo próprio ligado à rede SSN.
-- Textura exclusiva 32x32 e renderizador TESR dedicado.
-- A textura é reaplicada antes de cada renderização para evitar reaproveitamento de outra textura.
-- Facades herdadas da SSN são desativadas no cabo Bridge, inclusive dados antigos salvos.
-- Aba criativa própria: ProjectE Storage Bridge, com o cabo como ícone.
-- O cabo precisa ficar encostado na Transmutation Table e conectado à rede SSN.
-- Retirada virtual de itens aprendidos cobra EMC do jogador.
-- Inserção na rede converte itens com valor de venda EMC em EMC do jogador e aprende o item quando necessário.
-- A área de itens da interface SSN também aceita depósito com o item no cursor: clique esquerdo deposita a pilha e clique direito deposita um item.
-- A entrada pela interface é tratada no servidor e consome somente a quantidade confirmada como aceita pela rede.
-- Inserção e retirada respeitam simulação, saldo máximo e validação no thread principal do servidor.
-- Apenas um cabo principal por rede; simulação não debita EMC.
+Este repositório será a central do modpack: aqui ficarão a documentação, configurações, lista de mods, dependências, arquivos de distribuição e os projetos próprios que fazem parte do Nexus Tech.
 
-## Instalação
-Minecraft 1.12.2, Forge 14.23.5.2860 ou superior, Java 8, ProjectE PE1.4.1 e Simple Storage Network 1.8.3.
+## Identidade do modpack
 
-## Limitação multiplayer
-A API IConnectableLink da SSN 1.8.3 não informa o jogador solicitante. Por segurança, a ponte só fica ativa com exatamente um jogador conectado.
+- **Nome:** Nexus Tech 1.12.2
+- **Minecraft:** Java Edition 1.12.2
+- **Plataforma:** Forge
+- **Foco:** tecnologia, magia, automação, armazenamento e exploração
 
-## Testes pendentes
-A compilação não substitui testes no jogo. Verificar depósito com clique esquerdo/direito, item sem valor EMC, saldo máximo, cursor com pilha parcial, retirada, renderização em seis direções, reload de chunks, resource packs, múltiplos cabos e multiplayer.
+## Mods próprios
+
+### ProjectE Storage Bridge
+
+O **ProjectE Storage Bridge** é um dos mods que compõem o Nexus Tech. Ele integra o ProjectE ao Simple Storage Network por meio de um cabo próprio, permitindo acessar itens aprendidos e usar EMC na rede de armazenamento.
+
+Consulte o código-fonte e os detalhes técnicos nas pastas deste repositório.
+
+## Estado atual do repositório
+
+O repositório está sendo organizado para se tornar a central do modpack completo. No momento, o conteúdo versionado inclui principalmente o código-fonte do ProjectE Storage Bridge; a coleção completa de mods, configurações e arquivos de distribuição ainda precisa ser adicionada.
+
+Não considere o modpack completo ou pronto para instalação até que esses arquivos sejam publicados e testados juntos.
+
+## Requisitos do ProjectE Storage Bridge
+
+- Minecraft Java 1.12.2
+- Forge 14.23.5.2860 ou superior
+- Java 8
+- ProjectE PE1.4.1
+- Simple Storage Network 1.8.3
+
+## Avisos de compatibilidade
+
+A API `IConnectableLink` do Simple Storage Network 1.8.3 não informa qual jogador solicitou a operação. Por segurança, a ponte do ProjectE Storage Bridge só fica ativa quando há exatamente um jogador conectado.
+
+A compilação do mod não substitui testes dentro do Minecraft. A compatibilidade do conjunto completo do Nexus Tech deverá ser validada com todos os mods instalados simultaneamente.
+
+## Organização planejada
+
+- `mods/` — mods que serão distribuídos com o modpack.
+- `config/` — configurações dos mods.
+- `docs/` — capa, documentação e informações do projeto.
+- `src/` — código-fonte dos mods próprios mantidos neste repositório.
+
