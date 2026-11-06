@@ -102,6 +102,8 @@ final class EnergyTransfer {
             if (accepted <= 0) continue;
             int extracted = provider.extractEnergy(accepted, false);
             int inserted = buffer.receiveEnergy(extracted, false);
+            // Keep FE conserved if a third-party provider changes its response between simulation and commit.
+            if (inserted < extracted) buffer.addInternal(extracted - inserted);
             budget -= inserted;
         }
         return initial != buffer.getEnergyStored();
