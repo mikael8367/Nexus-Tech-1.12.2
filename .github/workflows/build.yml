@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -27,6 +27,10 @@ jobs:
           gradle-version: '4.10.3'
       - name: Build and test
         run: gradle --no-daemon clean build
+      - name: Verify JAR output
+        run: |
+          test -n "$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"
+          ls -lh build/libs/*.jar
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
@@ -48,3 +52,20 @@ jobs:
           path: build/Nexus-Tech-1.12.2.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Publish GitHub Release with JAR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nexus-tech-build-${{ github.run_number }}
+          name: Nexus Tech 1.12.2 - Build ${{ github.run_number }}
+          body: |
+            Release automática gerada após compilação bem-sucedida.
+
+            Commit: ${{ github.sha }}
+
+            O JAR anexado foi produzido pelo workflow de build.
+          files: |
+            build/libs/*.jar
+            build/Nexus-Tech-1.12.2.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true
