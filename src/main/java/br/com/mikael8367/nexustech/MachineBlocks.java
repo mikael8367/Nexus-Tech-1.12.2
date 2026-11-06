@@ -69,6 +69,7 @@ final class BlockEnergyCable extends BlockTechMachine {
     BlockEnergyCable() { super("energy_cable", 1.0F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileEnergyCable(); }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
+    @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
     @Override public boolean isOpaqueCube(IBlockState state) { return false; }
 }
@@ -100,6 +101,7 @@ final class BlockElectricAnvil extends BlockTechMachine {
     BlockElectricAnvil() { super("electric_anvil", 4.0F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileElectricAnvil(); }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
+    @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
     @Override public boolean isOpaqueCube(IBlockState state) { return false; }
     @Override public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player,
