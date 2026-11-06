@@ -5,13 +5,14 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.IGuiHandler;
-import net.minecraft.inventory.Container;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.InventoryBasic;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-/** Server-authoritative, read-only machine status window. */
+/**
+ * Read-only machine status windows. They are opened on the client only: there is no server
+ * Container, so the player's own inventory window stays in sync while the screen is open.
+ * The data shown comes from the tile entity packets sent by AbstractEnergyTile.
+ */
 public final class TechGuiHandler implements IGuiHandler {
     public static final int GUI_GENERATOR = 0;
     public static final int GUI_SOLAR = 1;
@@ -21,9 +22,7 @@ public final class TechGuiHandler implements IGuiHandler {
 
     @Override
     public Object getServerGuiElement(int id, EntityPlayer player, World world, int x, int y, int z) {
-        TileEntity tile = world.getTileEntity(new BlockPos(x, y, z));
-        if (!isValid(id, tile)) return null;
-        return new TechMachineContainer(player, tile);
+        return null;
     }
 
     @Override
@@ -31,10 +30,10 @@ public final class TechGuiHandler implements IGuiHandler {
     public Object getClientGuiElement(int id, EntityPlayer player, World world, int x, int y, int z) {
         TileEntity tile = world.getTileEntity(new BlockPos(x, y, z));
         if (!isValid(id, tile)) return null;
-        return new TechMachineScreen(tile, title(id));
+        return new TechMachineScreen(tile, titleKey(id));
     }
 
-    private static boolean isValid(int id, TileEntity tile) {
+    static boolean isValid(int id, TileEntity tile) {
         switch (id) {
             case GUI_GENERATOR: return tile instanceof TileCoalGenerator;
             case GUI_SOLAR: return tile instanceof TileSolarPanel;
@@ -45,29 +44,15 @@ public final class TechGuiHandler implements IGuiHandler {
         }
     }
 
-    private static String title(int id) {
+    /** Same keys as the block names, so the title always matches the localized block name. */
+    static String titleKey(int id) {
         switch (id) {
-            case GUI_GENERATOR: return "Gerador a carvão";
-            case GUI_SOLAR: return "Painel solar";
-            case GUI_CABLE: return "Cabo de energia";
-            case GUI_FURNACE: return "Forno elétrico";
-            case GUI_ANVIL: return "Bigorna elétrica";
-            default: return "Nexus Tech";
+            case GUI_GENERATOR: return "tile.nexustech.coal_generator.name";
+            case GUI_SOLAR: return "tile.nexustech.solar_panel.name";
+            case GUI_CABLE: return "tile.nexustech.energy_cable.name";
+            case GUI_FURNACE: return "tile.nexustech.electric_furnace.name";
+            case GUI_ANVIL: return "tile.nexustech.electric_anvil.name";
+            default: return "itemGroup.nexustech";
         }
-    }
-}
-
-final class TechMachineContainer extends Container {
-    private final EntityPlayer player;
-    private final TileEntity tile;
-    TechMachineContainer(EntityPlayer player, TileEntity tile) {
-        this.player = player;
-        this.tile = tile;
-    }
-    @Override public boolean canInteractWith(EntityPlayer candidate) {
-        if (candidate != player || tile.isInvalid() || tile.getWorld() == null) return false;
-        BlockPos pos = tile.getPos();
-        return candidate.getDistanceSq(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) <= 64.0D
-                && tile.getWorld().getTileEntity(pos) == tile;
     }
 }

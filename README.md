@@ -16,7 +16,7 @@ Novo mod Forge independente dentro do JAR do projeto, com:
 - Forno elétrico para receitas da fornalha vanilla.
 - Bigorna elétrica que repara itens danificáveis usando o sistema padrão de durabilidade, inclusive ferramentas e armaduras de outros mods que usem esse padrão.
 
-Veja [docs/POWER_SYSTEM.md](docs/POWER_SYSTEM.md) para especificações, operação e checklist de testes.
+Veja [docs/POWER_SYSTEM.md](docs/POWER_SYSTEM.md) para especificações, operação e checklist de testes, e [CHANGELOG.md](CHANGELOG.md) para as correções de cada versão.
 
 ### ProjectE Storage Bridge
 Integra o ProjectE ao Simple Storage Network por meio de um cabo de armazenamento virtual que utiliza conhecimento e EMC do jogador.

@@ -25,6 +25,10 @@ minecraft {
     runDir = 'run'
     mappings = "${mappings_version}"
     makeObfSourceJar = false
+    // Single source of truth for mod versions: gradle.properties -> @Mod(version = ...).
+    replace '@MOD_VERSION@', project.mod_version
+    replaceIn 'NexusTechMod.java'
+    replaceIn 'ProjectEStorageBridge.java'
 }
 
 getAssets.enabled = false
@@ -43,9 +47,10 @@ dependencies {
 processResources {
     inputs.property 'version', project.version
     inputs.property 'mcversion', project.minecraft.version
+    inputs.property 'modversion', project.mod_version
     from(sourceSets.main.resources.srcDirs) {
         include 'mcmod.info'
-        expand 'version': project.version, 'mcversion': project.minecraft.version
+        expand 'version': project.mod_version, 'mcversion': project.minecraft.version
     }
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info'

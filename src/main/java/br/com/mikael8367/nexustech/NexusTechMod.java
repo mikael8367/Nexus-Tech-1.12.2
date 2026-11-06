@@ -12,7 +12,7 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 public final class NexusTechMod {
     public static final String MOD_ID = "nexustech";
     public static final String MOD_NAME = "Nexus Tech Machines";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "@MOD_VERSION@";
     @Mod.Instance(MOD_ID) public static NexusTechMod INSTANCE;
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
