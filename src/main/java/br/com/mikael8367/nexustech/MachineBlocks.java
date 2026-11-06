@@ -57,15 +57,16 @@ final class BlockCoalGenerator extends BlockTechMachine {
 }
 final class BlockSolarPanel extends BlockTechMachine {
     private static final AxisAlignedBB BOUNDS = new AxisAlignedBB(0, 0, 0, 1, 0.3125, 1);
-    BlockSolarPanel() { super("solar_panel", 1.5F); setBlockBounds(0, 0, 0, 1, 0.3125F, 1); }
+    BlockSolarPanel() { super("solar_panel", 1.5F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileSolarPanel(); }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
+    @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
     @Override public boolean isOpaqueCube(IBlockState state) { return false; }
 }
 final class BlockEnergyCable extends BlockTechMachine {
     private static final AxisAlignedBB BOUNDS = new AxisAlignedBB(0.25, 0.25, 0.25, 0.75, 0.75, 0.75);
-    BlockEnergyCable() { super("energy_cable", 1.0F); setBlockBounds(0.25F, 0.25F, 0.25F, 0.75F, 0.75F, 0.75F); }
+    BlockEnergyCable() { super("energy_cable", 1.0F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileEnergyCable(); }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
@@ -96,7 +97,7 @@ final class BlockElectricFurnace extends BlockTechMachine {
 }
 final class BlockElectricAnvil extends BlockTechMachine {
     private static final AxisAlignedBB BOUNDS = new AxisAlignedBB(0.0625, 0, 0.125, 0.9375, 1, 0.875);
-    BlockElectricAnvil() { super("electric_anvil", 4.0F); setBlockBounds(0.0625F, 0, 0.125F, 0.9375F, 1, 0.875F); }
+    BlockElectricAnvil() { super("electric_anvil", 4.0F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileElectricAnvil(); }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
