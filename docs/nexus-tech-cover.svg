@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#061b1c"/><stop offset=".52" stop-color="#102c36"/><stop offset="1" stop-color="#160e2c"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#54ff9a" stop-opacity=".7"/><stop offset="1" stop-color="#54ff9a" stop-opacity="0"/></radialGradient>
+ <linearGradient id="green" x2="0" y2="1"><stop stop-color="#b8ffd0"/><stop offset=".5" stop-color="#36e987"/><stop offset="1" stop-color="#087d52"/></linearGradient>
+ <linearGradient id="purple" x2="0" y2="1"><stop stop-color="#e7a5ff"/><stop offset="1" stop-color="#6b35cf"/></linearGradient>
+ <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M64 0H0V64" fill="none" stroke="#72ffc1" stroke-opacity=".09" stroke-width="2"/></pattern>
+ <filter id="blur"><feGaussianBlur stdDeviation="34"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/><rect width="1600" height="900" fill="url(#grid)"/>
+<circle cx="800" cy="390" r="390" fill="url(#glow)" filter="url(#blur)"/>
+<path d="M0 620 180 490 310 560 470 420 620 560 790 430 960 550 1110 390 1300 540 1460 420 1600 510V900H0Z" fill="#081a20" stroke="#1b6b54" stroke-width="5"/>
+<g opacity=".95" stroke="#45ed9a" stroke-width="7" fill="#102d2c">
+ <path d="M120 690V540h180v150M145 540V490h130v50M340 690V600h160v90M1110 690V520h190v170M1150 520V450h110v70M1350 690V570h150v120"/>
+ <path d="M80 690H1520" stroke-width="12"/>
+ <path d="M300 620H400M500 650H680M920 650H1110M1300 620H1400" fill="none" stroke="#8bffba" stroke-width="12"/>
+</g>
+<g transform="translate(800 620)">
+ <path d="M-160 0 0-95 160 0 0 95Z" fill="#0b6048" stroke="#7bffad" stroke-width="8"/>
+ <path d="M-160 0V-110L0-205 160-110V0L0 95Z" fill="#0d3d35" stroke="#48ff9b" stroke-width="8"/>
+ <path d="M-70-110 0-152 70-110 0-68Z" fill="url(#green)" stroke="#d4ffe0" stroke-width="5"/>
+ <path d="M-160-110 0-205 160-110" fill="none" stroke="#a5ffc5" stroke-width="8"/>
+</g>
+<g fill="none" stroke="#bd79ff" stroke-width="8"><path d="M220 470 260 400 300 470 260 540Z"/><path d="M1320 400 1360 330 1400 400 1360 470Z"/></g>
+<g fill="#b6ffd0" font-family="Arial,sans-serif" text-anchor="middle">
+ <text x="800" y="190" font-size="112" font-weight="900" letter-spacing="8" stroke="#064c36" stroke-width="12" paint-order="stroke">NEXUS TECH</text>
+ <text x="800" y="260" font-size="42" font-weight="700" letter-spacing="8">MODPACK • MINECRAFT JAVA 1.12.2</text>
+ <text x="800" y="825" font-size="30" letter-spacing="4" fill="#d8e8e2">TECNOLOGIA  •  MAGIA  •  AUTOMAÇÃO  •  EXPLORAÇÃO</text>
+</g>
+<g fill="#50f59a"><circle cx="120" cy="180" r="7"/><circle cx="1480" cy="210" r="7"/><circle cx="450" cy="330" r="5"/><circle cx="1130" cy="290" r="6"/></g>
+</svg>
