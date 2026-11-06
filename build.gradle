@@ -11,8 +11,8 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle.forge'
 
 version = "${mc_version}-${mod_version}"
-group = 'br.com.mikael8367.projectestoragebridge'
-archivesBaseName = 'ProjectE-Storage-Bridge'
+group = 'br.com.mikael8367'
+archivesBaseName = 'Nexus-Tech-Core'
 
 sourceCompatibility = targetCompatibility = '1.8'
 compileJava {
@@ -35,10 +35,8 @@ repositories {
 }
 
 dependencies {
-    // Exact 1.12.2 releases; deobfuscated for ForgeGradle 2.3 compilation.
     deobfCompile 'curse.maven:projecte-226410:2702991'
     deobfCompile 'curse.maven:simple-storage-network-268495:3655827'
-
     testCompile 'junit:junit:4.13.2'
 }
 
@@ -57,7 +55,7 @@ processResources {
 jar {
     manifest {
         attributes(
-            'Specification-Title': 'ProjectE Storage Bridge',
+            'Specification-Title': 'Nexus Tech Core',
             'Specification-Vendor': 'Mikael8367',
             'Specification-Version': '1',
             'Implementation-Title': project.name,

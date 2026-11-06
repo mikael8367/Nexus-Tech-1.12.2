@@ -2,49 +2,31 @@
 
 ![Capa oficial do Nexus Tech 1.12.2](docs/nexus-tech-cover.svg)
 
-**Nexus Tech 1.12.2** é um modpack para Minecraft Java 1.12.2 que reúne diferentes mods em uma experiência de tecnologia, magia, automação, armazenamento e exploração.
+**Nexus Tech 1.12.2** é um projeto de modpack para Minecraft Java 1.12.2 Forge. A proposta é reunir tecnologia, máquinas, energia, magia, automação, armazenamento, exploração e mods próprios.
 
-Este repositório será a central do modpack: aqui ficarão a documentação, configurações, lista de mods, dependências, arquivos de distribuição e os projetos próprios que fazem parte do Nexus Tech.
+Este repositório contém o código-fonte dos mods próprios e a documentação de integração. A coleção completa de mods, configurações e arquivos de distribuição ainda está sendo organizada; não considere o modpack completo até que o pacote seja montado e testado como conjunto.
 
-## Identidade do modpack
+## Conteúdo próprio
 
-- **Nome:** Nexus Tech 1.12.2
-- **Minecraft:** Java Edition 1.12.2
-- **Plataforma:** Forge
-- **Foco:** tecnologia, magia, automação, armazenamento e exploração
+### Nexus Tech Machines
+Novo mod Forge independente dentro do JAR do projeto, com:
+- Gerador a carvão e carvão vegetal.
+- Painel solar de geração diurna.
+- Cabos de energia com capability Forge Energy.
+- Forno elétrico para receitas da fornalha vanilla.
+- Bigorna elétrica que repara itens danificáveis usando o sistema padrão de durabilidade, inclusive ferramentas e armaduras de outros mods que usem esse padrão.
 
-## Mods próprios
+Veja [docs/POWER_SYSTEM.md](docs/POWER_SYSTEM.md) para especificações, operação e checklist de testes.
 
 ### ProjectE Storage Bridge
+Integra o ProjectE ao Simple Storage Network por meio de um cabo de armazenamento virtual que utiliza conhecimento e EMC do jogador.
 
-O **ProjectE Storage Bridge** é um dos mods que compõem o Nexus Tech. Ele integra o ProjectE ao Simple Storage Network por meio de um cabo próprio, permitindo acessar itens aprendidos e usar EMC na rede de armazenamento.
-
-Consulte o código-fonte e os detalhes técnicos nas pastas deste repositório.
-
-## Estado atual do repositório
-
-O repositório está sendo organizado para se tornar a central do modpack completo. No momento, o conteúdo versionado inclui principalmente o código-fonte do ProjectE Storage Bridge; a coleção completa de mods, configurações e arquivos de distribuição ainda precisa ser adicionada.
-
-Não considere o modpack completo ou pronto para instalação até que esses arquivos sejam publicados e testados juntos.
-
-## Requisitos do ProjectE Storage Bridge
-
+## Compatibilidade
 - Minecraft Java 1.12.2
 - Forge 14.23.5.2860 ou superior
 - Java 8
-- ProjectE PE1.4.1
-- Simple Storage Network 1.8.3
+- ProjectE PE1.4.1 e Simple Storage Network 1.8.3 para o mod ProjectE Storage Bridge
+- Nexus Tech Machines usa Forge Energy (FE); integração com mods externos depende da capability e da versão concreta do mod conectado.
 
-## Avisos de compatibilidade
-
-A API `IConnectableLink` do Simple Storage Network 1.8.3 não informa qual jogador solicitou a operação. Por segurança, a ponte do ProjectE Storage Bridge só fica ativa quando há exatamente um jogador conectado.
-
-A compilação do mod não substitui testes dentro do Minecraft. A compatibilidade do conjunto completo do Nexus Tech deverá ser validada com todos os mods instalados simultaneamente.
-
-## Organização planejada
-
-- `mods/` — mods que serão distribuídos com o modpack.
-- `config/` — configurações dos mods.
-- `docs/` — capa, documentação e informações do projeto.
-- `src/` — código-fonte dos mods próprios mantidos neste repositório.
-
+## Verificação
+A compilação e os testes unitários ajudam a detectar falhas, mas não substituem testes no jogo. A documentação de cada módulo registra os testes manuais pendentes e limitações conhecidas.

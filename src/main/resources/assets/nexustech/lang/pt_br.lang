@@ -1,0 +1,11 @@
+tile.nexustech.coal_generator.name=Gerador a Carvão
+tile.nexustech.solar_panel.name=Painel Solar
+tile.nexustech.energy_cable.name=Cabo de Energia
+tile.nexustech.electric_furnace.name=Forno Elétrico
+tile.nexustech.electric_anvil.name=Bigorna Elétrica
+item.nexustech.coal_generator.name=Gerador a Carvão
+item.nexustech.solar_panel.name=Painel Solar
+item.nexustech.energy_cable.name=Cabo de Energia
+item.nexustech.electric_furnace.name=Forno Elétrico
+item.nexustech.electric_anvil.name=Bigorna Elétrica
+itemGroup.nexustech=Nexus Tech

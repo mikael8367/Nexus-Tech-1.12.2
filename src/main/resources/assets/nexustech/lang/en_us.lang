@@ -1,0 +1,11 @@
+tile.nexustech.coal_generator.name=Coal Generator
+tile.nexustech.solar_panel.name=Solar Panel
+tile.nexustech.energy_cable.name=Energy Cable
+tile.nexustech.electric_furnace.name=Electric Furnace
+tile.nexustech.electric_anvil.name=Electric Anvil
+item.nexustech.coal_generator.name=Coal Generator
+item.nexustech.solar_panel.name=Solar Panel
+item.nexustech.energy_cable.name=Energy Cable
+item.nexustech.electric_furnace.name=Electric Furnace
+item.nexustech.electric_anvil.name=Electric Anvil
+itemGroup.nexustech=Nexus Tech

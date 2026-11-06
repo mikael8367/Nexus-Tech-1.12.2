@@ -2,14 +2,27 @@
   {
     "modid": "projectestoragebridge",
     "name": "ProjectE Storage Bridge",
-    "description": "A server-side virtual storage cable connecting ProjectE knowledge and EMC to Simple Storage Network.",
+    "description": "A virtual storage cable connecting ProjectE knowledge and EMC to Simple Storage Network.",
     "version": "${version}",
     "mcversion": "${mcversion}",
-    "url": "https://github.com/mikael8367/ProjectE-Storage-Bridge",
+    "url": "https://github.com/mikael8367/Nexus-Tech-1.12.2",
     "authorList": ["Mikael8367"],
     "credits": "",
     "logoFile": "",
     "screenshots": [],
     "dependencies": ["projecte", "storagenetwork"]
+  },
+  {
+    "modid": "nexustech",
+    "name": "Nexus Tech Machines",
+    "description": "Energy generation, FE cables, electric furnace and electric anvil.",
+    "version": "0.1.0",
+    "mcversion": "1.12.2",
+    "url": "https://github.com/mikael8367/Nexus-Tech-1.12.2",
+    "authorList": ["Mikael8367"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": ["forge"]
   }
 ]
