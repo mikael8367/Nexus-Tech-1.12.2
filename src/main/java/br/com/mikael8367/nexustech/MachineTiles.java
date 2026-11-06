@@ -5,6 +5,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ITickable;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
@@ -12,6 +14,7 @@ final class TileCoalGenerator extends AbstractEnergyTile implements ITickable {
     private static final int MAX_FUEL_TICKS = 32000;
     private int fuelTicks;
     TileCoalGenerator() { super(32000, 0, 40); }
+    int getFuelTicks() { return fuelTicks; }
     boolean addFuel(ItemStack fuel) {
         if (world == null || world.isRemote || !BlockCoalGenerator.isFuel(fuel)) return false;
         int ticks = fuel.getItem() == net.minecraft.init.Items.COAL ? 1600
@@ -28,7 +31,7 @@ final class TileCoalGenerator extends AbstractEnergyTile implements ITickable {
             fuelTicks--;
         }
         EnergyTransfer.push(this, energy, 40);
-        if (world.getTotalWorldTime() % 20L == 0L) markDirty();
+        if (world.getTotalWorldTime() % 10L == 0L) { markDirty(); syncClient(); }
     }
     @Override public NBTTagCompound writeToNBT(NBTTagCompound tag) {
         tag.setInteger("FuelTicks", fuelTicks);
@@ -75,6 +78,9 @@ final class TileElectricFurnace extends AbstractEnergyTile implements ITickable 
         }
     };
     TileElectricFurnace() { super(12000, 512, 0); }
+    int getCookTime() { return cookTime; }
+    int getInputCount() { return inventory.getStackInSlot(0).getCount(); }
+    int getOutputCount() { return inventory.getStackInSlot(1).getCount(); }
     static boolean isSmeltable(ItemStack stack) {
         return stack != null && !stack.isEmpty() && !FurnaceRecipes.instance().getSmeltingResult(stack).isEmpty();
     }
@@ -185,6 +191,8 @@ final class TileElectricAnvil extends AbstractEnergyTile implements ITickable {
         }
     };
     TileElectricAnvil() { super(100000, 1024, 0); }
+    int getRepairDamage() { ItemStack stack = inventory.getStackInSlot(0); return stack.isEmpty() ? 0 : stack.getItemDamage(); }
+    boolean hasRepairItem() { return !inventory.getStackInSlot(0).isEmpty(); }
     static boolean isRepairable(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.getCount() == 1
                 && stack.isItemStackDamageable() && stack.getItemDamage() > 0;
