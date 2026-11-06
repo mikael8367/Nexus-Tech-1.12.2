@@ -1,5 +1,7 @@
 package br.com.mikael8367.nexustech;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -49,6 +51,22 @@ abstract class AbstractEnergyTile extends TileEntity {
     @Override @SuppressWarnings("unchecked")
     public <T> T getCapability(net.minecraftforge.common.capabilities.Capability<T> cap, EnumFacing side) {
         return cap == CapabilityEnergy.ENERGY ? (T) energy : super.getCapability(cap, side);
+    }
+    int getStoredEnergy() { return energy.getEnergyStored(); }
+    int getEnergyCapacity() { return energy.getCapacity(); }
+    protected void syncClient() {
+        if (world != null && !world.isRemote) {
+            net.minecraft.block.state.IBlockState state = world.getBlockState(pos);
+            world.notifyBlockUpdate(pos, state, state, 3);
+        }
+    }
+    @Override public SPacketUpdateTileEntity getUpdatePacket() {
+        return new SPacketUpdateTileEntity(pos, 1, getUpdateTag());
+    }
+    @Override public NBTTagCompound getUpdateTag() { return writeToNBT(new NBTTagCompound()); }
+    @Override public void handleUpdateTag(NBTTagCompound tag) { readFromNBT(tag); }
+    @Override public void onDataPacket(NetworkManager network, SPacketUpdateTileEntity packet) {
+        readFromNBT(packet.getNbtCompound());
     }
     @Override public NBTTagCompound writeToNBT(NBTTagCompound tag) {
         tag.setInteger("NexusEnergy", energy.getEnergyStored());
