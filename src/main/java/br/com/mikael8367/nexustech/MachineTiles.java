@@ -52,7 +52,7 @@ final class TileSolarPanel extends AbstractEnergyTile implements ITickable {
             energy.addInternal(4);
         }
         EnergyTransfer.push(this, energy, 20);
-        if (world.getTotalWorldTime() % 20L == 0L) markDirty();
+        if (world.getTotalWorldTime() % 10L == 0L) { markDirty(); syncClient(); }
     }
 }
 final class TileEnergyCable extends AbstractEnergyTile implements ITickable {
@@ -61,7 +61,7 @@ final class TileEnergyCable extends AbstractEnergyTile implements ITickable {
         if (world == null || world.isRemote) return;
         EnergyTransfer.pull(this, energy, 512);
         EnergyTransfer.push(this, energy, 512);
-        if (world.getTotalWorldTime() % 20L == 0L) markDirty();
+        if (world.getTotalWorldTime() % 10L == 0L) { markDirty(); syncClient(); }
     }
 }
 
@@ -132,7 +132,7 @@ final class TileElectricFurnace extends AbstractEnergyTile implements ITickable 
         } else if (cookTime > 0) {
             cookTime = Math.max(0, cookTime - 2);
         }
-        if (world.getTotalWorldTime() % 20L == 0L) markDirty();
+        if (world.getTotalWorldTime() % 10L == 0L) { markDirty(); syncClient(); }
     }
     void dropContents() {
         if (world == null || world.isRemote) return;
@@ -228,7 +228,7 @@ final class TileElectricAnvil extends AbstractEnergyTile implements ITickable {
                 }
             }
         }
-        if (world.getTotalWorldTime() % 20L == 0L) markDirty();
+        if (world.getTotalWorldTime() % 10L == 0L) { markDirty(); syncClient(); }
     }
     void dropContents() {
         if (world == null || world.isRemote) return;
