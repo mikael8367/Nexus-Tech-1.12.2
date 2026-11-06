@@ -26,6 +26,10 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 abstract class BlockTechMachine extends BlockContainer {
+    protected boolean openMachineGui(World world, BlockPos pos, EntityPlayer player, int id) {
+        if (!world.isRemote) player.openGui(NexusTechMod.INSTANCE, id, world, pos.getX(), pos.getY(), pos.getZ());
+        return true;
+    }
     BlockTechMachine(String name, float hardness) {
         super(Material.IRON);
         setRegistryName(NexusTechMod.MOD_ID, name);
@@ -46,9 +50,12 @@ final class BlockCoalGenerator extends BlockTechMachine {
         if (hand != EnumHand.MAIN_HAND) return true;
         ItemStack held = player.getHeldItem(hand);
         TileEntity tile = world.getTileEntity(pos);
-        if (!(tile instanceof TileCoalGenerator) || !isFuel(held)) return false;
-        if (!world.isRemote && ((TileCoalGenerator) tile).addFuel(held) && !player.capabilities.isCreativeMode) held.shrink(1);
-        return true;
+        if (!(tile instanceof TileCoalGenerator)) return false;
+        if (isFuel(held)) {
+            if (!world.isRemote && ((TileCoalGenerator) tile).addFuel(held) && !player.capabilities.isCreativeMode) held.shrink(1);
+            return true;
+        }
+        return openMachineGui(world, pos, player, TechGuiHandler.GUI_GENERATOR);
     }
     static boolean isFuel(ItemStack stack) {
         return !stack.isEmpty() && ((stack.getItem() == Items.COAL && (stack.getMetadata() == 0 || stack.getMetadata() == 1))
@@ -59,6 +66,10 @@ final class BlockSolarPanel extends BlockTechMachine {
     private static final AxisAlignedBB BOUNDS = new AxisAlignedBB(0, 0, 0, 1, 0.3125, 1);
     BlockSolarPanel() { super("solar_panel", 1.5F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileSolarPanel(); }
+    @Override public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, net.minecraft.util.EnumFacing side, float hitX, float hitY, float hitZ) {
+        if (hand != EnumHand.MAIN_HAND) return true;
+        return openMachineGui(world, pos, player, TechGuiHandler.GUI_SOLAR);
+    }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
@@ -68,6 +79,10 @@ final class BlockEnergyCable extends BlockTechMachine {
     private static final AxisAlignedBB BOUNDS = new AxisAlignedBB(0.25, 0.25, 0.25, 0.75, 0.75, 0.75);
     BlockEnergyCable() { super("energy_cable", 1.0F); }
     @Override public TileEntity createNewTileEntity(World world, int meta) { return new TileEnergyCable(); }
+    @Override public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, net.minecraft.util.EnumFacing side, float hitX, float hitY, float hitZ) {
+        if (hand != EnumHand.MAIN_HAND) return true;
+        return openMachineGui(world, pos, player, TechGuiHandler.GUI_CABLE);
+    }
     @Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return BOUNDS; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
@@ -88,7 +103,8 @@ final class BlockElectricFurnace extends BlockTechMachine {
             int inserted = furnace.insertInput(held);
             if (inserted > 0) { if (!player.capabilities.isCreativeMode) held.shrink(inserted); return true; }
         }
-        return furnace.takeOutput(player);
+        if (player.isSneaking()) return furnace.takeOutput(player);
+        return openMachineGui(world, pos, player, TechGuiHandler.GUI_FURNACE);
     }
     @Override public void breakBlock(World world, BlockPos pos, IBlockState state) {
         TileEntity tile = world.getTileEntity(pos);
@@ -116,7 +132,8 @@ final class BlockElectricAnvil extends BlockTechMachine {
             if (anvil.insertItem(held) && !player.capabilities.isCreativeMode) held.shrink(1);
             return true;
         }
-        return anvil.takeOutput(player);
+        if (player.isSneaking()) return anvil.takeOutput(player);
+        return openMachineGui(world, pos, player, TechGuiHandler.GUI_ANVIL);
     }
     @Override public void breakBlock(World world, BlockPos pos, IBlockState state) {
         TileEntity tile = world.getTileEntity(pos);
