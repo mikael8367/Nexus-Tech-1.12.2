@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
@@ -66,6 +68,26 @@ public class AdvancedMachinesTest {
         assertTrue(miner.isRunning());
         miner.setRunning(false);
         assertFalse(miner.isRunning());
+    }
+
+    @Test public void digitalMinerRadiusIsCircularAndDepthIsExactlySixteenLayers() {
+        assertTrue(TileDigitalMiner.isWithinRadius(1, 0, 1));
+        assertTrue(TileDigitalMiner.isWithinRadius(0, -1, 1));
+        assertFalse(TileDigitalMiner.isWithinRadius(1, 1, 1));
+        assertTrue(TileDigitalMiner.isWithinRadius(16, 0, 16));
+        assertFalse(TileDigitalMiner.isWithinRadius(16, 1, 16));
+        assertEquals(62, TileDigitalMiner.getFirstMiningY(64));
+        assertEquals(47, TileDigitalMiner.getLastMiningY(64));
+    }
+
+    @Test public void digitalMinerAutomationInventoryRejectsExternalInsertion() {
+        TileDigitalMiner miner = new TileDigitalMiner();
+        IItemHandler handler = miner.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+        ItemStack offered = new ItemStack(Items.COAL, 1);
+        ItemStack remainder = handler.insertItem(0, offered, false);
+
+        assertEquals(1, remainder.getCount());
+        assertTrue(handler.getStackInSlot(0).isEmpty());
     }
 
     @Test public void digitalMinerClampsRadiusAndRestoresValidatedCursorFromNbt() {
