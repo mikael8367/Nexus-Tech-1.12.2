@@ -41,3 +41,21 @@ gui.nexustech.anvil.empty=Nenhum item para reparar
 gui.nexustech.anvil.rate=Reparo: %s pontos/tick, %s FE/ponto
 gui.nexustech.take_hint=Agache e clique com a mão vazia para retirar.
 gui.nexustech.close=Pressione ESC para fechar
+
+# Nexus Tech ores, materials, tools and upgrades
+item.nexustech.uranium_chunk.name=Fragmento de Urânio
+item.nexustech.uranium_ingot.name=Barra de Urânio
+item.nexustech.copper_ingot.name=Barra de Cobre
+item.nexustech.tin_ingot.name=Barra de Estanho
+item.nexustech.uranium_fuel_rod.name=Haste de Combustível de Urânio
+item.nexustech.uranium_fuel_rod_depleted.name=Haste de Urânio Esgotada
+item.nexustech.wrench.name=Chave Inglesa
+item.nexustech.cable_configurator.name=Configurador de Cabos
+item.nexustech.block_scanner.name=Scanner de Blocos
+item.nexustech.multimeter.name=Multímetro
+item.nexustech.speed_upgrade.name=Melhoria de Velocidade
+item.nexustech.furnace_upgrade.name=Melhoria de Fornalha
+item.nexustech.energy_upgrade.name=Melhoria de Energia
+tile.nexustech.uranium_ore.name=Minério de Urânio
+tile.nexustech.copper_ore.name=Minério de Cobre
+tile.nexustech.tin_ore.name=Minério de Estanho
