@@ -168,6 +168,7 @@ final class EnergyTransfer {
             if (budget <= 0) break;
             // Never return energy through the face it just arrived from (external batteries/cables).
             if (source.receivedRecentlyFrom(side)) continue;
+            if (source instanceof TileEnergyCable && !((TileEnergyCable) source).isFaceEnabled(side)) continue;
             BlockPos targetPos = origin.offset(side);
             if (!world.isBlockLoaded(targetPos)) continue;
             TileEntity target = world.getTileEntity(targetPos);
@@ -198,6 +199,7 @@ final class EnergyTransfer {
         BlockPos origin = destination.getPos();
         for (EnumFacing side : EnumFacing.values()) {
             if (budget <= 0) break;
+            if (destination instanceof TileEnergyCable && !((TileEnergyCable) destination).isFaceEnabled(side)) continue;
             BlockPos sourcePos = origin.offset(side);
             if (!world.isBlockLoaded(sourcePos)) continue;
             TileEntity source = world.getTileEntity(sourcePos);
