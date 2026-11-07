@@ -64,7 +64,8 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
 
             IBlockState state = world.getBlockState(target);
             Block block = state.getBlock();
-            if (block.isAir(state, world, target) || world.getTileEntity(target) != null) continue;
+            if (block.isAir(state, world, target) || state.getMaterial().isLiquid()
+                    || world.getTileEntity(target) != null) continue;
             if (block.getBlockHardness(state, world, target) < 0.0F) continue;
 
             NonNullList<ItemStack> drops = NonNullList.create();
