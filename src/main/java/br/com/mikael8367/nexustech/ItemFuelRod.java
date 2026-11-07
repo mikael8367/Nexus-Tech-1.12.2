@@ -49,6 +49,6 @@ final class ItemFuelRod extends Item {
         int remaining = getBurnTimeRemaining(stack);
         int percent = (int) ((long) remaining * 100L / MAX_BURN_TIME);
         tooltip.add(TextFormatting.GREEN + "Combustível restante: " + percent + "%");
-        tooltip.add(TextFormatting.GRAY + (remaining / 20) + " segundos");
+        tooltip.add(TextFormatting.GRAY.toString() + (remaining / 20) + " segundos");
     }
 }
