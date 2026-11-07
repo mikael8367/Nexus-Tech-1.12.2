@@ -43,11 +43,11 @@ public final class TileElectricFurnace extends AbstractEnergyTile implements ITi
         ItemStack output = inventory.extractItem(1, 64, false);
         if (output.isEmpty()) return false;
         MachineItems.giveOrDrop(player, output);
-        releaseXp(player);
+        releaseXp();
         return true;
     }
     /** Electric smelting grants the same experience as the vanilla furnace when output is taken. */
-    private void releaseXp(EntityPlayer player) {
+    private void releaseXp() {
         int xp = MathHelper.floor(storedXp);
         float fraction = storedXp - xp;
         if (fraction > 0.0F && world.rand.nextFloat() < fraction) xp++;
@@ -56,7 +56,7 @@ public final class TileElectricFurnace extends AbstractEnergyTile implements ITi
         while (xp > 0) {
             int split = EntityXPOrb.getXPSplit(xp);
             xp -= split;
-            world.spawnEntity(new EntityXPOrb(world, player.posX, player.posY + 0.5D, player.posZ + 0.5D, split));
+            world.spawnEntity(new EntityXPOrb(world, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, split));
         }
     }
     private boolean canSmelt() {
