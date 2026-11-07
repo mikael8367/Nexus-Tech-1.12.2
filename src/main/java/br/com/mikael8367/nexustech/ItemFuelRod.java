@@ -7,6 +7,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 /** Uranium fuel rod with bounded, persistent burn progress stored on the stack. */
 final class ItemFuelRod extends Item {
@@ -32,14 +34,17 @@ final class ItemFuelRod extends Item {
         return used;
     }
 
+    @SideOnly(Side.CLIENT)
     @Override public double getDurabilityForDisplay(ItemStack stack) {
         return 1.0D - (double) getBurnTimeRemaining(stack) / (double) MAX_BURN_TIME;
     }
 
+    @SideOnly(Side.CLIENT)
     @Override public int getRGBDurabilityForDisplay(ItemStack stack) {
         return 0x65C94B;
     }
 
+    @SideOnly(Side.CLIENT)
     @Override public void addInformation(ItemStack stack, World world, List<String> tooltip, ITooltipFlag flag) {
         int remaining = getBurnTimeRemaining(stack);
         int percent = (int) ((long) remaining * 100L / MAX_BURN_TIME);
