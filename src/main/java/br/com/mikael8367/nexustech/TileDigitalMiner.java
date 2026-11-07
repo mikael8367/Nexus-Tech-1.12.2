@@ -10,6 +10,7 @@ import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
 /** Automated miner with a persisted raster cursor and a bounded 3x9 output inventory. */
@@ -29,6 +30,19 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         @Override protected void onContentsChanged(int slot) { markDirty(); }
     };
 
+    /** The miner inventory is output-only: automation may extract drops but cannot inject items. */
+    private final IItemHandler automationInventory = new IItemHandler() {
+        @Override public int getSlots() { return inventory.getSlots(); }
+        @Override public ItemStack getStackInSlot(int slot) { return inventory.getStackInSlot(slot); }
+        @Override public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return stack;
+        }
+        @Override public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return inventory.extractItem(slot, amount, simulate);
+        }
+        @Override public int getSlotLimit(int slot) { return inventory.getSlotLimit(slot); }
+    };
+
     public TileDigitalMiner() {
         super(10000000, 16384, 0);
     }
@@ -36,6 +50,15 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
     public boolean isRunning() { return isRunning; }
     public int getRadius() { return radius; }
     public BlockPos getCurrentPos() { return currentPos; }
+
+    /** The horizontal scan is circular, not a square. */
+    static boolean isWithinRadius(int dx, int dz, int radius) {
+        int boundedRadius = Math.max(0, Math.min(MAX_RADIUS, radius));
+        return dx * dx + dz * dz <= boundedRadius * boundedRadius;
+    }
+
+    static int getFirstMiningY(int machineY) { return machineY - 2; }
+    static int getLastMiningY(int machineY) { return machineY - 2 - (MINING_DEPTH - 1); }
 
     public void setRunning(boolean running) {
         if (running && currentPos == null) resetCursor();
@@ -74,7 +97,8 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         if (isRunning) {
             if (!canMine()) {
                 setRunning(false);
-            } else if (energy.getEnergyStored() >= FE_PER_BLOCK) {
+            } else {
+                // Scanning air/ignored positions is free; energy is checked only for a real block.
                 mineNextBlock();
             }
         }
@@ -89,12 +113,15 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
             BlockPos target = currentPos;
             int dx = target.getX() - pos.getX();
             int dz = target.getZ() - pos.getZ();
-            if (dx * dx + dz * dz > radius * radius
-                    || target.getY() < 1 || target.getY() >= world.getHeight()
-                    || !world.isBlockLoaded(target)) {
+            if (!isWithinRadius(dx, dz, radius)
+                    || target.getY() < 1 || target.getY() >= world.getHeight()) {
                 advanceCursor();
                 continue;
             }
+
+            // Never force-load chunks and never permanently skip an unloaded position.
+            // The miner pauses here and resumes from the same cursor when the chunk is loaded.
+            if (!world.isBlockLoaded(target)) return false;
 
             IBlockState state = world.getBlockState(target);
             Block block = state.getBlock();
@@ -112,7 +139,10 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
                 setRunning(false);
                 return false;
             }
-            if (!energy.consumeInternal(FE_PER_BLOCK)) return false;
+            if (energy.getEnergyStored() < FE_PER_BLOCK || !energy.consumeInternal(FE_PER_BLOCK)) {
+                // Do not move the cursor: this exact block is retried when energy arrives.
+                return false;
+            }
 
             if (!world.destroyBlock(target, false)) {
                 energy.addInternal(FE_PER_BLOCK);
@@ -141,7 +171,7 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         int maxX = pos.getX() + radius;
         int minZ = pos.getZ() - radius;
         int maxZ = pos.getZ() + radius;
-        int minY = pos.getY() - 2 - (MINING_DEPTH - 1);
+        int minY = getLastMiningY(pos.getY());
 
         if (currentPos.getX() < maxX) {
             currentPos = currentPos.add(1, 0, 0);
@@ -207,7 +237,8 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
 
     @Override @SuppressWarnings("unchecked")
     public <T> T getCapability(net.minecraftforge.common.capabilities.Capability<T> capability, EnumFacing side) {
-        return capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY ? (T) inventory : super.getCapability(capability, side);
+        return capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY
+                ? (T) automationInventory : super.getCapability(capability, side);
     }
 
     @Override public NBTTagCompound writeToNBT(NBTTagCompound tag) {
@@ -236,12 +267,12 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
             int maxX = pos.getX() + radius;
             int minZ = pos.getZ() - radius;
             int maxZ = pos.getZ() + radius;
-            int minY = pos.getY() - 2 - (MINING_DEPTH - 1);
-            int maxY = pos.getY() - 2;
+            int minY = getLastMiningY(pos.getY());
+            int maxY = getFirstMiningY(pos.getY());
             int dx = x - pos.getX();
             int dz = z - pos.getZ();
             if (x >= minX && x <= maxX && z >= minZ && z <= maxZ
-                    && dx * dx + dz * dz <= radius * radius && y >= minY && y <= maxY) {
+                    && isWithinRadius(dx, dz, radius) && y >= minY && y <= maxY) {
                 currentPos = new BlockPos(x, y, z);
             }
         }
