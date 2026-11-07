@@ -2,7 +2,7 @@ name: Build Nexus Tech 1.12.2
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fix/deep-bug-sweep ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
