@@ -28,10 +28,18 @@ public final class BlockDigitalMiner extends BlockFacingMachine {
         if (!(tile instanceof TileDigitalMiner)) return false;
         if (!world.isRemote) {
             TileDigitalMiner miner = (TileDigitalMiner) tile;
-            miner.setRunning(!miner.isRunning());
-            player.sendMessage(new TextComponentString("Digital Miner "
-                    + (miner.isRunning() ? "ligado" : "desligado")
-                    + " | Raio: " + miner.getRadius()));
+            if (player.isSneaking()) {
+                int nextRadius = miner.getRadius() >= TileDigitalMiner.MAX_RADIUS
+                        ? 1 : miner.getRadius() + 1;
+                miner.setRadius(nextRadius);
+                player.sendMessage(new TextComponentString("Digital Miner: raio ajustado para "
+                        + miner.getRadius() + " (área circular)"));
+            } else {
+                miner.setRunning(!miner.isRunning());
+                player.sendMessage(new TextComponentString("Digital Miner "
+                        + (miner.isRunning() ? "ligado" : "desligado")
+                        + " | Raio: " + miner.getRadius()));
+            }
         }
         return true;
     }
