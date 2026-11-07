@@ -52,12 +52,19 @@ public final class TileElectricAnvil extends AbstractEnergyTile implements ITick
         EnergyTransfer.pull(this, 1024);
         ItemStack item = inventory.getStackInSlot(0);
         if (!item.isEmpty() && item.isItemStackDamageable() && item.getItemDamage() > 0) {
-            int points = RepairMath.points(item.getItemDamage(), energy.getEnergyStored(),
+            // Prepare the repaired result before charging energy. The server tick is single-threaded,
+            // but re-check the slot snapshot so a changed/removed stack is never charged for.
+            int originalDamage = item.getItemDamage();
+            int points = RepairMath.points(originalDamage, energy.getEnergyStored(),
                     REPAIR_PER_TICK, ENERGY_PER_DURABILITY);
-            if (points > 0 && energy.consumeInternal(RepairMath.energyCost(points, ENERGY_PER_DURABILITY))) {
+            if (points > 0) {
                 ItemStack repaired = item.copy();
-                repaired.setItemDamage(Math.max(0, repaired.getItemDamage() - points));
-                inventory.setStackInSlot(0, repaired);
+                repaired.setItemDamage(Math.max(0, originalDamage - points));
+                ItemStack current = inventory.getStackInSlot(0);
+                int cost = RepairMath.energyCost(points, ENERGY_PER_DURABILITY);
+                if (ItemStack.areItemStacksEqual(current, item) && energy.consumeInternal(cost)) {
+                    inventory.setStackInSlot(0, repaired);
+                }
             }
         }
         syncIfChanged();
