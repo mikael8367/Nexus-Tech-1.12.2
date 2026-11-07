@@ -4,10 +4,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
 import org.junit.Test;
 
-/** Regression checks for machine energy limits, radius validation and persisted state. */
+/** Regression checks for advanced machine energy limits, inventory validation and persistence. */
 public class AdvancedMachinesTest {
     @Test public void reactorUsesRequestedCapacityGenerationAndExtractionLimits() {
         TileNuclearReactorCore reactor = new TileNuclearReactorCore();
@@ -25,6 +28,38 @@ public class AdvancedMachinesTest {
         reactor.readFromNBT(tag);
         assertEquals(TileNuclearReactorCore.FUEL_TICKS, reactor.getFuelTicks());
         assertEquals(TileNuclearReactorCore.MAX_HEAT, reactor.getHeat());
+    }
+
+    @Test public void reactorHasValidatedTwoSlotFuelAndSpentRodInventory() {
+        TileNuclearReactorCore reactor = new TileNuclearReactorCore();
+        IItemHandler handler = reactor.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+        assertEquals(2, handler.getSlots());
+
+        ItemStack fresh = new ItemStack(TechItems.URANIUM_FUEL_ROD);
+        ItemStack depleted = new ItemStack(TechItems.URANIUM_FUEL_ROD_DEPLETED);
+        assertTrue(handler.insertItem(0, fresh, true).isEmpty());
+        assertFalse(handler.insertItem(0, depleted, true).isEmpty());
+        assertTrue(handler.insertItem(1, depleted, true).isEmpty());
+        assertFalse(handler.insertItem(1, fresh, true).isEmpty());
+
+        assertTrue(handler.extractItem(0, 1, true).isEmpty());
+        assertEquals(TechItems.URANIUM_FUEL_ROD_DEPLETED,
+                handler.extractItem(1, 1, true).getItem());
+    }
+
+    @Test public void reactorPersistsHeatRedstoneAndPendingSpentFuelState() {
+        TileNuclearReactorCore reactor = new TileNuclearReactorCore();
+        NBTTagCompound saved = new NBTTagCompound();
+        saved.setInteger("FuelTicks", 0);
+        saved.setInteger("Heat", 12345);
+        saved.setBoolean("IsRedstonePowered", true);
+        saved.setBoolean("PendingDepletedRod", true);
+        reactor.readFromNBT(saved);
+
+        NBTTagCompound written = reactor.writeToNBT(new NBTTagCompound());
+        assertEquals(12345, written.getInteger("Heat"));
+        assertTrue(written.getBoolean("IsRedstonePowered"));
+        assertTrue(written.getBoolean("PendingDepletedRod"));
     }
 
     @Test public void digitalMinerUsesRequestedEnergyLimitsAndCanToggle() {
@@ -50,8 +85,6 @@ public class AdvancedMachinesTest {
         miner.setRunning(true);
         net.minecraft.util.math.BlockPos cursor = miner.getCurrentPos();
 
-        // TileEntity.writeToNBT requires a world in this Forge version; exercise the persisted
-        // fields directly here, while the in-game save/load path uses the same NBT keys.
         NBTTagCompound saved = new NBTTagCompound();
         saved.setBoolean("IsRunning", true);
         saved.setInteger("Radius", 5);
