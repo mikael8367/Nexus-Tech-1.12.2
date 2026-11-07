@@ -36,3 +36,12 @@
 - Versão única em `gradle.properties` (0.6.0) aplicada aos dois mods, `mcmod.info` e manifest.
 - `settings.gradle` renomeado para `Nexus-Tech-1.12.2`.
 - Novos testes: consumo interno, divisão entre cabos, reflexão dos tiles, integridade de PNG/modelos/blockstates/traduções/receitas.
+
+## 0.6.1 — Materiais, minérios e ferramentas
+
+- Adicionados minérios de urânio, cobre e estanho com drops de materiais e requisito de picareta.
+- Adicionados fragmento de urânio, barras de urânio/cobre/estanho, hastes de combustível e três melhorias.
+- Adicionadas chave inglesa segura, configurador de faces de cabos, scanner de blocos e multímetro.
+- Adicionadas 16 texturas PNG próprias de 16×16 para minérios e itens, com modelos e blockstates correspondentes.
+- Configuração individual das seis faces do cabo persistida em NBT e respeitada na entrada/saída de FE.
+- O wrench gira máquinas sem remover blocos ou destruir TileEntities.
