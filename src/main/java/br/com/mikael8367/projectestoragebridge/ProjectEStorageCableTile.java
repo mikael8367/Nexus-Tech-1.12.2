@@ -12,6 +12,9 @@ import mrriegel.storagenetwork.api.data.IItemStackMatcher;
 import mrriegel.storagenetwork.block.cable.TileCable;
 import mrriegel.storagenetwork.capabilities.StorageNetworkCapabilities;
 import moze_intel.projecte.api.ProjectEAPI;
+import moze_intel.projecte.api.event.PlayerAttemptLearnEvent;
+import moze_intel.projecte.utils.ItemHelper;
+import moze_intel.projecte.utils.NBTWhitelist;
 import moze_intel.projecte.api.capabilities.IKnowledgeProvider;
 import moze_intel.projecte.api.proxy.IEMCProxy;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -21,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumFacing;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 
@@ -87,6 +91,9 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             }
             ItemStack one = learned.copy();
             one.setCount(1);
+            if (!isCleanKnowledge(one)) {
+                continue;
+            }
             long value = emc.getValue(one);
             if (value <= 0L) {
                 continue;
@@ -142,26 +149,28 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         }
 
         long credit = emcPerItem * (long) accepted;
-        boolean needsKnowledge = !knowledge.hasFullKnowledge() && !knowledge.hasKnowledge(one);
+        // Learn the same normalized form the Transmutation Table learns: undamaged and without
+        // NBT unless ProjectE whitelists it. Learning the raw stack let players withdraw unlimited
+        // copies of NBT payloads (filled backpacks, enchantments, stored contents) for base EMC.
+        ItemStack learnable = normalizeForKnowledge(one);
+        boolean needsKnowledge = !knowledge.hasFullKnowledge() && !knowledge.hasKnowledge(learnable);
 
         if (simulate) {
             return remainder(stack, accepted);
         }
 
         // Learn before crediting, but roll the knowledge back if the EMC update fails.
+        // Like ProjectE, a cancelled PlayerAttemptLearnEvent still sells the item but does not learn it.
         boolean learnedNow = false;
-        if (needsKnowledge) {
-            learnedNow = knowledge.addKnowledge(one);
-            if (!learnedNow && !knowledge.hasKnowledge(one)) {
-                return stack;
-            }
+        if (needsKnowledge && !MinecraftForge.EVENT_BUS.post(new PlayerAttemptLearnEvent(player, learnable.copy()))) {
+            learnedNow = knowledge.addKnowledge(learnable);
         }
 
         // Recheck the balance immediately before committing the deposit.
         long currentBalance = knowledge.getEmc();
         if (currentBalance != balance || currentBalance > Long.MAX_VALUE - credit) {
             if (learnedNow) {
-                knowledge.removeKnowledge(one);
+                knowledge.removeKnowledge(learnable);
                 knowledge.sync(player);
             }
             return stack;
@@ -171,7 +180,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         if (knowledge.getEmc() != currentBalance + credit) {
             knowledge.setEmc(currentBalance);
             if (learnedNow) {
-                knowledge.removeKnowledge(one);
+                knowledge.removeKnowledge(learnable);
             }
             knowledge.sync(player);
             return stack;
@@ -180,6 +189,27 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
         knowledge.sync(player);
         markDirty();
         return remainder(stack, accepted);
+    }
+
+    /**
+     * Knowledge written by bridge versions up to 0.5.5 may hold damaged or NBT-carrying stacks.
+     * Never list or deliver those through SSN; only entries ProjectE itself would have learned.
+     */
+    static boolean isCleanKnowledge(ItemStack one) {
+        return ItemStack.areItemStacksEqual(one, normalizeForKnowledge(one));
+    }
+
+    /** Mirrors ProjectE TransmutationInventory.handleKnowledge normalization. */
+    static ItemStack normalizeForKnowledge(ItemStack stack) {
+        ItemStack normalized = stack.copy();
+        normalized.setCount(1);
+        if (ItemHelper.isDamageable(normalized)) {
+            normalized.setItemDamage(0);
+        }
+        if (normalized.hasTagCompound() && !NBTWhitelist.shouldDupeWithNBT(normalized)) {
+            normalized.setTagCompound(null);
+        }
+        return normalized;
     }
 
     private static ItemStack remainder(ItemStack original, int accepted) {
@@ -215,7 +245,7 @@ public final class ProjectEStorageCableTile extends TileCable implements IConnec
             }
             ItemStack one = learned.copy();
             one.setCount(1);
-            if (!matcher.match(one) || !knowledge.hasKnowledge(one)) {
+            if (!isCleanKnowledge(one) || !matcher.match(one) || !knowledge.hasKnowledge(one)) {
                 continue;
             }
             long emcPerItem = emc.getValue(one);

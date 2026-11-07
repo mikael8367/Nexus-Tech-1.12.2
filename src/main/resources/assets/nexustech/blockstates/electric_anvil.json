@@ -1,1 +1,19 @@
-{"variants":{"normal":{"model":"nexustech:electric_anvil"}}}
+{
+  "variants": {
+    "facing=north": {
+      "model": "nexustech:electric_anvil"
+    },
+    "facing=east": {
+      "model": "nexustech:electric_anvil",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "nexustech:electric_anvil",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "nexustech:electric_anvil",
+      "y": 270
+    }
+  }
+}
