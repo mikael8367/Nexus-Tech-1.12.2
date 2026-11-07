@@ -130,4 +130,15 @@ public class AdvancedMachinesTest {
         assertTrue(restored.isRunning());
         assertEquals(cursor, restored.getCurrentPos());
     }
+    @Test public void fuelRodImplementsPersistentBurnTimeMethodsUsedByReactor() {
+        ItemFuelRod rod = new ItemFuelRod();
+        ItemStack stack = new ItemStack(rod);
+
+        assertEquals(ItemFuelRod.MAX_BURN_TIME, rod.getBurnTimeRemaining(stack));
+        assertEquals(1, rod.consumeBurnTime(stack, 1));
+        assertEquals(ItemFuelRod.MAX_BURN_TIME - 1, rod.getBurnTimeRemaining(stack));
+        assertEquals(3, rod.consumeBurnTime(stack, 3));
+        assertEquals(ItemFuelRod.MAX_BURN_TIME - 4, rod.getBurnTimeRemaining(stack));
+    }
+
 }
