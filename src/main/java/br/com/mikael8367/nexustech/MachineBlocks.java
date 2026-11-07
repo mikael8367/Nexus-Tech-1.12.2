@@ -275,6 +275,9 @@ final class TechRegistry {
         event.getRegistry().register(ENERGY_CABLE);
         event.getRegistry().register(ELECTRIC_FURNACE);
         event.getRegistry().register(ELECTRIC_ANVIL);
+        event.getRegistry().register(TechOreRegistry.URANIUM_ORE);
+        event.getRegistry().register(TechOreRegistry.COPPER_ORE);
+        event.getRegistry().register(TechOreRegistry.TIN_ORE);
         GameRegistry.registerTileEntity(TileCoalGenerator.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "coal_generator"));
         GameRegistry.registerTileEntity(TileSolarPanel.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "solar_panel"));
         GameRegistry.registerTileEntity(TileEnergyCable.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "energy_cable"));
@@ -282,16 +285,31 @@ final class TechRegistry {
         GameRegistry.registerTileEntity(TileElectricAnvil.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "electric_anvil"));
     }
     @SubscribeEvent public void registerItems(RegistryEvent.Register<Item> event) {
-        Block[] blocks = {COAL_GENERATOR, SOLAR_PANEL, ENERGY_CABLE, ELECTRIC_FURNACE, ELECTRIC_ANVIL};
+        Block[] blocks = {COAL_GENERATOR, SOLAR_PANEL, ENERGY_CABLE, ELECTRIC_FURNACE, ELECTRIC_ANVIL,
+                TechOreRegistry.URANIUM_ORE, TechOreRegistry.COPPER_ORE, TechOreRegistry.TIN_ORE};
         for (Block block : blocks) {
-            if (block == null) throw new IllegalStateException("Block registration order invalid");
+            if (block == null || block.getRegistryName() == null) {
+                throw new IllegalStateException("Block registration order or registry name invalid");
+            }
             event.getRegistry().register(new ItemBlock(block).setRegistryName(block.getRegistryName()));
+        }
+        for (Item item : TechItems.ALL) {
+            if (item == null || item.getRegistryName() == null) {
+                throw new IllegalStateException("Tech item has no registry name");
+            }
+            event.getRegistry().register(item);
         }
     }
     @SideOnly(Side.CLIENT)
     @SubscribeEvent public void registerModels(ModelRegistryEvent event) {
         registerModel(COAL_GENERATOR); registerModel(SOLAR_PANEL); registerModel(ENERGY_CABLE);
         registerModel(ELECTRIC_FURNACE); registerModel(ELECTRIC_ANVIL);
+        registerModel(TechOreRegistry.URANIUM_ORE); registerModel(TechOreRegistry.COPPER_ORE);
+        registerModel(TechOreRegistry.TIN_ORE);
+        for (Item item : TechItems.ALL) {
+            ModelLoader.setCustomModelResourceLocation(item, 0,
+                    new ModelResourceLocation(item.getRegistryName(), "inventory"));
+        }
     }
     @SideOnly(Side.CLIENT)
     private static void registerModel(Block block) {
