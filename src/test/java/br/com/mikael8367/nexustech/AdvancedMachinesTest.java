@@ -25,7 +25,8 @@ public class AdvancedMachinesTest {
         tag.setInteger("FuelTicks", Integer.MAX_VALUE);
         tag.setInteger("Heat", Integer.MAX_VALUE);
         reactor.readFromNBT(tag);
-        assertEquals(TileNuclearReactorCore.FUEL_TICKS, reactor.getFuelTicks());
+        // A burn timer without a matching physical fuel rod is invalid and must not run.
+        assertEquals(0, reactor.getFuelTicks());
         assertEquals(TileNuclearReactorCore.MAX_HEAT, reactor.getHeat());
     }
 
