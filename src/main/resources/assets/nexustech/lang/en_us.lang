@@ -47,3 +47,8 @@ item.nexustech.energy_upgrade.name=Energy Upgrade
 tile.nexustech.uranium_ore.name=Uranium Ore
 tile.nexustech.copper_ore.name=Copper Ore
 tile.nexustech.tin_ore.name=Tin Ore
+
+tile.nexustech.nuclear_reactor_core.name=Nuclear Reactor Core
+item.nexustech.nuclear_reactor_core.name=Nuclear Reactor Core
+tile.nexustech.digital_miner.name=Digital Miner
+item.nexustech.digital_miner.name=Digital Miner
