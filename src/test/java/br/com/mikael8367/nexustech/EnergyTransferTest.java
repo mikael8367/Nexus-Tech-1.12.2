@@ -1,7 +1,6 @@
 package br.com.mikael8367.nexustech;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -50,6 +49,7 @@ public class EnergyTransferTest {
         int generated = 0;
         int delivered = 0;
         int steadyTicks = 20;
+        int[] outputs = new int[ticks];
 
         for (int tick = 0; tick < ticks; tick++) {
             stored[0] += FE_PER_TICK;
@@ -66,6 +66,7 @@ public class EnergyTransferTest {
             int output = Math.min(FE_PER_TICK, stored[cableCount - 1]);
             stored[cableCount - 1] -= output;
             delivered += output;
+            outputs[tick] = output;
 
             int remaining = 0;
             for (int amount : stored) remaining += amount;
@@ -73,10 +74,9 @@ public class EnergyTransferTest {
         }
 
         for (int tick = ticks - steadyTicks; tick < ticks; tick++) {
-            // The simulation stores only output totals at the end of each tick below.
-            assertTrue("Invalid steady-state window", tick >= 0);
+            assertEquals("Chain throughput should reach the generator's sustained output at tick " + tick,
+                    FE_PER_TICK, outputs[tick]);
         }
-        assertTrue("Long cable chain did not reach expected throughput", delivered >=
-                (ticks - 150) * FE_PER_TICK);
+        assertTrue("Simulation must deliver generated energy", delivered > 0);
     }
 }
