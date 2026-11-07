@@ -30,10 +30,12 @@ jobs:
       - name: Build and test
         run: gradle --no-daemon clean build
       - name: Verify JAR output
+        if: always()
         run: |
           test -n "$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"
           ls -lh build/libs/*.jar
       - name: Upload mod JAR
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Nexus-Tech-Core
