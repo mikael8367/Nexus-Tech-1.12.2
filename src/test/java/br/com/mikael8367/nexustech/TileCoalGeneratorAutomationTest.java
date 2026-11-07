@@ -4,14 +4,22 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import net.minecraft.init.Bootstrap;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /** Regression coverage for hopper-compatible coal generator input. */
 public class TileCoalGeneratorAutomationTest {
+    /** Vanilla item/block registries must be bootstrapped before ItemStack tests run. */
+    @BeforeClass
+    public static void bootstrapMinecraftRegistries() {
+        Bootstrap.register();
+    }
+
     @Test
     public void exposesOneValidatedInputSlotAndRejectsExtraction() {
         TileCoalGenerator generator = new TileCoalGenerator();
