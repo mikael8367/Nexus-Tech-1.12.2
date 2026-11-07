@@ -40,7 +40,14 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
         if (!fuel.isEmpty() && fuel.getItem() instanceof ItemFuelRod) {
             return ((ItemFuelRod) fuel.getItem()).getBurnTimeRemaining(fuel);
         }
-        return fuelTicks;
+        return 0;
+    }
+
+    boolean insertFuel(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || stack.getItem() != TechItems.URANIUM_FUEL_ROD) return false;
+        ItemStack one = stack.copy();
+        one.setCount(1);
+        return inventory.insertItem(0, one, false).isEmpty();
     }
 
     @Override public void update() {
