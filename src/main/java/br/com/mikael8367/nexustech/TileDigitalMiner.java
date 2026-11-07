@@ -87,7 +87,11 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
 
         for (int checked = 0; checked < MAX_SCAN_PER_TICK && currentPos != null; checked++) {
             BlockPos target = currentPos;
-            if (target.getY() < 1 || target.getY() >= world.getHeight() || !world.isBlockLoaded(target)) {
+            int dx = target.getX() - pos.getX();
+            int dz = target.getZ() - pos.getZ();
+            if (dx * dx + dz * dz > radius * radius
+                    || target.getY() < 1 || target.getY() >= world.getHeight()
+                    || !world.isBlockLoaded(target)) {
                 advanceCursor();
                 continue;
             }
@@ -234,7 +238,10 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
             int maxZ = pos.getZ() + radius;
             int minY = pos.getY() - 2 - (MINING_DEPTH - 1);
             int maxY = pos.getY() - 2;
-            if (x >= minX && x <= maxX && z >= minZ && z <= maxZ && y >= minY && y <= maxY) {
+            int dx = x - pos.getX();
+            int dz = z - pos.getZ();
+            if (x >= minX && x <= maxX && z >= minZ && z <= maxZ
+                    && dx * dx + dz * dz <= radius * radius && y >= minY && y <= maxY) {
                 currentPos = new BlockPos(x, y, z);
             }
         }
