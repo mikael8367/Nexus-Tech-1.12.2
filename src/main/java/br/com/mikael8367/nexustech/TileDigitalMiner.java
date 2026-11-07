@@ -272,7 +272,7 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
             int dx = x - pos.getX();
             int dz = z - pos.getZ();
             if (x >= minX && x <= maxX && z >= minZ && z <= maxZ
-                    && isWithinRadius(dx, dz, radius) && y >= minY && y <= maxY) {
+                    && y >= minY && y <= maxY) {
                 currentPos = new BlockPos(x, y, z);
             }
         }
