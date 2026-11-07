@@ -42,6 +42,7 @@ public class AdvancedMachinesTest {
         assertTrue(handler.insertItem(1, depleted, true).isEmpty());
         assertFalse(handler.insertItem(1, fresh, true).isEmpty());
 
+        handler.insertItem(0, fresh, false);
         assertTrue(handler.extractItem(0, 1, true).isEmpty());
         handler.insertItem(1, depleted, false);
         assertEquals(TechItems.URANIUM_FUEL_ROD_DEPLETED,
