@@ -121,6 +121,7 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
                 meltdown();
                 return;
             }
+            EnergyTransfer.push(this, PUSH_PER_TICK);
             syncIfChanged();
             return;
         }

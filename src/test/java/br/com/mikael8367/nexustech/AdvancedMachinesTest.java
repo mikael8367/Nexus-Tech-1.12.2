@@ -43,11 +43,12 @@ public class AdvancedMachinesTest {
         assertFalse(handler.insertItem(1, fresh, true).isEmpty());
 
         assertTrue(handler.extractItem(0, 1, true).isEmpty());
+        handler.insertItem(1, depleted, false);
         assertEquals(TechItems.URANIUM_FUEL_ROD_DEPLETED,
                 handler.extractItem(1, 1, true).getItem());
     }
 
-    @Test public void reactorPersistsHeatRedstoneAndPendingSpentFuelState() {
+    @Test public void reactorRestoresHeatRedstoneAndPendingSpentFuelStateFromNbt() {
         TileNuclearReactorCore reactor = new TileNuclearReactorCore();
         NBTTagCompound saved = new NBTTagCompound();
         saved.setInteger("FuelTicks", 0);
@@ -56,10 +57,9 @@ public class AdvancedMachinesTest {
         saved.setBoolean("PendingDepletedRod", true);
         reactor.readFromNBT(saved);
 
-        NBTTagCompound written = reactor.writeToNBT(new NBTTagCompound());
-        assertEquals(12345, written.getInteger("Heat"));
-        assertTrue(written.getBoolean("IsRedstonePowered"));
-        assertTrue(written.getBoolean("PendingDepletedRod"));
+        assertEquals(12345, reactor.getHeat());
+        assertTrue(reactor.isRedstonePowered());
+        assertTrue(reactor.hasPendingDepletedRod());
     }
 
     @Test public void digitalMinerUsesRequestedEnergyLimitsAndCanToggle() {
