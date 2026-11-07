@@ -4,16 +4,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import net.minecraft.init.Bootstrap;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /** Regression checks for advanced machine energy limits, inventory validation and persistence. */
 public class AdvancedMachinesTest {
+    /** Vanilla item/block registries must be bootstrapped before ItemStack tests run. */
+    @BeforeClass
+    public static void bootstrapMinecraftRegistries() {
+        Bootstrap.register();
+    }
+
     @Test public void reactorUsesRequestedCapacityGenerationAndExtractionLimits() {
         TileNuclearReactorCore reactor = new TileNuclearReactorCore();
         assertEquals(50000000, reactor.getEnergyCapacity());
