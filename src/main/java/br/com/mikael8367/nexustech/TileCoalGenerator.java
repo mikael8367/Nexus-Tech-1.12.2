@@ -1,6 +1,5 @@
 package br.com.mikael8367.nexustech;
 
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
