@@ -59,3 +59,8 @@ item.nexustech.energy_upgrade.name=Melhoria de Energia
 tile.nexustech.uranium_ore.name=Minério de Urânio
 tile.nexustech.copper_ore.name=Minério de Cobre
 tile.nexustech.tin_ore.name=Minério de Estanho
+
+tile.nexustech.nuclear_reactor_core.name=Núcleo do Reator Nuclear
+item.nexustech.nuclear_reactor_core.name=Núcleo do Reator Nuclear
+tile.nexustech.digital_miner.name=Minerador Digital
+item.nexustech.digital_miner.name=Minerador Digital
