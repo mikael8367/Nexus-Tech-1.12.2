@@ -8,7 +8,8 @@ public final class TechItems {
     public static final Item URANIUM_INGOT = item("uranium_ingot", 64);
     public static final Item COPPER_INGOT = item("copper_ingot", 64);
     public static final Item TIN_INGOT = item("tin_ingot", 64);
-    public static final Item URANIUM_FUEL_ROD = item("uranium_fuel_rod", 16);
+    public static final Item URANIUM_FUEL_ROD = new ItemFuelRod().setRegistryName(NexusTechMod.MOD_ID, "uranium_fuel_rod")
+            .setTranslationKey(NexusTechMod.MOD_ID + ".uranium_fuel_rod").setCreativeTab(NexusTechCreativeTab.INSTANCE);
     public static final Item URANIUM_FUEL_ROD_DEPLETED = item("uranium_fuel_rod_depleted", 16);
     public static final Item WRENCH = new ItemWrench().setRegistryName(NexusTechMod.MOD_ID, "wrench")
             .setTranslationKey(NexusTechMod.MOD_ID + ".wrench").setCreativeTab(NexusTechCreativeTab.INSTANCE);
