@@ -36,8 +36,9 @@ public final class TileEnergyCable extends AbstractEnergyTile implements ITickab
 
     @Override public void update() {
         if (world == null || world.isRemote) return;
-        // Nexus energy tiles push from their own tick; pull() intentionally ignores them.
-        // Pulling here only scans six neighbours for external providers and cannot pull from Nexus tiles.
+        // Pull from third-party FE providers; Nexus tiles are skipped by EnergyTransfer.pull()
+        // because they push from their own tick. Keep this for interoperability with external mods.
+        EnergyTransfer.pull(this, 512);
         EnergyTransfer.push(this, 512);
         syncIfChanged();
     }
