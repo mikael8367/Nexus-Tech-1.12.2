@@ -53,6 +53,7 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
     @Override public void update() {
         if (world == null || world.isRemote) return;
         if (heat >= MAX_HEAT) { meltdown(); return; }
+        int previousHeat = heat;
 
         ItemStack fuel = inventory.getStackInSlot(0);
         boolean hasFuel = !fuel.isEmpty() && fuel.getItem() instanceof ItemFuelRod;
@@ -80,6 +81,7 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
             heat = Math.max(0, heat - PASSIVE_COOLING);
         }
 
+        if (heat != previousHeat) markDirty();
         if (heat >= MAX_HEAT) { meltdown(); return; }
         EnergyTransfer.push(this, FE_PER_TICK);
         syncIfChanged();
