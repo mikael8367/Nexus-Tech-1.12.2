@@ -101,6 +101,13 @@ final class BlockCoalGenerator extends BlockFacingMachine {
         }
         return openMachineGui(world, pos, player, TechGuiHandler.GUI_GENERATOR);
     }
+    @Override public void breakBlock(World world, BlockPos pos, IBlockState state) {
+        TileEntity tile = world.getTileEntity(pos);
+        if (!world.isRemote && tile instanceof TileCoalGenerator) {
+            ((TileCoalGenerator) tile).dropContents();
+        }
+        super.breakBlock(world, pos, state);
+    }
     static boolean isFuel(ItemStack stack) { return TileCoalGenerator.fuelTicksFor(stack) > 0; }
 }
 
