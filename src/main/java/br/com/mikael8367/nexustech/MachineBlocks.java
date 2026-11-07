@@ -157,6 +157,8 @@ final class BlockEnergyCable extends BlockTechMachine {
         return state;
     }
     static boolean connectsTo(IBlockAccess world, BlockPos pos, EnumFacing side) {
+        TileEntity self = world.getTileEntity(pos);
+        if (self instanceof TileEnergyCable && !((TileEnergyCable) self).isFaceEnabled(side)) return false;
         TileEntity neighbour = world.getTileEntity(pos.offset(side));
         return neighbour != null && neighbour.hasCapability(CapabilityEnergy.ENERGY, side.getOpposite());
     }
