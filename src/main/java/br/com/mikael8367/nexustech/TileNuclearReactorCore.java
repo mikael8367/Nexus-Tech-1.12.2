@@ -76,9 +76,13 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
     /** Completes the spent-fuel transfer atomically; a full output leaves it pending. */
     private boolean tryStoreDepletedRod() {
         if (!pendingDepletedRod) return true;
+        ItemStack activeRod = inventory.getStackInSlot(0);
+        if (activeRod.isEmpty() || !(activeRod.getItem() instanceof ItemFuelRod)) return false;
         ItemStack remainder = inventory.insertItem(1,
                 new ItemStack(TechItems.URANIUM_FUEL_ROD_DEPLETED, 1), false);
         if (!remainder.isEmpty()) return false;
+        // Only remove the exhausted input after the output insertion has succeeded.
+        inventory.setStackInSlot(0, ItemStack.EMPTY);
         pendingDepletedRod = false;
         markDirty();
         return true;
@@ -89,10 +93,15 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
         ItemStack stored = inventory.getStackInSlot(0);
         if (stored.isEmpty() || !(stored.getItem() instanceof ItemFuelRod)) return;
 
-        ItemStack remainder = stored.copy();
-        remainder.shrink(1);
-        inventory.setStackInSlot(0, remainder.isEmpty() ? ItemStack.EMPTY : remainder);
-        fuelTicks = FUEL_TICKS;
+        // Keep the physical rod in the input slot while it burns. Its own NBT tracks
+        // consumed ticks, so breaking the machine cannot turn a partly used rod into a new one.
+        ItemFuelRod fuelRod = (ItemFuelRod) stored.getItem();
+        fuelTicks = fuelRod.getBurnTimeRemaining(stored);
+        if (fuelTicks <= 0) {
+            pendingDepletedRod = true;
+            tryStoreDepletedRod();
+            return;
+        }
         markDirty();
     }
 
@@ -131,13 +140,24 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
 
             if (fuelTicks > 0 && energy.getCapacity() - energy.getEnergyStored() >= FE_PER_TICK
                     && energy.addInternal(FE_PER_TICK) == FE_PER_TICK) {
-                fuelTicks--;
-                heat = Math.min(Integer.MAX_VALUE - HEAT_PER_TICK, heat) + HEAT_PER_TICK;
-                if (fuelTicks == 0) {
+                ItemStack activeRod = inventory.getStackInSlot(0);
+                if (!activeRod.isEmpty() && activeRod.getItem() instanceof ItemFuelRod
+                        && ((ItemFuelRod) activeRod.getItem()).consumeBurnTime(activeRod, 1) == 1) {
+                    fuelTicks--;
+                    heat = Math.min(Integer.MAX_VALUE - HEAT_PER_TICK, heat) + HEAT_PER_TICK;
+                    if (fuelTicks == 0) {
+                        pendingDepletedRod = true;
+                        tryStoreDepletedRod();
+                    }
+                    markDirty();
+                } else {
+                    // The fuel stack and timer must agree; never generate energy from a missing rod.
+                    energy.consumeInternal(FE_PER_TICK);
+                    fuelTicks = 0;
                     pendingDepletedRod = true;
                     tryStoreDepletedRod();
+                    markDirty();
                 }
-                markDirty();
             }
         }
 
@@ -189,13 +209,14 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
         if (world == null || world.isRemote) return;
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
-            if (!stack.isEmpty()) {
-                MachineItems.drop(world, pos, stack.copy());
-                inventory.setStackInSlot(slot, ItemStack.EMPTY);
-            }
+            if (stack.isEmpty()) continue;
+            if (slot == 0 && pendingDepletedRod) continue;
+            MachineItems.drop(world, pos, stack.copy());
+            inventory.setStackInSlot(slot, ItemStack.EMPTY);
         }
         if (pendingDepletedRod) {
             MachineItems.drop(world, pos, new ItemStack(TechItems.URANIUM_FUEL_ROD_DEPLETED, 1));
+            inventory.setStackInSlot(0, ItemStack.EMPTY);
             pendingDepletedRod = false;
         }
     }
@@ -254,6 +275,16 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
         } else if (!output.isEmpty() && output.getCount() > inventory.getSlotLimit(1)) {
             output.setCount(inventory.getSlotLimit(1));
         }
-        if (fuelTicks > 0) pendingDepletedRod = false;
+        if (pendingDepletedRod) {
+            fuelTicks = 0;
+        } else if (fuelTicks > 0) {
+            ItemStack activeRod = inventory.getStackInSlot(0);
+            if (activeRod.isEmpty() || !(activeRod.getItem() instanceof ItemFuelRod)) {
+                fuelTicks = 0;
+            } else {
+                fuelTicks = Math.min(fuelTicks,
+                        ((ItemFuelRod) activeRod.getItem()).getBurnTimeRemaining(activeRod));
+            }
+        }
     }
 }
