@@ -90,6 +90,21 @@ public class AdvancedMachinesTest {
         assertTrue(handler.getStackInSlot(0).isEmpty());
     }
 
+    @Test public void digitalMinerAutomationCanExtractStoredDrops() {
+        ItemStackHandler savedInventory = new ItemStackHandler(27);
+        savedInventory.setStackInSlot(0, new ItemStack(Items.COAL, 3));
+        NBTTagCompound saved = new NBTTagCompound();
+        saved.setTag("Inventory", savedInventory.serializeNBT());
+
+        TileDigitalMiner miner = new TileDigitalMiner();
+        miner.readFromNBT(saved);
+        IItemHandler handler = miner.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+        ItemStack extracted = handler.extractItem(0, 3, false);
+
+        assertEquals(3, extracted.getCount());
+        assertTrue(handler.getStackInSlot(0).isEmpty());
+    }
+
     @Test public void digitalMinerClampsRadiusAndRestoresValidatedCursorFromNbt() {
         TileDigitalMiner miner = new TileDigitalMiner();
         miner.setRadius(Integer.MAX_VALUE);
