@@ -1,7 +1,6 @@
 package br.com.mikael8367.nexustech;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
@@ -25,6 +24,14 @@ public final class BlockNuclearReactorCore extends BlockTechMachine {
         if (hand != EnumHand.MAIN_HAND) return false;
         TileEntity tile = world.getTileEntity(pos);
         if (!(tile instanceof TileNuclearReactorCore)) return false;
+        ItemStack held = player.getHeldItem(hand);
+        if (!held.isEmpty() && held.getItem() == TechItems.URANIUM_FUEL_ROD) {
+            if (!world.isRemote) {
+                TileNuclearReactorCore reactor = (TileNuclearReactorCore) tile;
+                if (reactor.insertFuel(held) && !player.capabilities.isCreativeMode) held.shrink(1);
+            }
+            return true;
+        }
         if (!world.isRemote) {
             TileNuclearReactorCore reactor = (TileNuclearReactorCore) tile;
             player.sendMessage(new TextComponentString("Reator: " + reactor.getStoredEnergy()
