@@ -163,6 +163,22 @@ public class ResourceIntegrityTest {
         }
     }
 
+    @Test public void everyRegisteredTechItemHasItsOwnModelAndTexture() throws IOException {
+        String[] items = {"uranium_chunk", "uranium_ingot", "copper_ingot", "tin_ingot",
+                "uranium_fuel_rod", "uranium_fuel_rod_depleted", "wrench", "cable_configurator",
+                "block_scanner", "multimeter", "speed_upgrade", "furnace_upgrade", "energy_upgrade"};
+        for (String name : items) {
+            File model = new File(ASSETS, "nexustech/models/item/" + name + ".json");
+            assertTrue("Missing item model " + name, model.isFile());
+            JsonObject root = json(model);
+            assertTrue("Item model has no textures: " + name, root.has("textures"));
+            JsonObject textures = root.getAsJsonObject("textures");
+            assertTrue("Item model has no layer0: " + name, textures.has("layer0"));
+            String texture = textures.get("layer0").getAsString();
+            assertTrue("Missing item texture " + texture, asset(texture, "textures", ".png").isFile());
+        }
+    }
+
     /** Vanilla items with subtypes must declare "data" or Forge rejects the whole recipe. */
     @Test public void recipesDeclareDataForItemsWithSubtypes() throws IOException {
         String[] subtyped = {"minecraft:anvil", "minecraft:coal", "minecraft:dye", "minecraft:wool",
