@@ -21,7 +21,7 @@ public final class TileCoalGenerator extends AbstractEnergyTile implements ITick
      * Input-only fuel inventory. Hoppers and other item handlers may insert fuel,
      * but cannot extract it before the generator consumes it.
      */
-    private final ItemStackHandler inventory = new ValidatedItemHandler(1) {
+    private final ValidatedItemHandler inventory = new ValidatedItemHandler(1) {
         @Override
         protected void onContentsChanged(int slot) {
             markDirty();
