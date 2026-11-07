@@ -58,7 +58,11 @@ public final class TileNuclearReactorCore extends AbstractEnergyTile implements 
         boolean hasFuel = !fuel.isEmpty() && fuel.getItem() instanceof ItemFuelRod;
         boolean hasRoom = energy.getCapacity() - energy.getEnergyStored() >= FE_PER_TICK;
 
-        if (hasFuel && hasRoom) {
+        if (hasFuel && ((ItemFuelRod) fuel.getItem()).getBurnTimeRemaining(fuel) <= 0) {
+            inventory.setStackInSlot(0, new ItemStack(TechItems.URANIUM_FUEL_ROD_DEPLETED));
+            fuelTicks = 0;
+            heat = Math.max(0, heat - PASSIVE_COOLING);
+        } else if (hasFuel && hasRoom) {
             ItemFuelRod rod = (ItemFuelRod) fuel.getItem();
             int burned = rod.consumeBurnTime(fuel, 1);
             fuelTicks = rod.getBurnTimeRemaining(fuel);
