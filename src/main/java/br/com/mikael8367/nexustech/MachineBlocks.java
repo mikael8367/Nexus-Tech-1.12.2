@@ -272,6 +272,8 @@ final class TechRegistry {
     static BlockEnergyCable ENERGY_CABLE;
     static BlockElectricFurnace ELECTRIC_FURNACE;
     static BlockElectricAnvil ELECTRIC_ANVIL;
+    static BlockNuclearReactorCore NUCLEAR_REACTOR_CORE;
+    static BlockDigitalMiner DIGITAL_MINER;
 
     @SubscribeEvent public void registerBlocks(RegistryEvent.Register<Block> event) {
         COAL_GENERATOR = new BlockCoalGenerator();
@@ -279,11 +281,15 @@ final class TechRegistry {
         ENERGY_CABLE = new BlockEnergyCable();
         ELECTRIC_FURNACE = new BlockElectricFurnace();
         ELECTRIC_ANVIL = new BlockElectricAnvil();
+        NUCLEAR_REACTOR_CORE = new BlockNuclearReactorCore();
+        DIGITAL_MINER = new BlockDigitalMiner();
         event.getRegistry().register(COAL_GENERATOR);
         event.getRegistry().register(SOLAR_PANEL);
         event.getRegistry().register(ENERGY_CABLE);
         event.getRegistry().register(ELECTRIC_FURNACE);
         event.getRegistry().register(ELECTRIC_ANVIL);
+        event.getRegistry().register(NUCLEAR_REACTOR_CORE);
+        event.getRegistry().register(DIGITAL_MINER);
         event.getRegistry().register(TechOreRegistry.URANIUM_ORE);
         event.getRegistry().register(TechOreRegistry.COPPER_ORE);
         event.getRegistry().register(TechOreRegistry.TIN_ORE);
@@ -292,10 +298,13 @@ final class TechRegistry {
         GameRegistry.registerTileEntity(TileEnergyCable.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "energy_cable"));
         GameRegistry.registerTileEntity(TileElectricFurnace.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "electric_furnace"));
         GameRegistry.registerTileEntity(TileElectricAnvil.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "electric_anvil"));
+        GameRegistry.registerTileEntity(TileNuclearReactorCore.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "nuclear_reactor_core"));
+        GameRegistry.registerTileEntity(TileDigitalMiner.class, new net.minecraft.util.ResourceLocation(NexusTechMod.MOD_ID, "digital_miner"));
     }
     @SubscribeEvent public void registerItems(RegistryEvent.Register<Item> event) {
         Block[] blocks = {COAL_GENERATOR, SOLAR_PANEL, ENERGY_CABLE, ELECTRIC_FURNACE, ELECTRIC_ANVIL,
-                TechOreRegistry.URANIUM_ORE, TechOreRegistry.COPPER_ORE, TechOreRegistry.TIN_ORE};
+                NUCLEAR_REACTOR_CORE, DIGITAL_MINER, TechOreRegistry.URANIUM_ORE,
+                TechOreRegistry.COPPER_ORE, TechOreRegistry.TIN_ORE};
         for (Block block : blocks) {
             if (block == null || block.getRegistryName() == null) {
                 throw new IllegalStateException("Block registration order or registry name invalid");
@@ -313,6 +322,7 @@ final class TechRegistry {
     @SubscribeEvent public void registerModels(ModelRegistryEvent event) {
         registerModel(COAL_GENERATOR); registerModel(SOLAR_PANEL); registerModel(ENERGY_CABLE);
         registerModel(ELECTRIC_FURNACE); registerModel(ELECTRIC_ANVIL);
+        registerModel(NUCLEAR_REACTOR_CORE); registerModel(DIGITAL_MINER);
         registerModel(TechOreRegistry.URANIUM_ORE); registerModel(TechOreRegistry.COPPER_ORE);
         registerModel(TechOreRegistry.TIN_ORE);
         for (Item item : TechItems.ALL) {
