@@ -3,16 +3,18 @@ package br.com.mikael8367.nexustech;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.World;
 
 /** Registry block for the nuclear reactor core. */
-public final class BlockNuclearReactorCore extends BlockTechMachine {
+public final class BlockNuclearReactorCore extends BlockFacingMachine {
     public BlockNuclearReactorCore() {
-        super("nuclear_reactor_core", 5.0F);
-        setResistance(20.0F);
+        super("nuclear_reactor_core", 15.0F);
+        setResistance(100.0F);
+        setLightLevel(0.8F);
     }
 
     @Override public TileEntity createNewTileEntity(World world, int meta) {
@@ -21,12 +23,12 @@ public final class BlockNuclearReactorCore extends BlockTechMachine {
 
     @Override public boolean onBlockActivated(World world, BlockPos pos,
             net.minecraft.block.state.IBlockState state, EntityPlayer player, EnumHand hand,
-            net.minecraft.util.EnumFacing side, float hitX, float hitY, float hitZ) {
+            EnumFacing side, float hitX, float hitY, float hitZ) {
         if (hand != EnumHand.MAIN_HAND) return false;
         TileEntity tile = world.getTileEntity(pos);
         if (!(tile instanceof TileNuclearReactorCore)) return false;
         ItemStack held = player.getHeldItem(hand);
-        if (!held.isEmpty() && held.getItem() == TechItems.URANIUM_FUEL_ROD) {
+        if (!held.isEmpty() && held.getItem() instanceof ItemFuelRod) {
             if (!world.isRemote) {
                 TileNuclearReactorCore reactor = (TileNuclearReactorCore) tile;
                 if (reactor.insertFuel(held) && !player.capabilities.isCreativeMode) held.shrink(1);

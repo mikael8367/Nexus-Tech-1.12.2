@@ -7,14 +7,12 @@ import java.lang.reflect.Modifier;
 
 import org.junit.Test;
 
-/**
- * Minecraft recreates tile entities on chunk load with Class.newInstance(). A non-public class
- * or constructor throws IllegalAccessException and silently deletes the stored energy and items.
- */
+/** Minecraft recreates public tile classes through public no-argument constructors. */
 public class TileReflectionTest {
     @Test public void everyTileCanBeRecreatedByMinecraft() throws Exception {
         Class<?>[] tiles = {TileCoalGenerator.class, TileSolarPanel.class, TileEnergyCable.class,
-                TileElectricFurnace.class, TileElectricAnvil.class};
+                TileElectricFurnace.class, TileElectricAnvil.class,
+                TileNuclearReactorCore.class, TileDigitalMiner.class};
         for (Class<?> tile : tiles) {
             assertTrue(tile + " must be public", Modifier.isPublic(tile.getModifiers()));
             Constructor<?> constructor = tile.getConstructor();

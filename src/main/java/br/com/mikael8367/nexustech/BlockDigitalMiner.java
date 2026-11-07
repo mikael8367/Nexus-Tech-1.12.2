@@ -11,8 +11,9 @@ import net.minecraft.world.World;
 /** Registry block for the automated digital miner. */
 public final class BlockDigitalMiner extends BlockFacingMachine {
     public BlockDigitalMiner() {
-        super("digital_miner", 4.0F);
-        setResistance(12.0F);
+        super("digital_miner", 5.0F);
+        setResistance(30.0F);
+        setLightLevel(0.5F);
     }
 
     @Override public TileEntity createNewTileEntity(World world, int meta) {
@@ -29,7 +30,8 @@ public final class BlockDigitalMiner extends BlockFacingMachine {
             TileDigitalMiner miner = (TileDigitalMiner) tile;
             miner.setRunning(!miner.isRunning());
             player.sendMessage(new TextComponentString("Digital Miner "
-                    + (miner.isRunning() ? "ligado" : "desligado") + "."));
+                    + (miner.isRunning() ? "ligado" : "desligado")
+                    + " | Raio: " + miner.getRadius()));
         }
         return true;
     }

@@ -1,1 +1,8 @@
-{"variants":{"facing=north":{"model":"nexustech:digital_miner"},"facing=east":{"model":"nexustech:digital_miner","y":90},"facing=south":{"model":"nexustech:digital_miner","y":180},"facing=west":{"model":"nexustech:digital_miner","y":270}}}
+{
+  "variants": {
+    "facing=north": { "model": "nexustech:digital_miner" },
+    "facing=east": { "model": "nexustech:digital_miner", "y": 90 },
+    "facing=south": { "model": "nexustech:digital_miner", "y": 180 },
+    "facing=west": { "model": "nexustech:digital_miner", "y": 270 }
+  }
+}

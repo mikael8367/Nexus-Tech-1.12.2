@@ -1,1 +1,8 @@
-{"variants":{"normal":{"model":"nexustech:nuclear_reactor_core"}}}
+{
+  "variants": {
+    "facing=north": { "model": "nexustech:nuclear_reactor_core" },
+    "facing=east": { "model": "nexustech:nuclear_reactor_core", "y": 90 },
+    "facing=south": { "model": "nexustech:nuclear_reactor_core", "y": 180 },
+    "facing=west": { "model": "nexustech:nuclear_reactor_core", "y": 270 }
+  }
+}

@@ -7,77 +7,112 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.NonNullList;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
-/**
- * Mines ordinary blocks in a bounded cylinder below the machine.
- * Tile entities and unloaded chunks are never touched.
- */
+/** Automated miner with a persisted raster cursor and a bounded 3x9 output inventory. */
 public final class TileDigitalMiner extends AbstractEnergyTile implements ITickable {
-    static final int ENERGY_PER_BLOCK = 2048;
-    static final int MINING_RADIUS = 5;
-    static final int MINING_DEPTH = 16;
+    static final int FE_PER_BLOCK = 2048;
+    static final int MAX_RADIUS = 16;
+    private static final int DEFAULT_RADIUS = 5;
+    private static final int MINING_DEPTH = 16;
     private static final int MAX_SCAN_PER_TICK = 256;
-    private static final int WIDTH = MINING_RADIUS * 2 + 1;
-    private static final int SCAN_VOLUME = WIDTH * WIDTH * MINING_DEPTH;
 
     private boolean isRunning;
-    private int scanIndex;
+    private int radius = DEFAULT_RADIUS;
+    /** The next block to inspect; null means the scan has not started or is complete. */
+    private BlockPos currentPos;
 
     private final ItemStackHandler inventory = new ItemStackHandler(27) {
         @Override protected void onContentsChanged(int slot) { markDirty(); }
     };
 
-    public TileDigitalMiner() { super(10000000, 8192, 0); }
+    public TileDigitalMiner() {
+        super(10000000, 16384, 0);
+    }
 
-    boolean isRunning() { return isRunning; }
+    public boolean isRunning() { return isRunning; }
+    public int getRadius() { return radius; }
+    public BlockPos getCurrentPos() { return currentPos; }
 
-    void setRunning(boolean running) {
-        if (isRunning == running) return;
-        isRunning = running;
+    public void setRunning(boolean running) {
+        if (running && currentPos == null) resetCursor();
+        if (isRunning != running) {
+            isRunning = running;
+            markDirty();
+        }
+    }
+
+    public void setRadius(int value) {
+        int bounded = Math.max(1, Math.min(MAX_RADIUS, value));
+        if (radius == bounded) return;
+        radius = bounded;
+        currentPos = null;
+        if (isRunning) resetCursor();
         markDirty();
     }
 
-    int getStoredItems() {
-        int count = 0;
+    private void resetCursor() {
+        currentPos = pos.add(-radius, -2, -radius);
+    }
+
+    private boolean canMine() {
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
-            count += inventory.getStackInSlot(slot).getCount();
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (stack.isEmpty() || stack.getCount() < Math.min(stack.getMaxStackSize(), inventory.getSlotLimit(slot))) {
+                return true;
+            }
         }
-        return count;
+        return false;
     }
 
     @Override public void update() {
         if (world == null || world.isRemote) return;
-        EnergyTransfer.pull(this, 8192);
-        if (isRunning && energy.getEnergyStored() >= ENERGY_PER_BLOCK) mineNextBlock();
+        EnergyTransfer.pull(this, 16384);
+        if (isRunning) {
+            if (!canMine()) {
+                setRunning(false);
+            } else if (energy.getEnergyStored() >= FE_PER_BLOCK) {
+                mineNextBlock();
+            }
+        }
         syncIfChanged();
     }
 
+    /** Inspects at most 256 positions per tick and mines at most one block per tick. */
     private boolean mineNextBlock() {
-        for (int checked = 0; checked < MAX_SCAN_PER_TICK; checked++) {
-            int current = scanIndex;
-            scanIndex = (scanIndex + 1) % SCAN_VOLUME;
-            BlockPos target = positionForIndex(current);
-            if (target == null || !world.isBlockLoaded(target)) continue;
+        if (currentPos == null) resetCursor();
+
+        for (int checked = 0; checked < MAX_SCAN_PER_TICK && currentPos != null; checked++) {
+            BlockPos target = currentPos;
+            if (target.getY() < 1 || target.getY() >= world.getHeight() || !world.isBlockLoaded(target)) {
+                advanceCursor();
+                continue;
+            }
 
             IBlockState state = world.getBlockState(target);
             Block block = state.getBlock();
             if (block.isAir(state, world, target) || state.getMaterial().isLiquid()
-                    || world.getTileEntity(target) != null) continue;
-            if (block.getBlockHardness(state, world, target) < 0.0F) continue;
+                    || world.getTileEntity(target) != null
+                    || block.getBlockHardness(state, world, target) < 0.0F) {
+                advanceCursor();
+                continue;
+            }
 
             NonNullList<ItemStack> drops = NonNullList.create();
             block.getDrops(drops, world, target, state, 0);
             if (!canStoreDrops(drops)) {
-                scanIndex = current;
+                // Keep the cursor on this block. The player can empty the inventory and resume.
+                setRunning(false);
                 return false;
             }
-            if (!energy.consumeInternal(ENERGY_PER_BLOCK)) return false;
+            if (!energy.consumeInternal(FE_PER_BLOCK)) return false;
 
             if (!world.destroyBlock(target, false)) {
-                energy.addInternal(ENERGY_PER_BLOCK);
+                energy.addInternal(FE_PER_BLOCK);
+                advanceCursor();
                 continue;
             }
 
@@ -86,12 +121,35 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
                 for (int slot = 0; slot < inventory.getSlots() && !remainder.isEmpty(); slot++) {
                     remainder = inventory.insertItem(slot, remainder, false);
                 }
+                // The simulation above should guarantee no remainder; preserve items if a handler changes.
                 if (!remainder.isEmpty()) MachineItems.drop(world, pos, remainder);
             }
+            advanceCursor();
             markDirty();
             return true;
         }
         return false;
+    }
+
+    private void advanceCursor() {
+        if (currentPos == null) return;
+        int minX = pos.getX() - radius;
+        int maxX = pos.getX() + radius;
+        int minZ = pos.getZ() - radius;
+        int maxZ = pos.getZ() + radius;
+        int minY = pos.getY() - 2 - (MINING_DEPTH - 1);
+
+        if (currentPos.getX() < maxX) {
+            currentPos = currentPos.add(1, 0, 0);
+        } else if (currentPos.getZ() < maxZ) {
+            currentPos = new BlockPos(minX, currentPos.getY(), currentPos.getZ() + 1);
+        } else if (currentPos.getY() > minY) {
+            currentPos = new BlockPos(minX, currentPos.getY() - 1, minZ);
+        } else {
+            currentPos = null;
+            isRunning = false;
+        }
+        markDirty();
     }
 
     private boolean canStoreDrops(NonNullList<ItemStack> drops) {
@@ -107,14 +165,12 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         return true;
     }
 
-    private BlockPos positionForIndex(int index) {
-        int xOffset = index % WIDTH - MINING_RADIUS;
-        int zOffset = (index / WIDTH) % WIDTH - MINING_RADIUS;
-        int depth = index / (WIDTH * WIDTH);
-        if (xOffset * xOffset + zOffset * zOffset > MINING_RADIUS * MINING_RADIUS) return null;
-        int y = pos.getY() - 1 - depth;
-        if (y < 1 || y >= world.getHeight()) return null;
-        return pos.add(xOffset, -1 - depth, zOffset);
+    int getStoredItems() {
+        int count = 0;
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            count += inventory.getStackInSlot(slot).getCount();
+        }
+        return count;
     }
 
     void dropContents() {
@@ -130,9 +186,15 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
 
     @Override protected long syncState() {
         long state = energy.getEnergyStored();
-        state = state * 31L + (isRunning ? 1 : 0);
-        state = state * 31L + scanIndex;
-        return state * 31L + getStoredItems();
+        state = state * 31L + (isRunning ? 1L : 0L);
+        state = state * 31L + radius;
+        state = state * 31L + getStoredItems();
+        if (currentPos != null) {
+            state = state * 31L + currentPos.getX();
+            state = state * 31L + currentPos.getY();
+            state = state * 31L + currentPos.getZ();
+        }
+        return state;
     }
 
     @Override public boolean hasCapability(net.minecraftforge.common.capabilities.Capability<?> capability, EnumFacing side) {
@@ -148,7 +210,11 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         super.writeToNBT(tag);
         tag.setTag("Inventory", inventory.serializeNBT());
         tag.setBoolean("IsRunning", isRunning);
-        tag.setInteger("ScanIndex", scanIndex);
+        tag.setInteger("Radius", radius);
+        tag.setBoolean("HasCurrentPos", currentPos != null);
+        tag.setInteger("CurrentPosX", currentPos == null ? -1 : currentPos.getX());
+        tag.setInteger("CurrentPosY", currentPos == null ? -1 : currentPos.getY());
+        tag.setInteger("CurrentPosZ", currentPos == null ? -1 : currentPos.getZ());
         return tag;
     }
 
@@ -156,6 +222,27 @@ public final class TileDigitalMiner extends AbstractEnergyTile implements ITicka
         super.readFromNBT(tag);
         if (tag.hasKey("Inventory")) inventory.deserializeNBT(tag.getCompoundTag("Inventory"));
         isRunning = tag.getBoolean("IsRunning");
-        scanIndex = Math.floorMod(tag.getInteger("ScanIndex"), SCAN_VOLUME);
+        radius = Math.max(1, Math.min(MAX_RADIUS, tag.hasKey("Radius") ? tag.getInteger("Radius") : DEFAULT_RADIUS));
+        currentPos = null;
+        if (tag.getBoolean("HasCurrentPos")) {
+            int x = tag.getInteger("CurrentPosX");
+            int y = tag.getInteger("CurrentPosY");
+            int z = tag.getInteger("CurrentPosZ");
+            int minX = pos.getX() - radius;
+            int maxX = pos.getX() + radius;
+            int minZ = pos.getZ() - radius;
+            int maxZ = pos.getZ() + radius;
+            int minY = pos.getY() - 2 - (MINING_DEPTH - 1);
+            int maxY = pos.getY() - 2;
+            if (x >= minX && x <= maxX && z >= minZ && z <= maxZ && y >= minY && y <= maxY) {
+                currentPos = new BlockPos(x, y, z);
+            }
+        }
+        if (isRunning && currentPos == null) resetCursor();
+    }
+
+    @Override public AxisAlignedBB getRenderBoundingBox() {
+        return new AxisAlignedBB(pos.getX(), pos.getY() - 2, pos.getZ(),
+                pos.getX() + 2, pos.getY() + 4, pos.getZ() + 2);
     }
 }
