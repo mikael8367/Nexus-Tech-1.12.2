@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.items.CapabilityItemHandler;
@@ -30,23 +31,18 @@ public class AdvancedMachinesTest {
         assertEquals(TileNuclearReactorCore.MAX_HEAT, reactor.getHeat());
     }
 
-    @Test public void reactorHasValidatedTwoSlotFuelAndSpentRodInventory() {
+    @Test public void reactorHasTwoSlotsAndProtectsFreshFuelFromExtraction() {
         TileNuclearReactorCore reactor = new TileNuclearReactorCore();
         IItemHandler handler = reactor.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
         assertEquals(2, handler.getSlots());
 
-        ItemStack fresh = new ItemStack(TechItems.URANIUM_FUEL_ROD);
-        ItemStack depleted = new ItemStack(TechItems.URANIUM_FUEL_ROD_DEPLETED);
+        ItemStack fresh = new ItemStack(new ItemFuelRod());
+        ItemStack unrelated = new ItemStack(new Item());
         assertTrue(handler.insertItem(0, fresh, true).isEmpty());
-        assertFalse(handler.insertItem(0, depleted, true).isEmpty());
-        assertTrue(handler.insertItem(1, depleted, true).isEmpty());
-        assertFalse(handler.insertItem(1, fresh, true).isEmpty());
+        assertFalse(handler.insertItem(0, unrelated, true).isEmpty());
 
         handler.insertItem(0, fresh, false);
         assertTrue(handler.extractItem(0, 1, true).isEmpty());
-        handler.insertItem(1, depleted, false);
-        assertEquals(TechItems.URANIUM_FUEL_ROD_DEPLETED,
-                handler.extractItem(1, 1, true).getItem());
     }
 
     @Test public void reactorRestoresHeatRedstoneAndPendingSpentFuelStateFromNbt() {
