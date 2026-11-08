@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "nexustech",
+    "name": "Nexus Tech",
+    "description": "Mod tecnológico para Minecraft 1.12.2.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["Mikael"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]
