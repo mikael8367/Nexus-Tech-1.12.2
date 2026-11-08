@@ -6,9 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,19 +23,23 @@ jobs:
           distribution: temurin
           java-version: '8'
 
-      - name: Setup Gradle 4.10.3
+      - name: Setup Gradle 7.5.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 4.10.3
+          gradle-version: 7.5.1
 
-      - name: Setup decompiled workspace (Forge 1.12.2)
-        run: gradle setupDecompWorkspace --no-daemon
+      - name: Show build environment
+        run: |
+          java -version
+          gradle --version
 
-      - name: Build
-        run: gradle build --no-daemon
+      - name: Build Forge 1.12.2 mod
+        run: gradle clean build --no-daemon --stacktrace
 
-      - name: Upload jar
+      - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
           name: NexusTech-1.12.2
           path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
