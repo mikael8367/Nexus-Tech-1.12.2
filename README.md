@@ -14,10 +14,11 @@ Mod tecnológico para Minecraft Java Edition 1.12.2 (Minecraft Forge).
 - `src/main/resources/` — `mcmod.info` e assets
 
 ## Build
+Ainda não há Gradle Wrapper no repositório (`gradlew`). Enquanto isso, use uma instalação do Gradle 4.x (compatível com ForgeGradle 2.3):
 ```
-gradlew setupDecompWorkspace
-gradlew build
-gradlew runClient
+gradle setupDecompWorkspace
+gradle build
+gradle runClient
 ```
 
 Status: estrutura base. Ainda não compilada nem testada no Forge.
