@@ -1,0 +1,22 @@
+{
+  "type": "forge:ore_shaped",
+  "pattern": [
+    " I ",
+    "ICI",
+    " I "
+  ],
+  "key": {
+    "I": {
+      "type": "forge:ore_dict",
+      "ore": "ingotIron"
+    },
+    "C": {
+      "item": "minecraft:coal",
+      "data": 0
+    }
+  },
+  "result": {
+    "item": "nexustech:steel_ingot",
+    "count": 4
+  }
+}
