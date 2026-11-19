@@ -38,7 +38,13 @@ public abstract class MachineTile extends TileEntity implements ITickable {
             return slot == 0 ? inventory.insertItem(slot, stack, simulate) : stack;
         }
         @Override public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            return isOutputMachine() && slot == 1 ? inventory.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
+            // A lava bucket used as furnace fuel leaves its empty bucket in slot 0.
+            // Permit its removal without letting automation steal unburnt fuel.
+            boolean emptyGeneratorBucket = kind == Kind.GENERATOR && slot == 0
+                    && !inventory.getStackInSlot(0).isEmpty()
+                    && inventory.getStackInSlot(0).getItem() == Items.BUCKET;
+            return (isOutputMachine() && slot == 1) || emptyGeneratorBucket
+                    ? inventory.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
         }
     };
     private final IEnergyStorage storage = new Storage(null);
@@ -90,7 +96,9 @@ public abstract class MachineTile extends TileEntity implements ITickable {
         Storage(EnumFacing side) { this.side = side; }
         @Override public int receiveEnergy(int maxReceive, boolean simulate) {
             if (maxReceive <= 0 || world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer || !canReceive()) return 0;
-            if (kind == Kind.CABLE) return EnergyNetwork.send(world, pos, side == null ? null : pos.offset(side), maxReceive, simulate, false);
+            // A cable cannot safely identify an unsided caller to exclude it from the network.
+            if (kind == Kind.CABLE) return side == null ? 0
+                    : EnergyNetwork.send(world, pos, pos.offset(side), maxReceive, simulate, false);
             int n = Math.min(Math.min(maxReceive, 1000), capacity - energy);
             if (!simulate && n > 0) { energy += n; markDirty(); }
             return n;
@@ -104,10 +112,20 @@ public abstract class MachineTile extends TileEntity implements ITickable {
             if (!simulate && n > 0) { energy -= n; markDirty(); }
             return n;
         }
-        @Override public int getEnergyStored() { return energy; }
-        @Override public int getMaxEnergyStored() { return capacity; }
-        @Override public boolean canExtract() { return kind == Kind.CABLE || kind == Kind.BATTERY || kind == Kind.SOLAR || kind == Kind.GENERATOR || kind == Kind.TURBINE || kind == Kind.LAVA_GENERATOR; }
-        @Override public boolean canReceive() { return kind == Kind.CABLE || kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR; }
+        // Cables have no buffer. Report an instantaneous, sided estimate so peers
+        // that check stored/free energy before calling transfer can use the network.
+        // These are simulations, not a promise: endpoints may change before a transfer.
+        @Override public int getEnergyStored() {
+            return kind == Kind.CABLE ? extractEnergy(Integer.MAX_VALUE, true) : energy;
+        }
+        @Override public int getMaxEnergyStored() {
+            if (kind != Kind.CABLE) return capacity;
+            int available = getEnergyStored();
+            int free = receiveEnergy(Integer.MAX_VALUE - available, true);
+            return available + free;
+        }
+        @Override public boolean canExtract() { return (kind == Kind.CABLE && side != null) || kind == Kind.BATTERY || kind == Kind.SOLAR || kind == Kind.GENERATOR || kind == Kind.TURBINE || kind == Kind.LAVA_GENERATOR; }
+        @Override public boolean canReceive() { return (kind == Kind.CABLE && side != null) || kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR; }
     }
     @Override public void update() {
         if (world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer) return;
