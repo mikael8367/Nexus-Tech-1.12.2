@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 
 @Mod.EventBusSubscriber(modid = NexusTech.MODID)
 public final class ModRegistry {
+    public static final BridgeBlock BRIDGE = new BridgeBlock();
     public static final MachineBlock CABLE = new MachineBlock("energy_cable", MachineTile.Kind.CABLE);
     public static final MachineBlock SOLAR = new MachineBlock("solar_panel", MachineTile.Kind.SOLAR);
     public static final MachineBlock GENERATOR = new MachineBlock("coal_generator", MachineTile.Kind.GENERATOR);
@@ -24,11 +25,14 @@ public final class ModRegistry {
     private ModRegistry() { }
     @SubscribeEvent public static void blocks(RegistryEvent.Register<Block> event) {
         for (Block block : BLOCKS) event.getRegistry().register(block);
+        event.getRegistry().register(BRIDGE);
     }
     @SubscribeEvent public static void items(RegistryEvent.Register<Item> event) {
         for (Block block : BLOCKS) event.getRegistry().register(new ItemBlock(block).setRegistryName(block.getRegistryName()));
+        event.getRegistry().register(new ItemBlock(BRIDGE).setRegistryName(BRIDGE.getRegistryName()));
     }
     public static void registerTiles() {
+        GameRegistry.registerTileEntity(BridgeTile.class, id("storage_bridge"));
         GameRegistry.registerTileEntity(MachineTile.Cable.class, id("energy_cable"));
         GameRegistry.registerTileEntity(MachineTile.Solar.class, id("solar_panel"));
         GameRegistry.registerTileEntity(MachineTile.Generator.class, id("coal_generator"));
