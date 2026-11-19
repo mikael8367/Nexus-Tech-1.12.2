@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:blocks/iron_block",
-    "down": "minecraft:blocks/iron_block",
-    "up": "minecraft:blocks/redstone_block",
-    "north": "minecraft:blocks/redstone_lamp_on",
-    "south": "minecraft:blocks/iron_block",
-    "east": "minecraft:blocks/iron_block",
-    "west": "minecraft:blocks/iron_block"
+    "particle": "nexustech:blocks/battery_side",
+    "down": "nexustech:blocks/battery_side",
+    "up": "nexustech:blocks/battery_top",
+    "north": "nexustech:blocks/battery_front",
+    "south": "nexustech:blocks/battery_side",
+    "east": "nexustech:blocks/battery_side",
+    "west": "nexustech:blocks/battery_side"
   }
 }
