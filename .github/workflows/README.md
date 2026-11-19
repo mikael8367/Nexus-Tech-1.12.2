@@ -1,6 +1,6 @@
 # Publish Nexus Tech to CurseForge
 
-**Estado: alterações locais para revisão, sem publicação.** O workflow ainda não está em `main`, a branch padrão; não pode ser executado manualmente até revisão e merge explicitamente autorizados. `workflow_dispatch` exige o arquivo YAML na branch padrão mesmo quando se seleciona outra branch: a CLI (`gh workflow run --ref ...`) também não contorna essa exigência. A branch selecionada precisa conter o workflow e os scripts correspondentes. Não há execução automática por push ou merge.
+**Estado: Action ativa na `main`, sem publicação.** O teste manual com `publish=false` compilou e validou o JAR no GitHub Actions; a etapa de envio foi pulada. Não há execução automática por push ou merge. A publicação real ainda não foi testada. Testes não substituem teste no Minecraft.
 
 ## Fonte, validação e artefato
 
