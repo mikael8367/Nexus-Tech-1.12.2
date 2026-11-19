@@ -1,9 +1,7 @@
 package com.mikael8367.nexustech;
 
 import javax.annotation.Nullable;
-import net.minecraft.block.BlockLiquid;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.nbt.NBTTagCompound;
@@ -11,7 +9,6 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.energy.CapabilityEnergy;
@@ -21,15 +18,15 @@ import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.items.IItemHandler;
 
 public abstract class MachineTile extends TileEntity implements ITickable {
-    public enum Kind { CABLE, SOLAR, GENERATOR, TURBINE, BATTERY, FURNACE }
+    public enum Kind { CABLE, SOLAR, GENERATOR, TURBINE, BATTERY, FURNACE, CRUSHER, COMPRESSOR, LAVA_GENERATOR }
     public static final int FURNACE_TIME = 200, FURNACE_COST = 20;
+    public static final int LAVA_BURN_TIME = 1000, LAVA_FE_PER_TICK = 40;
     public final Kind kind;
     public final int capacity;
     int energy, burn, burnTotal, cook;
-    private ItemStack cookingInput = ItemStack.EMPTY;
+    private boolean energyTransfer;
+    ItemStack cookingInput = ItemStack.EMPTY;
     public final ItemStackHandler inventory;
-    // Automation shares the real inventory but cannot bypass its input/output rules.
-    // GUI slots continue to use inventory directly, including removal of containers.
     private final IItemHandler automation = new IItemHandler() {
         @Override public int getSlots() { return inventory.getSlots(); }
         @Override public ItemStack getStackInSlot(int slot) { return inventory.getStackInSlot(slot); }
@@ -41,7 +38,7 @@ public abstract class MachineTile extends TileEntity implements ITickable {
             return slot == 0 ? inventory.insertItem(slot, stack, simulate) : stack;
         }
         @Override public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            return kind == Kind.FURNACE && slot == 1 ? inventory.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
+            return isOutputMachine() && slot == 1 ? inventory.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
         }
     };
     private final IEnergyStorage storage = new Storage(null);
@@ -54,6 +51,8 @@ public abstract class MachineTile extends TileEntity implements ITickable {
             @Override public boolean isItemValid(int slot, ItemStack stack) {
                 if (kind == Kind.GENERATOR) return slot == 0 && TileEntityFurnace.getItemBurnTime(stack) > 0;
                 if (kind == Kind.FURNACE) return slot == 0 && !FurnaceRecipes.instance().getSmeltingResult(stack).isEmpty();
+                if (kind == Kind.CRUSHER || kind == Kind.COMPRESSOR) return slot == 0 && !MachineTileLogic.processResult(kind, stack).isEmpty();
+                if (kind == Kind.LAVA_GENERATOR) return slot == 0 && !stack.isEmpty() && stack.getItem() == Items.LAVA_BUCKET;
                 return false;
             }
             @Override public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
@@ -69,6 +68,14 @@ public abstract class MachineTile extends TileEntity implements ITickable {
     public static class Turbine extends MachineTile { public Turbine() { super(Kind.TURBINE, 10000, 0); } }
     public static class Battery extends MachineTile { public Battery() { super(Kind.BATTERY, 100000, 0); } }
     public static class Furnace extends MachineTile { public Furnace() { super(Kind.FURNACE, 20000, 2); } }
+    public static class Crusher extends MachineTile { public Crusher() { super(Kind.CRUSHER, 20000, 2); } }
+    public static class Compressor extends MachineTile { public Compressor() { super(Kind.COMPRESSOR, 20000, 2); } }
+    public static class LavaGenerator extends MachineTile { public LavaGenerator() { super(Kind.LAVA_GENERATOR, 20000, 2); } }
+
+    final net.minecraft.world.World logicWorld() { return world; }
+    final net.minecraft.util.math.BlockPos logicPos() { return pos; }
+
+    private boolean isOutputMachine() { return kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR || kind == Kind.LAVA_GENERATOR; }
 
     @Override public boolean hasCapability(Capability<?> capability, @Nullable EnumFacing facing) {
         return capability == CapabilityEnergy.ENERGY || (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY && inventory.getSlots() > 0) || super.hasCapability(capability, facing);
@@ -82,98 +89,67 @@ public abstract class MachineTile extends TileEntity implements ITickable {
         private final EnumFacing side;
         Storage(EnumFacing side) { this.side = side; }
         @Override public int receiveEnergy(int maxReceive, boolean simulate) {
-            if (maxReceive <= 0 || world == null || world.isRemote || !canReceive()) return 0;
+            if (maxReceive <= 0 || world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer || !canReceive()) return 0;
             if (kind == Kind.CABLE) return EnergyNetwork.send(world, pos, side == null ? null : pos.offset(side), maxReceive, simulate, false);
             int n = Math.min(Math.min(maxReceive, 1000), capacity - energy);
             if (!simulate && n > 0) { energy += n; markDirty(); }
             return n;
         }
         @Override public int extractEnergy(int maxExtract, boolean simulate) {
-            if (maxExtract <= 0 || world == null || world.isRemote || !canExtract()) return 0;
+            if (maxExtract <= 0 || world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer || !canExtract()) return 0;
+            // Without a side the requesting block cannot be identified safely.
+            if (kind == Kind.CABLE) return side == null ? 0
+                    : EnergyNetwork.pull(world, pos, pos.offset(side), maxExtract, simulate, true);
             int n = Math.min(Math.min(maxExtract, 1000), energy);
             if (!simulate && n > 0) { energy -= n; markDirty(); }
             return n;
         }
         @Override public int getEnergyStored() { return energy; }
         @Override public int getMaxEnergyStored() { return capacity; }
-        @Override public boolean canExtract() { return kind == Kind.BATTERY || kind == Kind.SOLAR || kind == Kind.GENERATOR || kind == Kind.TURBINE; }
-        @Override public boolean canReceive() { return kind == Kind.CABLE || kind == Kind.BATTERY || kind == Kind.FURNACE; }
+        @Override public boolean canExtract() { return kind == Kind.CABLE || kind == Kind.BATTERY || kind == Kind.SOLAR || kind == Kind.GENERATOR || kind == Kind.TURBINE || kind == Kind.LAVA_GENERATOR; }
+        @Override public boolean canReceive() { return kind == Kind.CABLE || kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR; }
     }
     @Override public void update() {
-        if (world == null || world.isRemote) return;
+        if (world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer) return;
         switch (kind) {
             case SOLAR:
-                if (world.provider.hasSkyLight() && world.isDaytime() && !world.isRaining() && !world.isThundering() && world.isBlockLoaded(pos.up()) && world.canSeeSky(pos.up()) && world.getLightFor(EnumSkyBlock.SKY, pos.up()) >= 15) generate(20);
+                if (world.provider.hasSkyLight() && world.isDaytime() && !world.isRaining() && !world.isThundering() && world.isBlockLoaded(pos.up()) && world.canSeeSky(pos.up()) && world.getLightFor(EnumSkyBlock.SKY, pos.up()) >= 15) MachineTileLogic.generate(this, 20);
                 break;
-            case TURBINE: if (flowingWater()) generate(30); break;
-            case GENERATOR: tickGenerator(); break;
-            case FURNACE: tickFurnace(); break;
+            case TURBINE: if (MachineTileLogic.flowingWater(this)) MachineTileLogic.generate(this, 30); break;
+            case GENERATOR: MachineTileLogic.tickGenerator(this); break;
+            case FURNACE: MachineTileLogic.tickFurnace(this); break;
+            case CRUSHER: case COMPRESSOR: MachineTileLogic.tickProcessor(this); break;
+            case LAVA_GENERATOR: MachineTileLogic.tickLavaGenerator(this); break;
             default: break;
         }
-        if (kind == Kind.SOLAR || kind == Kind.TURBINE || kind == Kind.GENERATOR || kind == Kind.BATTERY) {
-            int available = Math.min(energy, kind == Kind.BATTERY ? 128 : 100);
-            if (available > 0) {
-                int moved = EnergyNetwork.send(world, pos, pos, available, false, kind == Kind.BATTERY);
-                if (moved > 0) { energy -= moved; markDirty(); }
+        if (kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR) {
+            int request = Math.min(capacity - energy, kind == Kind.BATTERY ? 128 : 100);
+            if (request > 0) {
+                energyTransfer = true;
+                try {
+                    int received = EnergyNetwork.pull(world, pos, pos, request, false, kind != Kind.BATTERY);
+                    if (received > 0) { energy += received; markDirty(); }
+                } finally { energyTransfer = false; }
             }
         }
-    }
-    private void generate(int amount) {
-        int n = Math.min(amount, capacity - energy);
-        if (n > 0) { energy += n; markDirty(); }
-    }
-    /** Any of six adjacent loaded blocks of vanilla water with LEVEL > 0 powers the turbine. */
-    private boolean flowingWater() {
-        for (EnumFacing face : EnumFacing.VALUES) {
-            BlockPos p = pos.offset(face);
-            if (!world.isBlockLoaded(p)) continue;
-            IBlockState state = world.getBlockState(p);
-            if ((state.getBlock() == Blocks.WATER || state.getBlock() == Blocks.FLOWING_WATER) && state.getValue(BlockLiquid.LEVEL) > 0) return true;
+        if (kind == Kind.SOLAR || kind == Kind.TURBINE || kind == Kind.GENERATOR || kind == Kind.BATTERY || kind == Kind.LAVA_GENERATOR) {
+            int available = Math.min(energy, kind == Kind.BATTERY ? 128 : 100);
+            if (available > 0) {
+                // Reserve before callbacks; no callback can use the same FE twice
+                // or fill the reserved space before the unused portion is returned.
+                energyTransfer = true;
+                energy -= available;
+                markDirty();
+                int moved = 0;
+                try {
+                    moved = EnergyNetwork.send(world, pos, pos, available, false, kind == Kind.BATTERY);
+                } finally {
+                    energy += available - moved;
+                    markDirty();
+                    energyTransfer = false;
+                }
+            }
         }
-        return false;
-    }
-    private void tickGenerator() {
-        if (capacity - energy < 40) return; // pause both ignition and burn until a full tick fits
-        if (burn <= 0) {
-            ItemStack fuel = inventory.getStackInSlot(0);
-            int duration = TileEntityFurnace.getItemBurnTime(fuel);
-            if (duration <= 0) return;
-            ItemStack remainder = fuel.getItem().getContainerItem(fuel);
-            if (!remainder.isEmpty() && fuel.getCount() != 1) return;
-            fuel.shrink(1);
-            if (fuel.isEmpty()) inventory.setStackInSlot(0, remainder);
-            burn = burnTotal = duration;
-        }
-        burn--; generate(40); markDirty();
-    }
-    private boolean canSmelt() {
-        ItemStack input = inventory.getStackInSlot(0);
-        if (input.isEmpty()) return false;
-        ItemStack result = FurnaceRecipes.instance().getSmeltingResult(input);
-        if (result.isEmpty()) return false;
-        ItemStack out = inventory.getStackInSlot(1);
-        if (out.isEmpty()) return result.getCount() <= Math.min(result.getMaxStackSize(), inventory.getSlotLimit(1));
-        return ItemStack.areItemsEqual(out, result) && ItemStack.areItemStackTagsEqual(out, result)
-                && out.getCount() + result.getCount() <= Math.min(out.getMaxStackSize(), inventory.getSlotLimit(1));
-    }
-    private void tickFurnace() {
-        ItemStack current = inventory.getStackInSlot(0);
-        if (!ItemStack.areItemsEqual(current, cookingInput) || !ItemStack.areItemStackTagsEqual(current, cookingInput)) {
-            cookingInput = current.copy();
-            if (!cookingInput.isEmpty()) cookingInput.setCount(1);
-            cook = 0; markDirty();
-        }
-        if (!canSmelt()) { if (cook != 0) { cook = 0; markDirty(); } return; }
-        if (energy < FURNACE_COST) return; // pause, do not lose progress
-        energy -= FURNACE_COST; cook++;
-        if (cook >= FURNACE_TIME) {
-            ItemStack input = inventory.getStackInSlot(0);
-            ItemStack result = FurnaceRecipes.instance().getSmeltingResult(input).copy();
-            ItemStack out = inventory.getStackInSlot(1);
-            if (out.isEmpty()) inventory.setStackInSlot(1, result); else out.grow(result.getCount());
-            input.shrink(1); cook = 0;
-        }
-        markDirty();
     }
     @Override public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
         super.writeToNBT(nbt);
@@ -190,7 +166,7 @@ public abstract class MachineTile extends TileEntity implements ITickable {
         if (nbt.hasKey("Inventory", 10)) {
             // Never let saved data resize the fixed-size machine inventory.
             NBTTagCompound savedInventory = nbt.getCompoundTag("Inventory").copy();
-            savedInventory.setInteger("Size", kind == Kind.FURNACE ? 2 : kind == Kind.GENERATOR ? 1 : 0);
+            savedInventory.setInteger("Size", inventory.getSlots());
             inventory.deserializeNBT(savedInventory);
         }
         cookingInput = nbt.hasKey("CookingInput", 10) ? new ItemStack(nbt.getCompoundTag("CookingInput")) : ItemStack.EMPTY;
