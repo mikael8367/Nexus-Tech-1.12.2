@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraft:blocks/observer_side",
+    "down": "minecraft:blocks/iron_block",
+    "up": "minecraft:blocks/hopper_top",
+    "north": "minecraft:blocks/piston_top_normal",
+    "south": "minecraft:blocks/observer_side",
+    "east": "minecraft:blocks/observer_side",
+    "west": "minecraft:blocks/observer_side"
+  }
+}
