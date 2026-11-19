@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraft:blocks/piston_side",
+    "down": "minecraft:blocks/iron_block",
+    "up": "minecraft:blocks/anvil_top_damaged_0",
+    "north": "minecraft:blocks/piston_top_normal",
+    "south": "minecraft:blocks/piston_side",
+    "east": "minecraft:blocks/piston_side",
+    "west": "minecraft:blocks/piston_side"
+  }
+}

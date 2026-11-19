@@ -17,7 +17,10 @@ public final class ModRegistry {
     public static final MachineBlock TURBINE = new MachineBlock("electric_turbine", MachineTile.Kind.TURBINE);
     public static final MachineBlock BATTERY = new MachineBlock("battery", MachineTile.Kind.BATTERY);
     public static final MachineBlock FURNACE = new MachineBlock("electric_furnace", MachineTile.Kind.FURNACE);
-    public static final MachineBlock[] BLOCKS = { CABLE, SOLAR, GENERATOR, TURBINE, BATTERY, FURNACE };
+    public static final MachineBlock CRUSHER = new MachineBlock("electric_crusher", MachineTile.Kind.CRUSHER);
+    public static final MachineBlock COMPRESSOR = new MachineBlock("electric_compressor", MachineTile.Kind.COMPRESSOR);
+    public static final MachineBlock LAVA_GENERATOR = new MachineBlock("lava_generator", MachineTile.Kind.LAVA_GENERATOR);
+    public static final MachineBlock[] BLOCKS = { CABLE, SOLAR, GENERATOR, TURBINE, BATTERY, FURNACE, CRUSHER, COMPRESSOR, LAVA_GENERATOR };
     private ModRegistry() { }
     @SubscribeEvent public static void blocks(RegistryEvent.Register<Block> event) {
         for (Block block : BLOCKS) event.getRegistry().register(block);
@@ -32,6 +35,9 @@ public final class ModRegistry {
         GameRegistry.registerTileEntity(MachineTile.Turbine.class, id("electric_turbine"));
         GameRegistry.registerTileEntity(MachineTile.Battery.class, id("battery"));
         GameRegistry.registerTileEntity(MachineTile.Furnace.class, id("electric_furnace"));
+        GameRegistry.registerTileEntity(MachineTile.Crusher.class, id("electric_crusher"));
+        GameRegistry.registerTileEntity(MachineTile.Compressor.class, id("electric_compressor"));
+        GameRegistry.registerTileEntity(MachineTile.LavaGenerator.class, id("lava_generator"));
     }
     private static ResourceLocation id(String path) { return new ResourceLocation(NexusTech.MODID, path); }
 }
