@@ -1,6 +1,6 @@
 # Nexus Tech
 
-Mod de tecnologia para Minecraft Java **1.12.2** com Forge. A implementação atual adiciona nove blocos que geram, armazenam, transportam e consomem **Forge Energy (FE)**.
+Mod de tecnologia para Minecraft Java **1.12.2** com Forge. A implementação atual inclui nove blocos que geram, armazenam, transportam e consomem **Forge Energy (FE)** e um décimo bloco independente para diagnóstico da ponte, descrito ao final.
 
 ## Blocos e funcionamento
 
@@ -88,3 +88,14 @@ O JAR reobfuscado é gerado em `build/libs/` (por exemplo, `nexustech-1.0.jar`);
 O wrapper oficial do MDK é armazenado como texto em `gradle/wrapper/gradle-wrapper.jar.base64.part*`. Os scripts o decodificam automaticamente na primeira execução; o JAR gerado é ignorado pelo Git. No Unix é necessário `base64` (GNU ou BSD) ou `openssl`; no Windows, PowerShell. Não é necessário marcar `gradlew` como executável quando iniciado com `sh`. Se o JAR local estiver danificado, exclua `gradle/wrapper/gradle-wrapper.jar` e execute o comando novamente.
 
 A versão do mod em `build.gradle` e `NexusTech.VERSION` deve permanecer sincronizada; `mcmod.info` é preenchido durante `processResources`. Os avisos e créditos do MDK estão em `MDK-LICENSE.part*.txt` (em ordem) e `MDK-CREDITS.txt`.
+
+
+## Ponte ProjectE / Simple Storage Network — etapa de diagnóstico
+
+O bloco `nexustech:storage_bridge` aparece na aba criativa e abre uma GUI própria com clique direito. Não há receita nesta etapa. A GUI mostra o nome do jogador que a abriu e resultados enviados pelo servidor, atualizados enquanto aberta: presença dos mods no servidor e os seis blocos imediatamente adjacentes, sem carregar chunks. Chunks não carregados são indicados separadamente. Reconhece `projecte:transmutation_table`, outros blocos `projecte`, e os blocos `storagenetwork:master`, `request`, `inventory`, `simple_kabel`, `kabel`, `storage_kabel`, `ex_kabel`, `im_kabel` e `process_kabel`; outros blocos do namespace SSN são classificados genericamente. Identificação por ID não comprova conexão, acesso, funcionamento da rede nem compatibilidade de versões. IDs conferidos no código do ProjectE ramo mc1.12.x e SSN tag v1.12.2-2.0.1.
+
+**Leitura bloqueada:** existe código experimental para consultar por reflexão a capacidade pública de conhecimento do ProjectE **1.12.2-PE1.4.1** apenas no servidor e para o jogador online que abriu a GUI. Entretanto, a consulta está deliberadamente desativada e a GUI mostra dados indisponíveis: os testes usaram a interface oficial e provedores simulados, mas não validaram o caminho completo com ProjectE real e a injeção de capacidade do Forge. Não se substitui falha por zero. A estrutura de sincronização usa partes de 16 bits e trata espera, indisponibilidade e erro. Quando o tomo está ativo, a API retorna a lista do tomo, não a lista individual. O projeto não tem dependência estática do ProjectE; não é necessário instalá-lo. Não houve teste em jogo.
+
+**Limitação:** não conecta redes, não lista ou movimenta itens, não converte nem altera EMC. A presença do bloco ao lado não significa integração funcional. É um bloco independente do cabo de energia existente, sem capacidades de energia ou inventário; não participa da rede FE. A textura representa um cabo estático, não conexões detectadas. As caixas de colisão permanecem de bloco inteiro. Antes de qualquer futura transferência são necessários testes reais em cliente e servidor com as versões alvo, controle de identidade/permissões e desenho transacional contra duplicação e perdas.
+
+Os testes `main` são executados por `sh gradlew check` ou `sh gradlew allStandaloneSuites` (essas tarefas não geram JAR). A tarefa padrão `test` sozinha não executa os testes independentes.
