@@ -47,7 +47,7 @@ Legenda: `I` = barra de ferro; `R` = redstone; `G` = vidro; `D` = sensor de luz 
 
 ## Requisitos e desenvolvimento
 
-- Minecraft Java **1.12.2** com Forge **14.23.5.2859** para executar o mod.
+- Minecraft Java **1.12.2** com Forge **14.23.5.2860** para executar o mod.
 - **JDK 8** (não apenas JRE) para o desenvolvimento; configure `JAVA_HOME` para a pasta do JDK e inclua `JAVA_HOME/bin` no `PATH`. Confira com `java -version` e `javac -version`.
 - Internet na primeira execução para baixar Gradle, Forge e dependências; alguns gigabytes de espaço livre.
 
