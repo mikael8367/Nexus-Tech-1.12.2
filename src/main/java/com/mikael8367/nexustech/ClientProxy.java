@@ -19,10 +19,16 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 public class ClientProxy extends CommonProxy {
     @SubscribeEvent public static void models(ModelRegistryEvent event) {
         for (Block block : ModRegistry.BLOCKS) ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), 0, new ModelResourceLocation(block.getRegistryName(), "inventory"));
+        ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(ModRegistry.BRIDGE), 0, new ModelResourceLocation(ModRegistry.BRIDGE.getRegistryName(), "inventory"));
     }
     @Override public Object clientGui(int id, EntityPlayer player, World world, int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
-        if (id != 0 || !world.isBlockLoaded(pos)) return null;
+        if (!world.isBlockLoaded(pos)) return null;
+        if (id == 1) {
+            TileEntity bridge = world.getTileEntity(pos);
+            return bridge instanceof BridgeTile ? new BridgeGui(player, (BridgeTile) bridge) : null;
+        }
+        if (id != 0) return null;
         TileEntity tile = world.getTileEntity(pos);
         return tile instanceof MachineTile && ((MachineTile)tile).kind != MachineTile.Kind.CABLE ? new MachineGui(player.inventory, (MachineTile)tile) : null;
     }
