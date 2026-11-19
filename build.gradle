@@ -132,6 +132,28 @@ processResources {
     }
 }
 
+// The project's regression suites are executable main methods, not JUnit tests.
+def standaloneSuites = []
+fileTree('src/test/java').matching { include '**/*Test.java' }.files.sort().each { source ->
+    if (source.getText('UTF-8') =~ /public\s+static\s+void\s+main\s*\(/) {
+        def rel = file('src/test/java').toPath().relativize(source.toPath()).toString()
+        def className = rel.substring(0, rel.length() - 5).replace(File.separatorChar, '.' as char)
+        def suite = tasks.create(name: 'standalone_' + className.replace('.', '_'), type: JavaExec) {
+            group = 'verification'
+            dependsOn testClasses
+            classpath = sourceSets.test.runtimeClasspath
+            main = className
+            maxHeapSize = '256m'
+            enableAssertions = true
+            doFirst { println "RUNNING SUITE ${className}" }
+            doLast { println "PASS SUITE ${className}" }
+        }
+        standaloneSuites << suite
+    }
+}
+task allStandaloneSuites(group: 'verification', dependsOn: standaloneSuites)
+check.dependsOn allStandaloneSuites
+
 // Example for how to get properties into the manifest for reading by the runtime..
 jar {
     manifest {
