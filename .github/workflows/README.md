@@ -1,0 +1,13 @@
+# Publish Nexus Tech to CurseForge
+
+Este é um trabalho **parcial**. O workflow usa somente `workflow_dispatch`; não executa no push ou merge. Ele compila o ZIP experimental identificado por hash, verifica os testes e metadados e salva um artefato. A versão atualmente disponível nesse ZIP é `1.0`. Para compilar uma versão futura, atualize o caminho e SHA-256 do ZIP após revisá-lo. A compilação não altera a versão no código: ela deve coincidir com `build.gradle`, `NexusTech.VERSION` e `mcmod.info` no JAR.
+
+**A publicação está desativada**, mesmo com `publish=true`. A API oficial de autores não documenta uma consulta completa que comprove que não existem duplicatas em revisão ou rejeitadas, nem uma chave de idempotência para upload. Para respeitar a regra de nunca enviar duplicatas, `publish_curseforge.py` interrompe a execução sem enviar nada. O código ainda não é uma integração funcional de envio; é necessário resolver esta limitação e implementar/testar a chamada oficial antes da liberação. Não contorne o bloqueio. A API oficial: https://support.curseforge.com/en/support/solutions/articles/9000197321-curseforge-api
+
+O GitHub só exibe o workflow para execução manual se o YAML existir na branch padrão. Antes disso, é necessária a aprovação da mudança. O workflow e os scripts devem estar também na branch experimental para executar nessa branch; nenhuma branch é automaticamente modificada por este arquivo.
+
+Para execução futura: Actions > Publish Nexus Tech to CurseForge > selecione `nexus-expansao-experimental` > informe a versão exata, o tipo e o changelog > mantenha `publish=false`. Os resultados e o JAR aparecem na execução. O ambiente Ubuntu no GitHub, acesso às dependências Forge/Gradle e o funcionamento real no Minecraft precisam ser testados; validações estáticas não garantem correção de registro em execução.
+
+Quando e se o envio for implementado com proteção suficiente, crie um token da API de autores em https://www.curseforge.com/account/api-tokens e guarde-o no GitHub em Settings > Secrets and variables > Actions > New repository secret, chamado `CURSEFORGE_API_KEY`. Não coloque o token no código nem nas mensagens. Opcionalmente configure o environment `curseforge` com aprovação e restrição de branch, sujeito às políticas do repositório. O workflow não configura essas proteções sozinho.
+
+A concorrência serializa execuções do grupo, mas não controla envios feitos por outros sistemas ou pelo site; a fila pendente do GitHub pode substituir pedidos pendentes. Uma falha de rede após envio pode deixar resultado indefinido; nunca tente automaticamente de novo sem consultar o CurseForge. O projeto foi compilado em ambiente local, mas não foi publicada nenhuma versão por essa automação.
