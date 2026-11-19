@@ -18,7 +18,8 @@ As taxas abaixo são por tick de jogo; 20 ticks correspondem a aproximadamente u
 | `electric_compressor` | Compressor elétrico; armazena até **20.000 FE**. |
 | `lava_generator` | Gera **40 FE/tick** com baldes de lava; armazena até **20.000 FE**. |
 
-- **Painel solar:** a dimensão precisa ter iluminação de céu, ser dia, não estar chovendo nem trovejando e o bloco acima precisa estar carregado, com visão do céu e luz do céu de pelo menos 15.
+- **Painel solar:** a dimensão precisa ter iluminação de céu, ser dia, não estar chovendo nem trovejando e o bloco acima precisa estar carregado, com visão do céu e luz do céu de pelo menos 15. O cabo não bloqueia a luz; painel solar, gerador de carvão, turbina e bateria bloqueiam a luz de céu como um bloco inteiro, apesar dos modelos parciais. Assim, podem impedir a geração de um painel abaixo deles.
+
 - **Gerador:** coloque no espaço de combustível qualquer item com tempo de queima válido para a fornalha. A duração segue o tempo de queima do item; a queima pausa quando não há espaço para os **40 FE** de um tick inteiro. Combustíveis com item recipiente exigem que haja apenas um item no espaço ao iniciar a queima, para que o recipiente possa ser devolvido. O funil pode retirar o balde vazio deixado por um balde de lava; não retira combustível não queimado. Outros recipientes devem ser retirados pela interface.
 - **Turbina:** basta um dos seis blocos adjacentes carregados ser água vanilla (`water` ou `flowing_water`) com `LEVEL > 0`. Água-fonte (`LEVEL = 0`) sozinha não ativa a turbina; não é necessário consumir a água.
 - **Fornalha elétrica:** aceita receitas de fundição registradas na fornalha. Consome **20 FE por tick de trabalho** durante **200 ticks**, ou **4.000 FE por operação**. Sem energia suficiente, o progresso pausa; trocar o tipo, metadados ou NBT da entrada, ou ficar sem uma receita/saída válida, zera o progresso. A interface tem espaços de entrada e saída.
@@ -28,7 +29,9 @@ As taxas abaixo são por tick de jogo; 20 ticks correspondem a aproximadamente u
   - Compressor: **9 carvões → 1 bloco de carvão**, **9 barras de ferro → 1 bloco de ferro**, **9 barras de ouro → 1 bloco de ouro** e **4 bolas de argila → 1 bloco de argila**. O carvão aceito é `minecraft:coal` com metadado 0, não carvão vegetal.
 - **Gerador de lava:** coloque um **balde de lava vanilla** na entrada. Um balde produz **40 FE/tick por 1.000 ticks** (**40.000 FE** no total), devolvendo um balde vazio na saída ao iniciar. Precisa haver espaço na saída para o balde vazio; a queima pausa quando não há espaço para os **40 FE** de um tick inteiro. Não há entrada de fluido documentada: a alimentação implementada usa baldes de lava.
 
-Clique com o botão direito nos blocos, exceto o cabo, para abrir suas interfaces e consultar a energia armazenada. As interfaces dos geradores mostram a queima; as da fornalha, do triturador e do compressor mostram o progresso. Os nove blocos aparecem na aba Redstone do criativo.
+Os modelos parciais do painel, gerador de carvão, turbina, bateria e cabo não ocultam as faces dos blocos vizinhos e são tratados como não completos para renderização. As quatro máquinas têm opacidade de luz 15 (o cabo tem 0): o bloqueio de luz usa o bloco inteiro, inclusive os espaços vazios do modelo. As caixas de colisão permanecem de bloco inteiro; não há colisão ajustada ao desenho. A iluminação das máquinas usa brilho das posições vizinhas, o que pode produzir diferenças visuais; o cabo mantém o comportamento anterior de brilho.
+
+Clique com o botão direito nos blocos, exceto o cabo, para abrir suas interfaces e consultar a energia armazenada. As interfaces dos geradores mostram a queima; as da fornalha, do triturador e do compressor mostram o progresso. Os nove blocos aparecem na aba Nexus Tech do inventário criativo.
 
 ## Interligação e limites
 
