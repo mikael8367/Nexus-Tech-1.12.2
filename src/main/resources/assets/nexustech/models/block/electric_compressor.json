@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:blocks/piston_side",
-    "down": "minecraft:blocks/iron_block",
-    "up": "minecraft:blocks/anvil_top_damaged_0",
-    "north": "minecraft:blocks/piston_top_normal",
-    "south": "minecraft:blocks/piston_side",
-    "east": "minecraft:blocks/piston_side",
-    "west": "minecraft:blocks/piston_side"
+    "particle": "nexustech:blocks/electric_compressor_side",
+    "down": "nexustech:blocks/electric_compressor_side",
+    "up": "nexustech:blocks/electric_compressor_top",
+    "north": "nexustech:blocks/electric_compressor_front",
+    "south": "nexustech:blocks/electric_compressor_side",
+    "east": "nexustech:blocks/electric_compressor_side",
+    "west": "nexustech:blocks/electric_compressor_side"
   }
 }

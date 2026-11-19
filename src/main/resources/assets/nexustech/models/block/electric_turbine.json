@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:blocks/observer_side",
-    "down": "minecraft:blocks/iron_block",
-    "up": "minecraft:blocks/hopper_top",
-    "north": "minecraft:blocks/piston_top_normal",
-    "south": "minecraft:blocks/observer_side",
-    "east": "minecraft:blocks/observer_side",
-    "west": "minecraft:blocks/observer_side"
+    "particle": "nexustech:blocks/electric_turbine_side",
+    "down": "nexustech:blocks/electric_turbine_side",
+    "up": "nexustech:blocks/electric_turbine_top",
+    "north": "nexustech:blocks/electric_turbine_front",
+    "south": "nexustech:blocks/electric_turbine_side",
+    "east": "nexustech:blocks/electric_turbine_side",
+    "west": "nexustech:blocks/electric_turbine_side"
   }
 }
