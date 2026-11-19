@@ -1,0 +1,186 @@
+name: Publish Nexus Tech to CurseForge
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Versão exata dos metadados do mod
+        required: true
+        type: string
+      release_type:
+        description: Tipo de versão
+        required: true
+        type: choice
+        options:
+          - Release
+          - Beta
+          - Alpha
+      changelog:
+        description: Notas da versão
+        required: true
+        type: string
+      publish:
+        description: 'true confirma que conferi no painel CurseForge arquivos existentes e pendentes, sem duplicatas; false só valida'
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+
+# GitHub mantém no máximo uma execução pendente por grupo; uma nova pendente
+# pode substituir a anterior. Nunca cancela uma execução já em andamento.
+concurrency:
+  group: nexus-tech-curseforge
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Verificar branch e versão suportada
+        shell: bash
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          REF: ${{ github.ref }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$PUBLISH" == 'true' && "$REF" != 'refs/heads/main' ]]; then
+            echo 'Publicação permitida somente a partir de main, após revisão e merge autorizados.' >&2
+            exit 1
+          fi
+          if [[ "$VERSION" != '1.0' ]]; then
+            echo 'Somente a versão 1.0 está disponível na fonte fixada.' >&2
+            exit 1
+          fi
+      - name: Checkout dos scripts da execução
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Checkout da branch experimental
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: nexus-expansao-experimental
+          path: experimental
+          persist-credentials: false
+      - name: Conferir e extrair fonte exata
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=experimental/Nexus-Tech-projeto-nova-logo-experimental.zip
+          printf '%s  %s\n' '5e93f820edf04caf00e1fcb04d881274d848fa06c3813b5695381a009c6e2210' "$archive" | sha256sum -c -
+          mkdir source
+          unzip -q "$archive" -d source
+      - name: Preparar Java 8
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Testes estáticos Python
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/nexus-test-env"
+          "$RUNNER_TEMP/nexus-test-env/bin/python" -m pip install 'Pillow==10.4.0'
+          "$RUNNER_TEMP/nexus-test-env/bin/python" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          import unittest
+
+          root = pathlib.Path('source/src/test')
+          if not root.is_dir():
+              sys.exit('Diretório de testes Python ausente.')
+          files = sorted(root.rglob('test_*.py'))
+          if not files:
+              sys.exit('Nenhum arquivo de teste Python encontrado.')
+          for i, path in enumerate(files):
+              print(f'Executando {path}', flush=True)
+              spec = importlib.util.spec_from_file_location(f'nexus_test_{i}', path)
+              module = importlib.util.module_from_spec(spec)
+              spec.loader.exec_module(module)
+              suite = unittest.defaultTestLoader.loadTestsFromModule(module)
+              if suite.countTestCases() == 0:
+                  sys.exit(f'Nenhum teste encontrado em {path}.')
+              if not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful():
+                  sys.exit(f'Testes falharam em {path}.')
+          PY
+      - name: Testar verificadores e publicador offline
+        working-directory: control/.github/workflows
+        run: python3 -m unittest -v test_validate_jar test_check_preservation test_publish_curseforge
+      - name: Gradle 4.9 build e check
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon clean build check
+      - name: Validar JAR e versão
+        env:
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 control/.github/workflows/validate_jar.py \
+            --jar source/build/libs/nexustech-1.0.jar --source source --version "$VERSION"
+          python3 control/.github/workflows/check_preservation.py source source/build/libs/nexustech-1.0.jar
+          mkdir artifact
+          cp source/build/libs/nexustech-1.0.jar artifact/nexustech.jar
+          sha256sum artifact/nexustech.jar > artifact/SHA256SUMS
+          {
+            echo '### Build validado'
+            echo 'Fonte: ZIP experimental fixado por SHA-256; suites Gradle e testes estáticos Python.'
+            echo 'O artefato está disponível nesta execução. Testes não substituem Minecraft em execução.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar JAR validado
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nexus-tech-validated-jar
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    environment: curseforge
+    steps:
+      - name: Checkout dos scripts confiáveis
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Baixar apenas o JAR validado
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: nexus-tech-validated-jar
+          path: artifact
+      - name: Verificar integridade e publicar
+        shell: bash
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          CONFIRM_DUPLICATE_CHECK: 'true'
+          VERSION: ${{ inputs.version }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CURSEFORGE_API_KEY" ]; then
+            echo 'Secret CURSEFORGE_API_KEY ausente: configure-o em Settings > Secrets and variables > Actions.' >&2
+            exit 1
+          fi
+          sha256sum -c artifact/SHA256SUMS
+          python3 control/.github/workflows/publish_curseforge.py \
+            --jar artifact/nexustech.jar --version "$VERSION" \
+            --release-type "$RELEASE_TYPE" --changelog "$CHANGELOG"

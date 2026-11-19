@@ -1,0 +1,21 @@
+# Publish Nexus Tech to CurseForge
+
+**Estado: alterações locais para revisão, sem publicação.** O workflow ainda não está em `main`, a branch padrão; não pode ser executado manualmente até revisão e merge explicitamente autorizados. `workflow_dispatch` exige o arquivo YAML na branch padrão mesmo quando se seleciona outra branch: a CLI (`gh workflow run --ref ...`) também não contorna essa exigência. A branch selecionada precisa conter o workflow e os scripts correspondentes. Não há execução automática por push ou merge.
+
+## Fonte, validação e artefato
+
+O job `build` usa os scripts do commit da execução (`github.sha`) e busca `Nexus-Tech-projeto-nova-logo-experimental.zip` na branch `nexus-expansao-experimental`. O ZIP só é extraído após conferência do SHA-256 fixo `5e93f820edf04caf00e1fcb04d881274d848fa06c3813b5695381a009c6e2210`. A branch pode avançar, mas um ZIP alterado será recusado. Apenas **1.0** é suportada: a compilação não muda a versão, que deve coincidir com `build.gradle`, `NexusTech.VERSION` e `mcmod.info` no JAR. Atualizar a fonte e o hash para outra versão exige nova revisão.
+
+O job executa testes Python da fonte, `build` e `check` do Gradle, `validate_jar.py`, `check_preservation.py` e os testes offline dos verificadores e de `publish_curseforge.py`. A ausência de arquivos ou casos de teste Python, erro de importação ou falha de teste interrompe o build. O artefato contém o JAR validado e seu SHA-256; o job `publish` verifica esse checksum após baixá-lo. O checksum acompanha o artefato da própria execução: detecta corrupção, mas não autentica um artefato se ambos forem alterados. Os scripts, o runner, as ações e as dependências também precisam ser confiáveis; testes não substituem teste real no Minecraft. `build` recebe somente `contents: read`.
+
+## Uso manual após aprovação e merge
+
+Em Actions > Publish Nexus Tech to CurseForge, selecione `main`, informe os quatro inputs: `version` = `1.0`, `release_type`, `changelog` e `publish`. Com `publish=false`, apenas valida e guarda o artefato por 14 dias. `publish=true` só permite enviar a partir de `refs/heads/main`, depois do build passar, e **significa que o operador já conferiu no painel CurseForge todos os arquivos existentes e pendentes, confirmando que não há duplicata**. Faça essa verificação antes de cada tentativa; não marque `true` sem ela. Outros estados, inclusive rejeitados, devem ser verificados quando visíveis. O environment `curseforge` pode ser configurado para aprovação e restrição de branch; o YAML não cria essas proteções automaticamente.
+
+O `CURSEFORGE_API_KEY` deve existir como repository secret em Settings > Secrets and variables > Actions; crie o token em https://www.curseforge.com/account/api-tokens. Não compartilhe tokens em mensagens ou código. O job `publish` recebe `contents: write` e `github.token` para reservas; o token do CurseForge é usado apenas no passo de publicação. O publicador destina-se ao projeto CurseForge `1803861` e usa a API de autores: https://support.curseforge.com/en/support/solutions/articles/9000197321-curseforge-api.
+
+## Duplicatas e falhas
+
+Antes do envio, o publicador cria no GitHub reservas permanentes para o SHA-256 do JAR e para a versão, no namespace `refs/tags/nexus-cf-upload/`. **Nunca exclua reservas**, inclusive se a segunda reserva falhar ou o resultado for incerto. Essas reservas impedem repetição apenas entre execuções que usam o mesmo repositório e namespace; não identificam arquivos ou pendências enviados pelo site, por outro repositório ou por sistemas externos. A API não fornece aqui garantia de verificação completa de duplicatas ou idempotência; a conferência manual é indispensável e não elimina corridas com envios externos.
+
+A concorrência serializa o grupo deste workflow, mas uma nova execução pendente pode substituir uma anterior. Nenhum retry automático de upload é feito. Em caso de erro, timeout ou resultado incerto, **não reenvie**: verifique as reservas e o painel CurseForge, sem removê-las. Um ID retornado significa somente que o envio foi aceito, não que foi aprovado ou publicado. Os testes do publicador são offline, com rede bloqueada e requisições simuladas; não comprovam o funcionamento da API real. Nenhuma publicação é feita durante os testes.
