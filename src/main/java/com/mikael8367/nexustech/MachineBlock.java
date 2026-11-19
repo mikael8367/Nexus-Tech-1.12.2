@@ -34,6 +34,9 @@ public final class MachineBlock extends Block {
             case TURBINE: return new MachineTile.Turbine();
             case BATTERY: return new MachineTile.Battery();
             case FURNACE: return new MachineTile.Furnace();
+            case CRUSHER: return new MachineTile.Crusher();
+            case COMPRESSOR: return new MachineTile.Compressor();
+            case LAVA_GENERATOR: return new MachineTile.LavaGenerator();
             default: throw new IllegalStateException();
         }
     }
