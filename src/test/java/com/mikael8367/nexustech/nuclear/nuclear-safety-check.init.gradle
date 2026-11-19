@@ -1,0 +1,11 @@
+// From project root: bash ./gradlew --offline --no-daemon -I src/test/java/com/mikael8367/nexustech/nuclear/nuclear-safety-check.init.gradle nuclearSafetyCheck
+// Requires Java 8 and an already populated ForgeGradle dependency cache.
+allprojects {
+    afterEvaluate {
+        task nuclearSafetyCheck(type: JavaExec) {
+            dependsOn testClasses
+            classpath = sourceSets.test.runtimeClasspath
+            main = 'com.mikael8367.nexustech.nuclear.NuclearSafetyTest'
+        }
+    }
+}
