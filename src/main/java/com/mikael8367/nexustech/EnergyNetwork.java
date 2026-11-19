@@ -10,11 +10,33 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /** Iterative traversal: cables have no buffer. Never query an unloaded position. */
 final class EnergyNetwork {
     private static final ThreadLocal<Boolean> ACTIVE = new ThreadLocal<Boolean>();
+    private static final Logger LOGGER = LogManager.getLogger("NexusTech");
+    private static final long LOG_INTERVAL_NANOS = 60_000_000_000L;
+    private static long lastFailureLog;
+    private static boolean hasLoggedFailure;
+    private static long suppressedFailures;
     private EnergyNetwork() { }
+
+    // A broken endpoint can be visited every tick. Limit log volume globally without
+    // retaining world/tile references, and report the number suppressed next time.
+    private static synchronized void logEndpointFailure(BlockPos pos, RuntimeException error) {
+        long now = System.nanoTime();
+        if (!hasLoggedFailure || now - lastFailureLog >= LOG_INTERVAL_NANOS) {
+            LOGGER.warn("Forge Energy endpoint at {} failed ({} similar failures suppressed); skipping it for this traversal",
+                    pos, suppressedFailures, error);
+            lastFailureLog = now;
+            hasLoggedFailure = true;
+            suppressedFailures = 0;
+        } else if (suppressedFailures < Long.MAX_VALUE) {
+            suppressedFailures++;
+        }
+    }
     /**
      * Pull from loaded endpoints adjacent to the origin or its cable component.
      * A machine origin must be the excluded consumer; a cable origin can be
@@ -48,11 +70,18 @@ final class EnergyNetwork {
                     if (tile == null || (!allowNexusBatteries && tile instanceof MachineTile.Battery)
                             || endpoints.contains(next)) continue;
                     // Try other faces only until this endpoint supplies energy.
-                    IEnergyStorage source = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
-                    if (source == null || !source.canExtract()) continue;
-                    int extracted = source.extractEnergy(amount - moved, simulate);
-                    extracted = Math.max(0, Math.min(amount - moved, extracted));
-                    if (extracted > 0) { moved += extracted; endpoints.add(next); }
+                    try {
+                        IEnergyStorage source = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
+                        if (source == null || !source.canExtract()) continue;
+                        int extracted = source.extractEnergy(amount - moved, simulate);
+                        extracted = Math.max(0, Math.min(amount - moved, extracted));
+                        if (extracted > 0) { moved += extracted; endpoints.add(next); }
+                    } catch (RuntimeException error) {
+                        // No return value is available if the endpoint mutated before throwing.
+                        // Do not retry another face in this traversal; preserve earlier transfers.
+                        endpoints.add(next);
+                        logEndpointFailure(next, error);
+                    }
                     if (moved >= amount) break;
                 }
             }
@@ -89,16 +118,23 @@ final class EnergyNetwork {
                     // A block may expose different capabilities on different faces: only mark
                     // it visited after a face actually accepts energy.
                     if (endpoints.contains(next)) continue;
-                    IEnergyStorage receiver = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
-                    if (receiver == null || !receiver.canReceive()) continue;
-                    // A storage endpoint can be empty after a pull; excluding only
-                    // this tick's donors makes it bounce back on the next tick.
-                    // Inspect every face because input and output may be sided.
-                    // Conservatively let such endpoints pull, rather than push to them.
-                    if (batterySource && exposesExtraction(tile)) continue;
-                    int accepted = receiver.receiveEnergy(amount - moved, simulate);
-                    accepted = Math.max(0, Math.min(amount - moved, accepted));
-                    if (accepted > 0) { moved += accepted; endpoints.add(next); }
+                    try {
+                        IEnergyStorage receiver = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
+                        if (receiver == null || !receiver.canReceive()) continue;
+                        // A storage endpoint can be empty after a pull; excluding only
+                        // this tick's donors makes it bounce back on the next tick.
+                        // Inspect every face because input and output may be sided.
+                        // Conservatively let such endpoints pull, rather than push to them.
+                        if (batterySource && exposesExtraction(tile)) continue;
+                        int accepted = receiver.receiveEnergy(amount - moved, simulate);
+                        accepted = Math.max(0, Math.min(amount - moved, accepted));
+                        if (accepted > 0) { moved += accepted; endpoints.add(next); }
+                    } catch (RuntimeException error) {
+                        // A throwing endpoint may have mutated without reporting how much.
+                        // Skip its other faces; completed transfers remain accounted for.
+                        endpoints.add(next);
+                        logEndpointFailure(next, error);
+                    }
                     if (moved >= amount) break;
                 }
             }
