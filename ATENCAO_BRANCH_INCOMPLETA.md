@@ -1,3 +1,3 @@
-# Branch incompleta
+# Branch de trabalho
 
-O envio da expansão industrial foi interrompido por uma falha de comunicação. Esta branch contém apenas parte das alterações e não compila. Não mesclar nem usar como versão funcional. O projeto completo foi preservado separadamente.
+O envio da expansão industrial foi concluído e os arquivos foram comparados com a cópia local. A execução real no Minecraft Forge ainda não foi validada. Não mesclar na main nem tratar como versão final antes da validação.
