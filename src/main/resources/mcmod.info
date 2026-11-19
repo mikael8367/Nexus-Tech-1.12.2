@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "nexustech",
+    "name": "Nexus Tech",
+    "description": "A technology, energy and automation mod.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["mikael8367"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]
