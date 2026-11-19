@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "nexustech:digital_mine_basic"
+    },
+    "facing=east": {
+      "model": "nexustech:digital_mine_basic",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "nexustech:digital_mine_basic",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "nexustech:digital_mine_basic",
+      "y": 270
+    }
+  }
+}
