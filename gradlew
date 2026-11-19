@@ -68,14 +68,16 @@ esac
 WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 WRAPPER_BASE64="$WRAPPER_JAR.base64"
 if [ ! -f "$WRAPPER_JAR" ]; then
-    [ -r "$WRAPPER_BASE64" ] || die "ERROR: Missing $WRAPPER_BASE64"
+    cat "$WRAPPER_BASE64".part* > "$WRAPPER_BASE64.tmp.$$" || die "ERROR: Missing wrapper parts"
+    WRAPPER_BASE64="$WRAPPER_BASE64.tmp.$$"
     WRAPPER_TMP="$WRAPPER_JAR.tmp.$$"
     if (base64 -d < "$WRAPPER_BASE64" > "$WRAPPER_TMP" 2>/dev/null) ||
        (base64 -D < "$WRAPPER_BASE64" > "$WRAPPER_TMP" 2>/dev/null) ||
        (openssl base64 -d -in "$WRAPPER_BASE64" -out "$WRAPPER_TMP" 2>/dev/null); then
+        rm -f "$WRAPPER_BASE64"
         mv -f "$WRAPPER_TMP" "$WRAPPER_JAR" || die "ERROR: Could not install $WRAPPER_JAR"
     else
-        rm -f "$WRAPPER_TMP"
+        rm -f "$WRAPPER_TMP" "$WRAPPER_BASE64"
         die "ERROR: Could not decode $WRAPPER_BASE64; install base64 or openssl."
     fi
 fi
