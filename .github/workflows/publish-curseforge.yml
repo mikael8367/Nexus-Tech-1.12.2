@@ -81,7 +81,7 @@ jobs:
           done < <(find source/src/test -name 'test_*.py' -type f -print0 | sort -z)
       - name: Testar verificador
         working-directory: control/.github/workflows
-        run: python3 -m unittest -v test_validate_jar
+        run: python3 -m unittest -v test_validate_jar test_check_preservation
       - name: Gradle 4.9 build e check
         working-directory: source
         shell: bash
@@ -97,6 +97,7 @@ jobs:
           set -euo pipefail
           python3 control/.github/workflows/validate_jar.py \
             --jar source/build/libs/nexustech-1.0.jar --source source --version "$VERSION"
+          python3 control/.github/workflows/check_preservation.py source source/build/libs/nexustech-1.0.jar
           mkdir artifact
           cp source/build/libs/nexustech-1.0.jar artifact/nexustech.jar
           sha256sum artifact/nexustech.jar > artifact/SHA256SUMS
