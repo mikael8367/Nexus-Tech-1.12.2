@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:blocks/daylight_detector_side",
-    "down": "minecraft:blocks/iron_block",
-    "up": "minecraft:blocks/daylight_detector_top",
-    "north": "minecraft:blocks/daylight_detector_side",
-    "south": "minecraft:blocks/daylight_detector_side",
-    "east": "minecraft:blocks/daylight_detector_side",
-    "west": "minecraft:blocks/daylight_detector_side"
+    "particle": "nexustech:blocks/solar_panel_side",
+    "down": "nexustech:blocks/solar_panel_side",
+    "up": "nexustech:blocks/solar_panel_top",
+    "north": "nexustech:blocks/solar_panel_front",
+    "south": "nexustech:blocks/solar_panel_side",
+    "east": "nexustech:blocks/solar_panel_side",
+    "west": "nexustech:blocks/solar_panel_side"
   }
 }

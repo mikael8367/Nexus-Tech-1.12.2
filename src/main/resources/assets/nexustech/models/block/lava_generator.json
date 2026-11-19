@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "minecraft:blocks/furnace_side",
-    "down": "minecraft:blocks/iron_block",
-    "up": "minecraft:blocks/magma",
-    "north": "minecraft:blocks/furnace_front_on",
-    "south": "minecraft:blocks/furnace_side",
-    "east": "minecraft:blocks/furnace_side",
-    "west": "minecraft:blocks/furnace_side"
+    "particle": "nexustech:blocks/lava_generator_side",
+    "down": "nexustech:blocks/lava_generator_side",
+    "up": "nexustech:blocks/lava_generator_top",
+    "north": "nexustech:blocks/lava_generator_front",
+    "south": "nexustech:blocks/lava_generator_side",
+    "east": "nexustech:blocks/lava_generator_side",
+    "west": "nexustech:blocks/lava_generator_side"
   }
 }
