@@ -15,7 +15,7 @@ public final class MachineContainer extends Container {
     public MachineContainer(InventoryPlayer player, MachineTile tile) {
         this.tile = tile;
         if (tile.kind == MachineTile.Kind.GENERATOR) addSlotToContainer(new MachineSlot(tile, 0, 80, 35));
-        if (tile.kind == MachineTile.Kind.FURNACE) {
+        if (tile.kind == MachineTile.Kind.FURNACE || tile.kind == MachineTile.Kind.CRUSHER || tile.kind == MachineTile.Kind.COMPRESSOR || tile.kind == MachineTile.Kind.LAVA_GENERATOR) {
             addSlotToContainer(new MachineSlot(tile, 0, 56, 17));
             addSlotToContainer(new MachineSlot(tile, 1, 116, 35) {
                 @Override public boolean isItemValid(ItemStack stack) { return false; }
