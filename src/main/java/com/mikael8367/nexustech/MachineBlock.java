@@ -3,7 +3,6 @@ package com.mikael8367.nexustech;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -20,11 +19,26 @@ public final class MachineBlock extends Block {
         this.kind = kind;
         setRegistryName(NexusTech.MODID, name);
         setUnlocalizedName(NexusTech.MODID + "." + name);
-        if (kind == MachineTile.Kind.CABLE) setLightOpacity(0);
-        setHardness(3.0F); setResistance(10.0F); setCreativeTab(CreativeTabs.REDSTONE);
+        if (hasPartialModel()) {
+            // Block caches fullBlock before kind is initialized; update it for all partial models.
+            fullBlock = false;
+            if (kind == MachineTile.Kind.CABLE) {
+                setLightOpacity(0);
+            } else {
+                // A non-cube rendering model must still block sky light like a solid roof.
+                setLightOpacity(15);
+                useNeighborBrightness = true;
+            }
+        }
+        setHardness(3.0F); setResistance(10.0F); setCreativeTab(NexusTech.CREATIVE_TAB);
     }
-    @Override public boolean isOpaqueCube(IBlockState state) { return kind != MachineTile.Kind.CABLE && super.isOpaqueCube(state); }
-    @Override public boolean isFullCube(IBlockState state) { return kind != MachineTile.Kind.CABLE && super.isFullCube(state); }
+    private boolean hasPartialModel() {
+        return kind == MachineTile.Kind.CABLE || kind == MachineTile.Kind.SOLAR
+                || kind == MachineTile.Kind.GENERATOR || kind == MachineTile.Kind.TURBINE
+                || kind == MachineTile.Kind.BATTERY;
+    }
+    @Override public boolean isOpaqueCube(IBlockState state) { return !hasPartialModel() && super.isOpaqueCube(state); }
+    @Override public boolean isFullCube(IBlockState state) { return !hasPartialModel() && super.isFullCube(state); }
     @Override public boolean hasTileEntity(IBlockState state) { return true; }
     @Override public TileEntity createTileEntity(World world, IBlockState state) {
         switch (kind) {
