@@ -5,6 +5,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @Mod(modid = NexusTech.MODID, name = NexusTech.NAME, version = NexusTech.VERSION, acceptedMinecraftVersions = "[1.12.2]")
@@ -22,6 +23,12 @@ public class NexusTech {
 
     @Mod.EventHandler public void preInit(FMLPreInitializationEvent event) {
         ModRegistry.registerTiles();
+        com.mikael8367.nexustech.digitalmine.DigitalMineRegistry.registerTiles();
+        com.mikael8367.nexustech.ores.OreRegistry.registerWorldGenerator();
         NetworkRegistry.INSTANCE.registerGuiHandler(this, new MachineGuiHandler());
+    }
+
+    @Mod.EventHandler public void init(FMLInitializationEvent event) {
+        com.mikael8367.nexustech.ores.OreRegistry.init();
     }
 }
