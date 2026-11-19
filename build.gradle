@@ -82,8 +82,49 @@ dependencies {
 
 }
 
+// Keep binary textures as text in source control, outside the resources tree.
+def textureSources = file('src/main/texture_sources')
+def generatedTextures = file("${buildDir}/generated/nexusTextureResources")
+
+task generateTextureResources {
+    inputs.dir textureSources
+    outputs.dir generatedTextures
+
+    doLast {
+        def sourceFiles = fileTree(textureSources) { include '**/*.png.b64' }.files.sort()
+        if (sourceFiles.empty) {
+            throw new GradleException("No encoded PNG textures found in ${textureSources}")
+        }
+        def decoded = [:]
+        sourceFiles.each { source ->
+            try {
+                def bytes = Base64.decoder.decode(source.getText('UTF-8').trim())
+                def pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as byte[]
+                if (bytes.length < pngSignature.length ||
+                    !java.util.Arrays.equals(bytes[0..<pngSignature.length] as byte[], pngSignature) ||
+                    javax.imageio.ImageIO.read(new ByteArrayInputStream(bytes)) == null) {
+                    throw new IllegalArgumentException('Not a valid PNG image')
+                }
+                def relativePath = textureSources.toPath().relativize(source.toPath()).toString()
+                decoded[relativePath.substring(0, relativePath.length() - 4)] = bytes
+            } catch (Exception e) {
+                throw new GradleException("Invalid encoded PNG texture: ${source}", e)
+            }
+        }
+        // Rebuild the staging directory so removed source textures cannot survive there.
+        delete generatedTextures
+        decoded.each { relativePath, bytes ->
+            def output = new File(generatedTextures, relativePath)
+            output.parentFile.mkdirs()
+            output.bytes = bytes
+        }
+    }
+}
+
 // Expand only mcmod.info; copy all other resources without filtering.
 processResources {
+    dependsOn generateTextureResources
+    from generatedTextures
     inputs.property 'version', project.version
     inputs.property 'mcversion', minecraftVersion
     filesMatching('mcmod.info') {
