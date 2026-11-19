@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraft:blocks/daylight_detector_side",
+    "down": "minecraft:blocks/iron_block",
+    "up": "minecraft:blocks/daylight_detector_top",
+    "north": "minecraft:blocks/daylight_detector_side",
+    "south": "minecraft:blocks/daylight_detector_side",
+    "east": "minecraft:blocks/daylight_detector_side",
+    "west": "minecraft:blocks/daylight_detector_side"
+  }
+}
