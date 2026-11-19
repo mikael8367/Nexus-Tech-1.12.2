@@ -20,11 +20,11 @@ set DEFAULT_JVM_OPTS=
 set "NEXUS_WRAPPER_JAR=%APP_HOME%gradle\wrapper\gradle-wrapper.jar"
 set "NEXUS_WRAPPER_BASE64=%NEXUS_WRAPPER_JAR%.base64"
 if exist "%NEXUS_WRAPPER_JAR%" goto wrapperReady
-if not exist "%NEXUS_WRAPPER_BASE64%" (
+if not exist "%NEXUS_WRAPPER_BASE64%.part01" (
     echo ERROR: Missing "%NEXUS_WRAPPER_BASE64%".
     goto fail
 )
-powershell.exe -NoProfile -NonInteractive -Command "$tmp=$env:NEXUS_WRAPPER_JAR+'.tmp.'+[guid]::NewGuid().ToString('N'); try { [IO.File]::WriteAllBytes($tmp,[Convert]::FromBase64String([IO.File]::ReadAllText($env:NEXUS_WRAPPER_BASE64))); Move-Item -Force -LiteralPath $tmp -Destination $env:NEXUS_WRAPPER_JAR } catch { Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $tmp; Write-Error $_; exit 1 }"
+powershell.exe -NoProfile -NonInteractive -Command "$tmp=$env:NEXUS_WRAPPER_JAR+'.tmp.'+[guid]::NewGuid().ToString('N'); try { [IO.File]::WriteAllBytes($tmp,[Convert]::FromBase64String(((Get-ChildItem -LiteralPath (Split-Path $env:NEXUS_WRAPPER_BASE64) -Filter ((Split-Path $env:NEXUS_WRAPPER_BASE64 -Leaf)+'.part*') | Sort-Object Name | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join ''))); Move-Item -Force -LiteralPath $tmp -Destination $env:NEXUS_WRAPPER_JAR } catch { Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $tmp; Write-Error $_; exit 1 }"
 if errorlevel 1 (
     echo ERROR: Could not decode the wrapper JAR. PowerShell is required.
     goto fail
