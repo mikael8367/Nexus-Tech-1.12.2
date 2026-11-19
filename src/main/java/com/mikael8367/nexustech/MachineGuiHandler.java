@@ -8,6 +8,10 @@ import net.minecraftforge.fml.common.network.IGuiHandler;
 
 public final class MachineGuiHandler implements IGuiHandler {
     @Override public Object getServerGuiElement(int id, EntityPlayer player, World world, int x, int y, int z) {
+        if (id == com.mikael8367.nexustech.digitalmine.DigitalMineRegistry.GUI_ID)
+            return com.mikael8367.nexustech.digitalmine.DigitalMineGuiHooks.server(id, player, world, x, y, z);
+        if (id == com.mikael8367.nexustech.nuclear.NuclearGuiHooks.GUI_ID)
+            return com.mikael8367.nexustech.nuclear.NuclearGuiHooks.server(id, player, world, x, y, z);
         BlockPos pos = new BlockPos(x, y, z);
         if (id != 0 || !world.isBlockLoaded(pos)) return null;
         TileEntity tile = world.getTileEntity(pos);

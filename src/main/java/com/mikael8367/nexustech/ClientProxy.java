@@ -21,6 +21,10 @@ public class ClientProxy extends CommonProxy {
         for (Block block : ModRegistry.BLOCKS) ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), 0, new ModelResourceLocation(block.getRegistryName(), "inventory"));
     }
     @Override public Object clientGui(int id, EntityPlayer player, World world, int x, int y, int z) {
+        if (id == com.mikael8367.nexustech.digitalmine.DigitalMineRegistry.GUI_ID)
+            return com.mikael8367.nexustech.digitalmine.DigitalMineClient.gui(id, player, world, x, y, z);
+        if (id == com.mikael8367.nexustech.nuclear.NuclearGuiHooks.GUI_ID)
+            return com.mikael8367.nexustech.nuclear.NuclearClient.gui(id, player, world, x, y, z);
         BlockPos pos = new BlockPos(x, y, z);
         if (id != 0 || !world.isBlockLoaded(pos)) return null;
         TileEntity tile = world.getTileEntity(pos);
