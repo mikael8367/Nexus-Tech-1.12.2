@@ -1,0 +1,110 @@
+ons.
+     automationExtracting=true;activeOperations++;
+     try{
+       ItemStack original=inventory.getStackInSlot(slot);
+       if(original.isEmpty())return ItemStack.EMPTY;
+       int count=Math.min(amount,Math.min(original.getCount(),original.getMaxStackSize()));
+       if(count<=0 || !usable())return ItemStack.EMPTY;
+       ItemStack result=original.copy();result.setCount(count);
+       if(!usable())return ItemStack.EMPTY;
+       if(simulate)return result;
+       ItemStack remaining=ItemStack.EMPTY;
+       if(count<original.getCount()){
+         remaining=original.copy();remaining.shrink(count);
+         if(!usable())return ItemStack.EMPTY;
+       }
+       // Commit before notifying: do not undo a successful transfer on callback failure.
+       recoveryInventory.setWithoutNotification(slot,remaining);
+       try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear extraction notification failed after mutation; chunk may not be marked dirty",ex);}
+       return result;
+     }finally{
+       try{endOperation();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear removal finalization failed after extraction; inspect recovery and inventory",ex);}
+       finally{automationExtracting=false;}
+     }
+   }
+   public int getSlotLimit(int slot){return inventory.getSlotLimit(slot);}
+ };
+ private final FluidTank tank=new FluidTank(WATER_CAPACITY) {
+   @Override public boolean canFillFluidType(FluidStack f){return f!=null && f.getFluid()==FluidRegistry.WATER;}
+   @Override public boolean canDrain(){return false;}
+   @Override public boolean canDrainFluidType(FluidStack f){return false;}
+   @Override protected void onContentsChanged(){
+     // Mutation already happened: a failed notification must not turn success into zero.
+     try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear water notification failed after mutation",ex);}
+   }
+ };
+ // Cached capabilities must not accept contents after the controller is removed.
+ private final IFluidHandler fluidInput=new IFluidHandler(){
+   public IFluidTankProperties[] getTankProperties(){return tank.getTankProperties().clone();}
+   public int fill(FluidStack fluid,boolean doFill){
+     if(bucketTransfer || filling || automationExtracting || !usable() || fluid==null || fluid.getFluid()!=FluidRegistry.WATER || fluid.amount<=0)return 0;
+     // Bound before calling Forge's tank to avoid integer overflow on hostile offers.
+     int amount=Math.min(fluid.amount,Math.max(0,WATER_CAPACITY-water()));
+     if(amount==0)return 0;
+     // Store plain water so tagged water cannot block normal pipes or buckets.
+     FluidStack bounded=new FluidStack(FluidRegistry.WATER,amount);
+     filling=true;activeOperations++;
+     try{return tank.fill(bounded,doFill);}finally{
+       filling=false;
+       try{endOperation();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear removal finalization failed after fill; inspect recovery and inventory",ex);}
+     }
+   }
+   public FluidStack drain(FluidStack fluid,boolean doDrain){return null;}
+   public FluidStack drain(int amount,boolean doDrain){return null;}
+ };
+ private final IEnergyStorage storage=new IEnergyStorage(){
+   public int receiveEnergy(int n,boolean sim){return 0;}
+   public int extractEnergy(int n,boolean sim){return extractEnergyChecked(n,sim,null,null);}
+   public int getEnergyStored(){return usable() && validateStructure()==1?energy:0;} public int getMaxEnergyStored(){return CAPACITY;}
+   public boolean canExtract(){return usable() && validateStructure()==1;} public boolean canReceive(){return false;}
+ };
+ private int extractEnergyChecked(int n,boolean sim,NuclearPart part,Object lease){
+     if(part!=null && !part.validLease(this,lease))return 0;
+     if(!usable() || reserved || n<=0 || validateStructure()!=1)return 0;
+     if(part!=null && !part.validLease(this,lease))return 0;
+     resetOutputForWorldTick();
+     int out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+     if(!sim && out>0){
+       bindStructure();
+       if(!usable() || reserved || validateStructure()!=1)return 0;
+       if(part!=null && !part.validLease(this,lease))return 0;
+       resetOutputForWorldTick();out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+       energy-=out;outputThisTick+=out;markDirty();
+     }return out;
+ }
+ private boolean usable(){
+   if(removing || world==null || world.isRemote || isInvalid())return false;
+   // Forge capabilities are synchronous: refuse calls off the real server thread
+   // before reading world state. Lightweight test worlds are not WorldServer.
+   if(world instanceof net.minecraft.world.WorldServer && (world.getMinecraftServer()==null || !world.getMinecraftServer().isCallingFromMinecraftThread()))return false;
+   return world.isBlockLoaded(pos)&&world.getTileEntity(pos)==this;
+ }
+ // Preserve crafted fuel and partially burned saves; ingots may also be used directly.
+ static boolean isFuel(ItemStack s){return !s.isEmpty() && (s.getItem()==NuclearRegistry.FUEL || s.getItem()==OreRegistry.INGOTS.get(OreType.URANIUM));}
+ boolean hasFuel(){return fuelTicks>0 || isFuel(inventory.getStackInSlot(0));}
+ private static int clamp(int v,int max){return Math.max(0,Math.min(max,v));}
+ public int water(){return tank.getFluidAmount();}
+ /** Reclaim exact water from this position after replacing the controller. */
+ void reclaimWater(){
+   if(filling || bucketTransfer || activeOperations>0 || !usable())return;
+   int room=WATER_CAPACITY-water();if(room<=0 || world.getPerWorldStorage()==null)return;
+   NuclearRecovery recovery=NuclearRecovery.get(world);
+   int amount=recovery.takeWater(pos,room);if(amount==0)return;
+   // No external callbacks between debit and the plain tank assignment.
+   tank.setFluid(new FluidStack(FluidRegistry.WATER,water()+amount));
+   try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear reclaimed water notification failed",ex);}
+ }
+ /** Geometry uses controller as middle of front bottom row, front is its facing. */
+ public static BlockPos at(BlockPos origin,EnumFacing front,int dx,int y,int depth){return origin.offset(front.rotateY(),dx).offset(front.getOpposite(),depth).up(y);}
+ /** Synchronize the shared output budget to world time, not tile update order. */
+ private void resetOutputForWorldTick(){
+   long tick=world.getTotalWorldTime();
+   if(outputTick!=tick){outputTick=tick;outputThisTick=0;}
+ }
+ /** Geometry only; deliberately ignores ownership so old owners can be checked without recursion. */
+ private int validateGeometry(){
+   if(!usable())return -1;
+   IBlockState controller=world.getBlockState(pos);
+   if(controller.getBlock()!=NuclearRegistry.CONTROLLER)return 0;
+   EnumFacing front=controller.getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<
