@@ -1,0 +1,49 @@
+           i == 0 ? 0 : i == 1 ? 15 : 8);
+            BlockPos next = edge.offset(SIDES[i]);
+            W boundaryWorld = world();
+            SnapshotChunk originChunk = chunk(unsafe), nextChunk = chunk(unsafe);
+            boundaryWorld.chunks.put((edge.getX() >> 4) + ":" + (edge.getZ() >> 4), originChunk);
+            boundaryWorld.chunks.put((next.getX() >> 4) + ":" + (next.getZ() >> 4), nextChunk);
+            originChunk.states.put(edge, pipe.getDefaultState());
+            nextChunk.states.put(next, pump.getDefaultState());
+            ChunkCache crossing = new ChunkCache(boundaryWorld, edge.add(-1, -1, -1), edge.add(1, 1, 1), 0);
+            int before = boundaryWorld.chunkReads;
+            mask(pipe.getActualState(pipe.getDefaultState(), crossing, edge), 1 << i);
+            check(boundaryWorld.chunkReads == before && boundaryWorld.tiles == 0 && nextChunk.tiles == 0,
+                    "crossing border must not load chunks or query tiles");
+            ChunkCache excluded = new ChunkCache(boundaryWorld, edge, edge, 0);
+            before = boundaryWorld.chunkReads;
+            mask(pipe.getActualState(pipe.getDefaultState(), excluded, edge), 0);
+            check(boundaryWorld.chunkReads == before, "excluded border must not load chunks");
+        }
+        // Tight cache excludes east/south chunks; a null cached chunk is also air.
+        ChunkCache tight = new ChunkCache(w, ORIGIN, ORIGIN, 0);
+        mask(pipe.getActualState(pipe.getDefaultState(), tight, ORIGIN), 63 & ~(1 << 1) & ~(1 << 2));
+        w.chunks.remove("1:0");
+        ChunkCache missing = new ChunkCache(w, ORIGIN.add(-1,-1,-1), ORIGIN.add(1,1,1), 0);
+        mask(pipe.getActualState(pipe.getDefaultState(), missing, ORIGIN), 63 & ~(1 << 2));
+        int readsAfterConstruction = w.chunkReads;
+        mask(pipe.getActualState(pipe.getDefaultState(), missing, ORIGIN.add(32,0,0)), 0);
+        check(w.chunkReads == readsAfterConstruction, "no loading for out-of-cache origin");
+        for (int y : new int[]{0, 255}) {
+            BlockPos edge = new BlockPos(8, y, 8);
+            c00.states.clear(); c00.states.put(edge, pipe.getDefaultState());
+            c00.states.put(edge.offset(y == 0 ? EnumFacing.UP : EnumFacing.DOWN), pipe.getDefaultState());
+            ChunkCache vertical = new ChunkCache(w, edge, edge, 0);
+            mask(pipe.getActualState(pipe.getDefaultState(), vertical, edge), y == 0 ? 1 << 4 : 1 << 5);
+            mask(pipe.getActualState(pipe.getDefaultState(), vertical, new BlockPos(8, y == 0 ? -1 : 256, 8)), 0);
+        }
+        c00.states.clear(); c10.states.clear(); c01.states.clear();
+        c00.states.put(ORIGIN, pipe.getDefaultState());
+        c00.states.put(ORIGIN.west(), pipe.getDefaultState());
+        c00.states.put(ORIGIN.north(), pump.getDefaultState());
+        c00.failing = ORIGIN.west();
+        mask(pipe.getActualState(pipe.getDefaultState(), cache, ORIGIN), 1 << 0);
+        c00.failing = ORIGIN; mask(pipe.getActualState(pipe.getDefaultState(), cache, ORIGIN), 0);
+        c00.failing = null; c00.returningNull = ORIGIN.west();
+        mask(pipe.getActualState(pipe.getDefaultState(), cache, ORIGIN), 1 << 0);
+        c00.returningNull = ORIGIN; mask(pipe.getActualState(pipe.getDefaultState(), cache, ORIGIN), 0);
+        UnknownCache unknown = (UnknownCache) unsafe.allocateInstance(UnknownCache.class);
+        mask(pipe.getActualState(pipe.getDefaultState(), unknown, ORIGIN), 0);
+    }
+    public static void main(String[] args) thr
