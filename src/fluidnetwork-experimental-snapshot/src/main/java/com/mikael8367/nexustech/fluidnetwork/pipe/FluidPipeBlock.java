@@ -11,6 +11,9 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.material.Material;
+import net.minecraft.block.material.EnumPushReaction;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.Explosion;
 import net.minecraft.block.properties.PropertyBool;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
@@ -53,6 +56,17 @@ public final class FluidPipeBlock extends Block {
     // Connections are derived, not persisted in the four metadata bits.
     @Override public IBlockState getStateFromMeta(int meta) { return getDefaultState(); }
     @Override public int getMetaFromState(IBlockState state) { return 0; }
+
+    // Until network invalidation and fluid transfer are transactional, even an
+    // apparently empty pipe cannot safely be removed through these hooks. This
+    // cannot stop commands, direct world replacement, or mod-specific removal.
+    @Override public boolean removedByPlayer(IBlockState state, World world, BlockPos pos,
+                                              EntityPlayer player, boolean willHarvest) {
+        return false;
+    }
+    @Override public boolean canDropFromExplosion(Explosion explosion) { return false; }
+    @Override public void onBlockExploded(World world, BlockPos pos, Explosion explosion) { /* retain block */ }
+    @Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.BLOCK; }
 
     // The model is narrower than a cube; do not cull adjacent faces as solid.
     @Override public boolean isOpaqueCube(IBlockState state) { return false; }
