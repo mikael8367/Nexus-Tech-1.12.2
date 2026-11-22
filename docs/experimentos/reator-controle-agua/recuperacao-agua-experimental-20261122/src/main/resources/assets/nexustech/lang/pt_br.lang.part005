@@ -1,0 +1,46 @@
+40 FE/t por 1.000 ticks por balde, total de 40.000 FE. Eles pausam a queima se faltar espaço no buffer.
+guide.nexustech.page.energia.7=Bateria básica guarda 100.000 FE; avançada 1.000.000 FE; elite 10.000.000 FE. Avançada e elite são passivas: precisam de um dispositivo compatível que envie ou retire energia.
+guide.nexustech.page.energia.8=Solar 3x3 sem produção? Confira os estados de estrutura incompleta, chunk descarregado, sobreposição, falta de sol ou céu obstruído. O painel compacto também para sob chuva ou sem céu.
+guide.nexustech.page.processamento.7=Fornalha elétrica, triturador elétrico e compressor usam 20 FE por tick de trabalho e 200 ticks por operação: 4.000 FE. Falta de energia pausa o progresso; saída bloqueada pode reiniciá-lo.
+guide.nexustech.page.processamento.8=Prensa e fundidora de ligas usam 20 FE por tick durante 100 ticks: 2.000 FE por operação. Aceitam lingotes compatíveis pelo Ore Dictionary, sem dados extras ou dano.
+guide.nexustech.page.processamento.9=Serraria, composteira e engarrafadora usam 20 FE por tick durante 80 ticks: 1.600 FE por operação. A água da engarrafadora deve ser fonte vanilla adjacente; confira também a saída.
+guide.nexustech.page.processamento.10=No compressor, use carvão mineral, não carvão vegetal. Na composteira, junte 8 unidades iguais de sementes de trigo, beterraba, melancia, abóbora ou mudas vanilla da mesma espécie.
+guide.nexustech.page.automacao.6=Na GUI da colhedora, coloque a Melhoria de Velocidade no espaço próprio. Sem melhorias, verifica até 8 posições a cada 20 ticks; com 50, a cada 5 ticks. Isso não garante 8 colheitas.
+guide.nexustech.page.automacao.7=Cada colheita bem-sucedida consome 200 FE. Se não colher, confira planta madura e compatível, saída com espaço, energia, chunks, permissões e a regra doTileDrops.
+guide.nexustech.page.automacao.8=Para organizar a saída, use a GUI da máquina e baús separados por produto. O cabo Nexus de itens não transporta a partir das máquinas Nexus; não confunda com outras automações compatíveis.
+guide.nexustech.page.mina.3=Se a mina parar, confirme que está ligada e formada, que há energia e espaço para os drops e que a área está carregada. Minérios protegidos podem ser ignorados por permissões.
+guide.nexustech.page.reator.4=A GUI mostra FE armazenado, produção em FE/t, calor, combustível restante, água e estado. Estrutura inválida exige conferir peças e chunks; sem urânio exige combustível aceito.
+guide.nexustech.page.reator.5=Quando formado, ligado e com espaço no buffer, produz 200 FE/t. Cada combustível aceito dura 2.400 ticks de produção; o buffer guarda 1.000.000 FE. Produção pausa quando não cabe mais um tick.
+guide.nexustech.page.reator.6=Se o calor for 1.000 ou mais após resfriar no tick, há parada de segurança. Após esfriar até 400 ou menos, ligue manualmente. Após carregar o mundo, confira o estado e religue quando seguro; não desmonte quente.
+guide.nexustech.page.equipamento.3=Na tela G, o botão de velocidade alterna 4, 6 e 8; o de área alterna padrão, 1x2x1 e 3x3x3. Concluído fecha a tela. Segure a ferramenta na mão principal para abrir.
+guide.nexustech.page.equipamento.4=Na mineração ampliada, blocos extras precisam ser apropriados, acessíveis e permitidos; blocos com entidade de bloco são ignorados. A ferramenta sofre desgaste normal; confira a durabilidade.
+
+guide.nexustech.page.inicio.5=Para receita, toque em Receitas e na caixa de busca; digite o nome ou ID do resultado, ou ID da receita. Use as setas para percorrer resultados; toque nos ingredientes e resultado para identificá-los. Guia volta ao índice.
+
+guide.nexustech.page.processamento.11=Fornalha, triturador e compressor: fabrique pela aba Receitas, coloque a máquina e ligue cabo de energia a uma fonte de FE. Abra a GUI, insira material válido, espere e retire o produto.
+
+guide.nexustech.page.processamento.12=Prensa e fundidora: conecte FE, use os lingotes diretamente no bloco e espere. Para retirar o resultado, interaja com a mão vazia; para recuperar entrada, interaja agachado com mão vazia.
+
+guide.nexustech.page.processamento.13=Serraria, composteira e engarrafadora: conecte FE e use a entrada diretamente no bloco. A engarrafadora também exige fonte de água adjacente. Retire o produto com mão vazia; agachado recupera entradas.
+
+guide.nexustech.page.processamento.14=Se uma máquina não trabalha, procure sua receita de fabricação em Receitas e confira energia, ingrediente, quantidade e saída livre. Receitas internas de processamento não aparecem necessariamente no catálogo.
+
+guide.nexustech.page.automacao.9=Exemplo de cabo de itens: separe dois baús vanilla simples, sem outros baús encostados. Coloque itens no primeiro (origem) e deixe espaço no segundo (destino). Não use baú duplo nem baú com loot pendente.
+
+guide.nexustech.page.automacao.10=Coloque o cabo extrator azul encostado na origem; dele, ligue um ou mais cabos comuns cinza até encostar no destino. Caminho: origem → extrator azul → cabo cinza → destino. Não ligue o destino apenas ao extrator.
+
+guide.nexustech.page.automacao.11=O extrator procura origens nas faces adjacentes; o cabo cinza entrega em destinos adjacentes. Teste com um item e aguarde: o cabo verifica faces e slots aos poucos. Não é um cabo de energia.
+
+guide.nexustech.page.automacao.12=Com a chave de fenda na mão, interaja na face do cabo para bloquear ou desbloquear a conexão. Se não passar, confira as faces entre cabos e nas pontas. A conexão desenhada não garante compatibilidade.
+
+guide.nexustech.page.automacao.13=Para fabricar, procure Cabo de Itens, Cabo Extrator de Itens e Chave de Fenda em Receitas. O comum usa ferro e redstone; o extrator combina cabo comum, funil e lápis-lazúli; a chave usa ferro e graveto. Confira a grade no livro.
+
+guide.nexustech.page.automacao.14=Não transporta diretamente de ou para máquinas Nexus. Outros inventários só funcionam se seu handler for aceito. Verifique origem com itens, destino com espaço, faces abertas e chunks carregados, inclusive os vizinhos.
+
+guide.nexustech.page.automacao.15=A rede aceita até 128 cabos conectados; borda descarregada pode paralisar tudo. Se ainda falhar, teste apenas dois baús simples e um caminho curto. Não prometa transferência por conexão visual ou para baús duplos.
+
+guide.nexustech.page.equipamento.5=Em Receitas, pesquise separadamente Picareta tecnológica, Machado tecnológico e Pá tecnológica; ou use os IDs techtool_pickaxe, techtool_axe e techtool_shovel. Examine a grade e os nomes dos componentes antes de fabricar.
+
+guide.nexustech.page.equipamento.6=Cada receita usa a ferramenta correspondente de diamante, dois Componentes de Placa de Circuito de Cobre, um Componente de Engrenagem de Prata e um Componente de Armação de Cobre. Procure cada componente em Receitas para ver como fabricá-lo.
+
+guide.nexustech.page.equipamento.7=Picareta tecnológica é apropriada para materiais de rocha, ferro e bigorna. Machado tecnológico é apropriado para madeira, plantas e trepadeiras. A pá é apropriada para terra, grama, a
