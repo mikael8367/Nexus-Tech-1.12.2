@@ -1,0 +1,1 @@
+Experimento de reator, não integrado ao código ativo. NuclearController.java está dividido em partes em ordem numérica; concatenar sem inserir separadores para recuperar o arquivo exato. Os arquivos de idioma são EXCERTOS, não devem substituir arquivos de idioma inteiros. Não é build nem versão testada no jogo. Consultar docs/reator-controle-seguranca.md.
