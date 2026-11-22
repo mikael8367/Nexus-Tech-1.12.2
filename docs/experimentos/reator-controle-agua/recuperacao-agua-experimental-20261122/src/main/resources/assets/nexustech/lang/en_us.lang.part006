@@ -1,0 +1,34 @@
+th vanilla flowing water on at least two different horizontal sides. Still sources do not count; falling water does. All four horizontal neighboring blocks must be loaded.
+guide.nexustech.page.energia.11=Each renewable generator stores up to 16,000 FE and only outputs energy, up to 128 FE/t total across all faces. Connect a receiver or energy cable. Excess generation is lost when full; breaking the generator loses stored energy.
+guide.nexustech.page.energia.12=In Recipes, search wind_generator or hydro_generator to see the grid. Each uses 4 iron ingots, 1 redstone and 1 coal generator; wind uses 1 feather, hydrokinetic uses 1 water bucket.
+guide.nexustech.page.processamento.15=Recycler: supply FE. It converts 4 vanilla glass panes into 1 glass block, or 4 vanilla iron bars into 1 iron ingot. Use only one kind at a time.
+guide.nexustech.page.processamento.16=Purifier: supply FE and insert 2 vanilla rotten flesh to make 1 leather. These internal machine processes are not crafting recipes in the catalog.
+guide.nexustech.page.processamento.17=Recycler and Purifier have an interface: use the block to open it. Put ingredients in the input on the left and take products from the output on the right. The interface shows energy and progress.
+guide.nexustech.page.processamento.18=Each operation takes 80 working ticks and 20 FE/t, totaling 1,600 FE. Capacity: 20,000 FE. It pauses without energy; changing the input or blocking the output resets progress without refunding FE. Only the specified vanilla items without NBT and with metadata zero are accepted.
+guide.nexustech.page.processamento.19=In Recipes, search utility_recycler or utility_purifier to see the grids. Each uses 4 iron ingots and 2 redstone; recycler uses 2 iron bars and 1 hopper, purifier 2 glass blocks and 1 cauldron. The Nexus item cable does not transfer directly to or from these machines.
+tile.nexustech.tech_chest.name=Tech Chest
+gui.nexustech.tech_chest.page=Page %s
+tile.nexustech.double_tech_chest.name=Double Tech Chest
+
+item.nexustech.tech_bucket.name=Tech Bucket
+item.nexustech.tech_bucket.empty=Empty
+item.nexustech.tech_bucket.contents=%s: %s / %s mB
+item.nexustech.tech_bucket.help=Use: collect a source or take from a tank. Sneak and use: deposit into a tank. Cannot place fluid in the world.
+tile.nexustech.electric_anvil.name=Electric Anvil
+tile.electric_anvil.name=Electric Anvil
+gui.nexustech.electric_anvil.title=Electric Anvil
+item.hand_drill_3.name=3x3x3 Hand Drill
+item.hand_drill_5.name=5x5x5 Hand Drill
+item.hand_drill_10.name=10x10x10 Hand Drill
+tooltip.nexustech.hand_drill.disabled=Area mining disabled; single block only.
+nuclear.guard.on=Water: ON
+nuclear.guard.off=Water OFF
+nuclear.guard.hint1=Optional guard stops the reactor if water runs out.
+nuclear.guard.hint2=After cooling, refill; or disable and try restarting without water.
+nuclear.status.no_water=Guard: no water
+nuclear.status.full=Waiting: energy full
+nuclear.heat.hint1=Safety trip if heat is 1000 or more after tick cooling.
+nuclear.heat.hint2=After a trip, manual restart at 400 heat or below.
+nuclear.water.hint1=Generation consumes 1 mB per tick when water is present.
+nuclear.water.hint2=Water also assists cooling after a trip.
+nuclear.energy.hint=Generation pauses when 200 FE will not fit.
