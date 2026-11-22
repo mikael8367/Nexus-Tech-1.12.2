@@ -1,0 +1,113 @@
+# Candidato experimental, não aplicar sem revisão
+--- c39f1ee/MachineTile.java
++++ combined/MachineTile.java
+@@ -83,6 +83,12 @@
+ 
+     private boolean isOutputMachine() { return kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR || kind == Kind.LAVA_GENERATOR; }
+ 
++    // Cached capabilities must not act through a replacement at the same position.
++    private boolean liveServerTile() {
++        return world != null && pos != null && !world.isRemote && !isInvalid()
++                && world.isBlockLoaded(pos) && world.getTileEntity(pos) == this;
++    }
++
+     @Override public boolean hasCapability(Capability<?> capability, @Nullable EnumFacing facing) {
+         return capability == CapabilityEnergy.ENERGY || (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY && inventory.getSlots() > 0) || super.hasCapability(capability, facing);
+     }
+@@ -95,7 +101,7 @@
+         private final EnumFacing side;
+         Storage(EnumFacing side) { this.side = side; }
+         @Override public int receiveEnergy(int maxReceive, boolean simulate) {
+-            if (maxReceive <= 0 || world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer || !canReceive()) return 0;
++            if (maxReceive <= 0 || energyTransfer || !liveServerTile() || !canReceive()) return 0;
+             // A cable cannot safely identify an unsided caller to exclude it from the network.
+             if (kind == Kind.CABLE) return side == null ? 0
+                     : EnergyNetwork.send(world, pos, pos.offset(side), maxReceive, simulate, false);
+@@ -104,7 +110,7 @@
+             return n;
+         }
+         @Override public int extractEnergy(int maxExtract, boolean simulate) {
+-            if (maxExtract <= 0 || world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer || !canExtract()) return 0;
++            if (maxExtract <= 0 || energyTransfer || !liveServerTile() || !canExtract()) return 0;
+             // Without a side the requesting block cannot be identified safely.
+             if (kind == Kind.CABLE) return side == null ? 0
+                     : EnergyNetwork.pull(world, pos, pos.offset(side), maxExtract, simulate, true);
+@@ -128,7 +134,7 @@
+         @Override public boolean canReceive() { return (kind == Kind.CABLE && side != null) || kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR; }
+     }
+     @Override public void update() {
+-        if (world == null || world.isRemote || !world.isBlockLoaded(pos) || energyTransfer) return;
++        if (energyTransfer || !liveServerTile()) return;
+         switch (kind) {
+             case SOLAR:
+                 if (world.provider.hasSkyLight() && world.isDaytime() && !world.isRaining() && !world.isThundering() && world.isBlockLoaded(pos.up()) && world.canSeeSky(pos.up()) && world.getLightFor(EnumSkyBlock.SKY, pos.up()) >= 15) MachineTileLogic.generate(this, 20);
+@@ -140,31 +146,45 @@
+             case LAVA_GENERATOR: MachineTileLogic.tickLavaGenerator(this); break;
+             default: break;
+         }
++        if (!liveServerTile()) return;
+         if (kind == Kind.BATTERY || kind == Kind.FURNACE || kind == Kind.CRUSHER || kind == Kind.COMPRESSOR) {
+             int request = Math.min(capacity - energy, kind == Kind.BATTERY ? 128 : 100);
+             if (request > 0) {
+                 energyTransfer = true;
+                 try {
+                     int received = EnergyNetwork.pull(world, pos, pos, request, false, kind != Kind.BATTERY);
+-                    if (received > 0) { energy += received; markDirty(); }
++                    if (received > 0) {
++                        energy = (int) Math.max(0L, Math.min((long) capacity, (long) energy + received));
++                        markDirty();
++                    }
+                 } finally { energyTransfer = false; }
+             }
+         }
++        if (!liveServerTile()) return;
+         if (kind == Kind.SOLAR || kind == Kind.TURBINE || kind == Kind.GENERATOR || kind == Kind.BATTERY || kind == Kind.LAVA_GENERATOR) {
+             int available = Math.min(energy, kind == Kind.BATTERY ? 128 : 100);
+             if (available > 0) {
+                 // Reserve before callbacks; no callback can use the same FE twice
+                 // or fill the reserved space before the unused portion is returned.
+                 energyTransfer = true;
+-                energy -= available;
+-                markDirty();
+                 int moved = 0;
+                 try {
+-                    moved = EnergyNetwork.send(world, pos, pos, available, false, kind == Kind.BATTERY);
+-                } finally {
+-                    energy += available - moved;
++                    energy -= available;
+                     markDirty();
+-                    energyTransfer = false;
++                    // If send throws after an endpoint mutates, its result is unknown.
++                    // Conservatively consume the reservation rather than duplicate FE.
++                    if (liveServerTile()) {
++                        moved = available;
++                        moved = EnergyNetwork.send(world, pos, pos, available, false, kind == Kind.BATTERY);
++                    }
++                } finally {
++                    try {
++                        energy = (int) Math.max(0L, Math.min((long) capacity,
++                                (long) energy + available - moved));
++                        markDirty();
++                    } finally {
++                        energyTransfer = false;
++                    }
+                 }
+             }
+         }
+@@ -178,7 +198,8 @@
+     }
+     @Override public void readFromNBT(NBTTagCompound nbt) {
+         super.readFromNBT(nbt);
+-        energy = Math.max(0, Math.min(capacity, nbt.getInteger("Energy")));
++        // Refuse stale in-flight energy replacement, preserving the reservation.
++        if (!energyTransfer) energy = Math.max(0, Math.min(capacity, nbt.getInteger("Energy")));
+         burn = Math.max(0, nbt.getInteger("Burn")); burnTotal = Math.max(0, nbt.getInteger("BurnTotal"));
+         cook = Math.max(0, Math.min(FURNACE_TIME - 1, nbt.getInteger("Cook")));
+         if (nbt.hasKey("Inventory", 10)) {
+@@ -190,5 +211,5 @@
+         cookingInput = nbt.hasKey("CookingInput", 10) ? new ItemStack(nbt.getCompoundTag("CookingInput")) : ItemStack.EMPTY;
+     }
+     int field(int index) { switch (index) { case 0: return energy; case 1: return burn; case 2: return burnTotal; case 3: return cook; default: return 0; } }
+-    void setField(int index, int value) { switch (index) { case 0: energy = value; break; case 1: burn = value; break; case 2: burnTotal = value; break; case 3: cook = value; break; default: break; } }
++    void setField(int index, int value) { switch (index) { case 0: if (!energyTransfer) energy = value; break; case 1: burn = value; break; case 2: burnTotal = value; break; case 3: cook = value; break; default: break; } }
+ }
