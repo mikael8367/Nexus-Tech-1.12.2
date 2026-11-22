@@ -4,10 +4,14 @@ import com.mikael8367.nexustech.NexusTech;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockHorizontal;
 import net.minecraft.block.material.Material;
+import net.minecraft.block.material.EnumPushReaction;
 import net.minecraft.block.properties.PropertyDirection;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
+import net.minecraft.world.Explosion;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
@@ -38,4 +42,35 @@ public final class FluidPumpBlock extends Block {
     }
     @Override public boolean hasTileEntity(IBlockState state) { return true; }
     @Override public TileEntity createTileEntity(World world, IBlockState state) { return new FluidPumpTile(); }
+    @Override public void onBlockPlacedBy(World world, BlockPos pos, IBlockState state,
+                                          EntityLivingBase placer, ItemStack stack) {
+        super.onBlockPlacedBy(world, pos, state, placer, stack);
+        if (world.isRemote || !world.isBlockLoaded(pos) || world.getBlockState(pos).getBlock() != this) return;
+        TileEntity tile = world.getTileEntity(pos);
+        if (tile instanceof FluidPumpTile && tile.getWorld() == world && pos.equals(tile.getPos())) {
+            ((FluidPumpTile) tile).initializeNewPlacement();
+        }
+    }
+
+    /** Guard player, vanilla piston, and explosion hooks, including empty pumps.
+     * Commands, setBlockState and mod-specific removal bypass these hooks. Break
+     * events/tool callbacks may already have run; this is not crash persistence. */
+    @Override public boolean removedByPlayer(IBlockState state, World world, BlockPos pos,
+                                              EntityPlayer player, boolean willHarvest) {
+        // Best-effort server resync after speculative client actions; never query a tile.
+        if (world != null && !world.isRemote && pos != null) {
+            try {
+                if (world.isBlockLoaded(pos)) {
+                    IBlockState actual = world.getBlockState(pos);
+                    world.notifyBlockUpdate(pos, actual, actual, 3);
+                }
+            } catch (RuntimeException unavailable) { /* rejection remains authoritative */ }
+        }
+        return false;
+    }
+
+    @Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.BLOCK; }
+    // Explosion drops are evaluated before onBlockExploded, including for empty pumps.
+    @Override public boolean canDropFromExplosion(Explosion explosion) { return false; }
+    @Override public void onBlockExploded(World world, BlockPos pos, Explosion explosion) { /* retain block */ }
 }
