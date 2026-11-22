@@ -1,0 +1,13 @@
+tack");
+  eq(c.inventory.getStackInSlot(0).getCount(),3,"stock probe restores stack into removed tile");
+ }
+ static void tickDelivery()throws Exception{
+  W w=world();w.allow=true;w.tile.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL,2));
+  NuclearRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));
+  w.time=19;NuclearRecovery.worldTick(new net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent(net.minecraftforge.fml.relauncher.Side.SERVER,net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END,w));
+  eq(w.spawned.size(),0,"no retry off cadence");w.time=20;
+  NuclearRecovery.worldTick(new net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent(net.minecraftforge.fml.relauncher.Side.SERVER,net.minecraftforge.fml.common.gameevent.TickEvent.Phase.START,w));eq(w.spawned.size(),0,"no retry at start phase");
+  NuclearRecovery.worldTick(new net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent(net.minecraftforge.fml.relauncher.Side.SERVER,net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END,w));eq(w.spawned.size(),1,"end tick retries delivery");
+ }
+ public static void main(String[] args)throws Exception{NuclearSafetyTest.main(args);rejectAndSave();reentryAndRealFuel();reentryDuringRemoval();indeterminateDelivery();saveDuringCallback();inventorySizeRecovery();reentryDuringBucket();guiReentry();reproduceForgeProbeHazard();tickDelivery();System.out.println("NuclearRecoveryTest: PASS");}
+}
