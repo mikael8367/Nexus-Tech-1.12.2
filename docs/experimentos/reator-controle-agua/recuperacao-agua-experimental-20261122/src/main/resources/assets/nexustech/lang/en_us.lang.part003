@@ -1,0 +1,42 @@
+kaxe; it works on the block in front, subject to permissions. Harvester: supply FE at crop level; upgrades increase speed, not area.
+guide.nexustech.lesson.7=Blue cable extracts from a compatible source and gray cable connects destinations. The screwdriver toggles faces. Item cables do not work with Nexus machines or double chests; visible connections do not guarantee transfer.
+guide.nexustech.lesson.8=Tech tools: hold the tool in your main hand and use the configurable G key to open speed and area settings. On touch controls, configure or map that key in your launcher. Some restrictions prevent area mining.
+guide.nexustech.lesson.9=This catalog shows registered Nexus Tech namespace crafting recipes, including variants. Alternatives cycle in the same cell; special recipes of unknown layout are marked without a grid. It does not craft items or change your inventory.
+
+# Guide chapters and pages: keys are consumed by GuideBookContent.
+guide.nexustech.chapter.inicio=Getting started
+guide.nexustech.page.inicio.0=To craft the Nexus Tech Guide, place in one crafting-table column: 1 vanilla book on top, 1 redstone dust in the middle and 1 iron ingot at the bottom. Open the guide and search recipes by name or ID. The catalog shows Forge-registered crafting recipes, not every processing recipe.
+guide.nexustech.page.inicio.1=In the catalog tap ingredients and output to identify them; each square is one ingredient and the output number is the quantity. Alternatives cycle. A ? marks an ingredient with no registered alternatives; special recipes may lack a grid. It includes Nexus recipes and other crafting recipes producing Nexus items.
+guide.nexustech.page.inicio.2=Start by mining, smelting ores, crafting a generator and a machine. Carry Forge Energy (FE) by cable; check machine input, output and status.
+guide.nexustech.chapter.minerios=Ores and layers
+guide.nexustech.page.minerios.0=Nexus ores generate in dimension 0 (Overworld), in stone, during chunk generation. Explore newly generated chunks; neither every chunk nor every vein is guaranteed.
+guide.nexustech.page.minerios.1=Read Y on the F3 debug screen if available. On a mobile launcher, map F3 or use a coordinates feature. Y is height, not X or Z.
+guide.nexustech.page.minerios.2=Inclusive heights: copper Y 40–96; tin 32–80; aluminum 32–96; zinc 24–72. Smelting each Nexus ore produces its ingot.
+guide.nexustech.page.minerios.3=Inclusive heights: nickel Y 8–48; silver 5–40; lead 8–48; uranium 4–28; titanium 4–24; tungsten 4–20.
+guide.nexustech.page.minerios.4=Use a stone pickaxe or better for copper, tin, aluminum and zinc; iron or better for nickel, silver, lead, uranium and titanium; diamond or better for tungsten.
+guide.nexustech.page.minerios.5=Nexus does not generate these ores in the Nether or End. Its generator replaces only vanilla stone; caves and other blocks can interrupt veins.
+guide.nexustech.chapter.energia=Power and solar
+guide.nexustech.page.energia.0=Coal generator: insert furnace fuel. Lava generator: insert a lava bucket and collect the empty bucket. Energy cables carry FE; batteries store FE.
+guide.nexustech.page.energia.1=Simple solar panel: needs daytime, visible sky and clear weather. Turbine: needs flowing vanilla water on an adjacent face, not just a still source.
+guide.nexustech.page.energia.2=Nexus 3x3 solar: place 1 controller on the ground, stack 2 poles above it and put 9 modules in a centered 3x3 layer above them. Craft modules using the catalog.
+guide.nexustech.page.energia.3=For 3x3 solar, check structure, daytime, clear weather and sky above modules. Connect power at the controller and tap it for status; do not overlap structures.
+guide.nexustech.page.energia.4=There is also a compact one-block large panel and advanced and elite batteries. The panel needs sky, daytime and clear weather; search recipes by name.
+guide.nexustech.chapter.processamento=Processing
+guide.nexustech.page.processamento.0=Electric furnace: supply FE and insert an item with a furnace recipe. Wait and collect the output. Nexus ores can be smelted into ingots.
+guide.nexustech.page.processamento.1=Electric crusher: cobblestone becomes gravel; gravel becomes sand; vanilla iron or gold ore becomes 2 matching ingots. Do not assume it doubles Nexus ores.
+guide.nexustech.page.processamento.2=Electric compressor: 9 coal, 9 iron ingots or 9 gold ingots become the matching block; 4 clay balls become a clay block.
+guide.nexustech.page.processamento.3=GUI-less press: supply FE and use a copper or tin ingot on it; use an empty hand to collect the plate. Sneak with an empty hand to recover inputs.
+guide.nexustech.page.processamento.4=GUI-less alloy smelter: insert 3 copper and 1 tin for 4 bronze, or 3 copper and 1 zinc for 4 brass. Empty hand collects output; sneak to recover inputs.
+guide.nexustech.page.processamento.5=Sawmill: a vanilla log becomes 6 planks. Composter: 8 matching vanilla seeds or saplings become bone meal. Bottler: an empty bottle and adjacent water source yield a water bottle.
+guide.nexustech.page.processamento.6=Sawmill, composter and bottler need FE and have no GUI: use the input on the machine, empty hand collects output, sneak to recover input.
+guide.nexustech.chapter.automacao=Automation and cables
+guide.nexustech.page.automacao.0=Blue extractor cable looks for an adjacent source; ordinary gray cable connects the network to destinations. The screwdriver toggles the touched face.
+guide.nexustech.page.automacao.1=Important: item cable does not work with Nexus machines or double chests. It accepts simple vanilla chests without pending loot and few compatible handlers. A visible connection does not guarantee transfer.
+guide.nexustech.page.automacao.2=Oversized networks or unloaded boundaries can stop; keep chunks loaded. Item cable is different from energy cable.
+guide.nexustech.page.automacao.3=Block breaker: face the target block, supply FE and put a valid pickaxe in the GUI. It breaks permitted blocks in front; the tool wears and drops land in the world.
+guide.nexustech.page.automacao.4=The breaker cannot break liquids, unbreakable blocks or blocks with a tile entity. Claims may deny the synthetic player. On failure, check GUI and logs before intervening.
+guide.nexustech.page.automacao.5=Harvester: place beside crops at plant height; supply FE and collect outputs in its GUI. It checks a 9x9 area and attempts to replant; it accepts up to 50 speed upgrades.
+guide.nexustech.chapter.mina=Digital mine
+guide.nexustech.page.mina.0=Build a solid 3x3 footprint, 2 blocks tall: 1 controller in the middle of the lower front row and 17 casings filling every other position.
+guide.nexustech.page.mina.1=Open the controller, enable it and supply FE. The basic mine scans 17x17; the advanced one 25x25, below the controller down to Y 1. Fast mode costs more energy.
+guide.nexustech.page.mina.2=It searches blocks classified as ore in the Ore Dictionary; it does not reveal ores on a map. Unloaded chunks, permissions, invalid structure o
