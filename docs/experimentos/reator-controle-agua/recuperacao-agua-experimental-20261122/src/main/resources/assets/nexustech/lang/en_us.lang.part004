@@ -1,0 +1,62 @@
+r full output can stop mining.
+guide.nexustech.chapter.reator=Nuclear reactor
+guide.nexustech.page.reator.0=The reactor is under development. Check the structure and GUI messages in the installed version; safety, heat and production rules may change.
+guide.nexustech.page.reator.1=Build a solid 3x3 structure 5 blocks tall: 1 controller in the middle of the lower front row, facing outward; 1 core in the center of the third layer; fill the other 43 positions with nuclear casings.
+guide.nexustech.page.reator.2=Open the formed controller. Use only nuclear fuel or a Nexus uranium ingot in the fuel slot. Put a water bucket in the middle slot and remove the empty bucket on the right; the tank holds up to 8,000 mB and accepts water pipes. Press On.
+guide.nexustech.page.reator.3=Water helps cool the reactor and temperature does not drop below zero. After a safety shutdown (SCRAM), water speeds cooling above 400; wait until 400 or below and restart manually. Without water, the reactor can heat up.
+guide.nexustech.chapter.mobs=Mobs and transport
+guide.nexustech.page.mobs.0=Mob card: hold it in the offhand and directly kill an eligible mob. The first kill binds the type; only direct kills of that type count. Projectiles and machines do not count.
+guide.nexustech.page.mobs.1=Examples: pig, cow, zombie and skeleton require 20 kills; enderman, blaze, witch and cave spider 10; ghast 5. A completed card can be used in the generator.
+guide.nexustech.page.mobs.2=Mob generator: insert a completed card and supply FE; check space and nearby mob limits. Defaults are configurable on the server. Only certain vanilla mobs are accepted.
+guide.nexustech.page.mobs.3=Fan: place facing the corridor, supply FE and set speed and range in the GUI. It pushes items and living entities; walls, blocks and unloaded chunks can block airflow.
+guide.nexustech.page.mobs.4=Conveyor moves items and living entities in its direction. Spike crusher damages targets using FE; cards adjust damage, loot, fire or efficiency. Player protection is on by default.
+guide.nexustech.page.mobs.5=Fire cards add fire damage but do not guarantee ignition or cooked drops. Looting depends on loot tables and does not count as a player kill.
+guide.nexustech.chapter.equipamento=Equipment and parts
+guide.nexustech.page.equipamento.0=Tech tools: hold the tool in your main hand and press G to adjust speed and area. On mobile, map the key. Area mining obeys restrictions and permissions.
+guide.nexustech.page.equipamento.1=Tech armor: equip pieces normally. The helmet offers night vision; flight is not implemented. Other night-vision effects may interfere.
+guide.nexustech.page.equipamento.2=Tech circuit boards, coils, gears, frames, conductors, contacts, meshes, casings, panels and rotors are crafting components. Search their names in the catalog.
+guide.nexustech.chapter.ponte=Storage bridge
+guide.nexustech.page.ponte.0=The ProjectE–SSN bridge is experimental and diagnostic: it shows adjacency information, but does not transfer items or EMC or functionally connect the networks.
+
+# Structure diagrams
+guide.nexustech.structure.mine=Mine
+guide.nexustech.structure.reactor=Reactor
+guide.nexustech.structure.solar=Solar
+guide.nexustech.structure.back=Back
+guide.nexustech.structure.previous=< Layer
+guide.nexustech.structure.next=Layer >
+guide.nexustech.structure.advanced=Advanced
+guide.nexustech.structure.basic=Basic
+guide.nexustech.structure.to_layers=Layers
+guide.nexustech.structure.to_overview=Overview
+guide.nexustech.structure.title_overview=%s - 3D, separated layers
+guide.nexustech.structure.title_layer=%s - layer %s/%s (bottom to top)
+guide.nexustech.structure.models=3D item models; icons are not oriented
+guide.nexustech.structure.front_hint=F = front of controller
+guide.nexustech.structure.solar_hint=No front; clear sky, daytime, no rain
+guide.nexustech.structure.to_summary=Summary
+guide.nexustech.structure.summary_title=%s - total materials
+guide.nexustech.structure.summary_help=Tap Layers to build
+guide.nexustech.structure.grid_top=Top view: back is at the top
+guide.nexustech.structure.grid_orientation=From inside, look toward controller front
+guide.nexustech.structure.grid_front=V FRONT V
+guide.nexustech.structure.pos_controller=Layer 1: front, center
+guide.nexustech.structure.pos_core=Layer 3: grid center
+guide.nexustech.structure.pos_rest=All other cells
+guide.nexustech.structure.pos_front_center=Front, center
+guide.nexustech.structure.pos_middle=Grid center
+guide.nexustech.structure.pos_other_cells=Other cells in this layer
+guide.nexustech.structure.pos_all_cells=All cells in this layer
+guide.nexustech.page.inicio.3=In Contents, tap a chapter. If it is not shown, use < or > to change the list; << and >> go to its beginning and end. Inside a chapter, < and > move through pages and parts; tap Contents to return.
+guide.nexustech.page.inicio.4=Machine stopped? Check power, correct input and amount, output space and whether it is enabled. Check loaded chunks and permissions; for structures, check the assembly.
+guide.nexustech.page.energia.5=Rates while conditions are met: simple solar 20 FE/t, turbine 30 FE/t, compact large solar 64 FE/t and 3x3 solar array 576 FE/t.
+guide.nexustech.page.energia.6=Furnace-fuel generator: 40 FE/t while burning. Lava generator: 40 FE/t for 1,000 ticks per bucket, totaling 40,000 FE. Both pause burning if the buffer lacks space.
+guide.nexustech.page.energia.7=Basic battery holds 100,000 FE; advanced 1,000,000 FE; elite 10,000,000 FE. Advanced and elite are passive: a compatible device must push or pull energy.
+guide.nexustech.page.energia.8=3x3 solar not generating? Check for incomplete structure, unloaded chunk, overlap, no sun or obstructed sky. The compact panel also stops in rain or without sky access.
+guide.nexustech.page.processamento.7=Electric furnace, electric crusher and compressor use 20 FE per working tick and 200 ticks per operation: 4,000 FE. Low power pauses progress; blocked output may reset it.
+guide.nexustech.page.processamento.8=Press and alloy smelter use 20 FE per tick for 100 ticks: 2,000 FE per operation. They accept compatible Ore Dictionary ingots without extra tags or damage.
+guide.nexustech.page.processamento.9=Sawmill, composter and bottler use 20 FE per tick for 80 ticks: 1,600 FE per operation. The bottler needs adjacent vanilla source water; also check its output.
+guide.nexustech.page.processamento.10=In the compressor, use coal, not charcoal. In the composter, gather 8 matching wheat, beetroot, melon or pumpkin seeds, or vanilla saplings of the same species.
+guide.nexustech.page.automacao.6=In the harvester GUI, put the Speed Upgrade in its dedicated slot. Without upgrades it checks up to 8 positions every 20 ticks; with 50, every 5 ticks. This does not guarantee 8 harvests.
+guide.nexustech.page.automacao.7=Each successful harvest costs 200 FE. If it does not harvest, check mature compatible crops, output space, power, loaded chunks, permissions and the doTileDrops rule.
+guide.nex
