@@ -1,7 +1,15 @@
 package com.mikael8367.nexustech.fluidnetwork.pipe;
 
 import com.mikael8367.nexustech.NexusTech;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import net.minecraft.block.Block;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.PropertyBool;
 import net.minecraft.block.state.BlockStateContainer;
@@ -49,6 +57,106 @@ public final class FluidPipeBlock extends Block {
     // The model is narrower than a cube; do not cull adjacent faces as solid.
     @Override public boolean isOpaqueCube(IBlockState state) { return false; }
     @Override public boolean isFullCube(IBlockState state) { return false; }
+
+    private static final double CORE_LO = 4.0 / 16.0, CORE_HI = 12.0 / 16.0;
+    private static final double ARM_LO = 6.0 / 16.0, ARM_HI = 10.0 / 16.0;
+    private static final AxisAlignedBB CORE = new AxisAlignedBB(CORE_LO, CORE_LO, CORE_LO, CORE_HI, CORE_HI, CORE_HI);
+    private static final PropertyBool[] SIDES = {NORTH, SOUTH, EAST, WEST, UP, DOWN};
+    private static final AxisAlignedBB[] ARMS = {
+            new AxisAlignedBB(ARM_LO, ARM_LO, 0, ARM_HI, ARM_HI, CORE_LO),
+            new AxisAlignedBB(ARM_LO, ARM_LO, CORE_HI, ARM_HI, ARM_HI, 1),
+            new AxisAlignedBB(CORE_HI, ARM_LO, ARM_LO, 1, ARM_HI, ARM_HI),
+            new AxisAlignedBB(0, ARM_LO, ARM_LO, CORE_LO, ARM_HI, ARM_HI),
+            new AxisAlignedBB(ARM_LO, CORE_HI, ARM_LO, ARM_HI, 1, ARM_HI),
+            new AxisAlignedBB(ARM_LO, 0, ARM_LO, ARM_HI, CORE_LO, ARM_HI)
+    };
+
+    // The Forge selection/legacy collision API admits only one AABB. Return the
+    // envelope there; actual entity collisions and ray targeting use the union.
+    @Override
+    public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess access, BlockPos pos) {
+        state = getActualState(state, access, pos);
+        AxisAlignedBB result = CORE;
+        for (int i = 0; i < SIDES.length; i++) {
+            if (state.getValue(SIDES[i])) result = result.union(ARMS[i]);
+        }
+        return result;
+    }
+
+    @Override
+    public void addCollisionBoxToList(IBlockState state, World world, BlockPos pos,
+            AxisAlignedBB query, List<AxisAlignedBB> boxes, Entity entity, boolean isActualState) {
+        if (!isActualState) state = getActualState(state, world, pos);
+        addCollisionBoxToList(pos, query, boxes, CORE);
+        for (int i = 0; i < SIDES.length; i++) {
+            if (state.getValue(SIDES[i])) addCollisionBoxToList(pos, query, boxes, ARMS[i]);
+        }
+    }
+
+    // Intersect and merge ray intervals: the common core/arm faces are internal,
+    // not valid hits even when the ray begins inside the pipe.
+    private static final class Interval {
+        double enter = Double.NEGATIVE_INFINITY, exit = Double.POSITIVE_INFINITY;
+        EnumFacing enterFace, exitFace;
+    }
+
+    private static Interval interval(AxisAlignedBB box, double[] start, double[] delta) {
+        double[] min = {box.minX, box.minY, box.minZ};
+        double[] max = {box.maxX, box.maxY, box.maxZ};
+        EnumFacing[] low = {EnumFacing.WEST, EnumFacing.DOWN, EnumFacing.NORTH};
+        EnumFacing[] high = {EnumFacing.EAST, EnumFacing.UP, EnumFacing.SOUTH};
+        Interval result = new Interval();
+        for (int axis = 0; axis < 3; axis++) {
+            if (delta[axis] == 0) {
+                if (start[axis] < min[axis] || start[axis] > max[axis]) return null;
+                continue;
+            }
+            double a = (min[axis] - start[axis]) / delta[axis];
+            double b = (max[axis] - start[axis]) / delta[axis];
+            EnumFacing in = low[axis], out = high[axis];
+            if (a > b) {
+                double swap = a; a = b; b = swap;
+                EnumFacing face = in; in = out; out = face;
+            }
+            if (a > result.enter) { result.enter = a; result.enterFace = in; }
+            if (b < result.exit) { result.exit = b; result.exitFace = out; }
+            if (result.enter > result.exit) return null;
+        }
+        return result;
+    }
+
+    @Override
+    public RayTraceResult collisionRayTrace(IBlockState state, World world, BlockPos pos,
+            Vec3d start, Vec3d end) {
+        state = getActualState(state, world, pos);
+        double[] origin = {start.x - pos.getX(), start.y - pos.getY(), start.z - pos.getZ()};
+        double[] delta = {end.x - start.x, end.y - start.y, end.z - start.z};
+        if ((delta[0] == 0 && delta[1] == 0 && delta[2] == 0)
+                || !Double.isFinite(delta[0]) || !Double.isFinite(delta[1]) || !Double.isFinite(delta[2])
+                || !Double.isFinite(origin[0]) || !Double.isFinite(origin[1]) || !Double.isFinite(origin[2])) return null;
+        List<Interval> intervals = new ArrayList<>(7);
+        Interval core = interval(CORE, origin, delta);
+        if (core != null) intervals.add(core);
+        for (int i = 0; i < SIDES.length; i++) if (state.getValue(SIDES[i])) {
+            Interval arm = interval(ARMS[i], origin, delta);
+            if (arm != null) intervals.add(arm);
+        }
+        Collections.sort(intervals, Comparator.comparingDouble(i -> i.enter));
+        for (int i = 0; i < intervals.size(); i++) {
+            Interval merged = intervals.get(i);
+            while (i + 1 < intervals.size() && intervals.get(i + 1).enter <= merged.exit) {
+                Interval next = intervals.get(++i);
+                if (next.exit > merged.exit) { merged.exit = next.exit; merged.exitFace = next.exitFace; }
+            }
+            if (merged.exit < 0) continue;
+            double t = merged.enter >= 0 ? merged.enter : merged.exit;
+            EnumFacing face = merged.enter >= 0 ? merged.enterFace : merged.exitFace;
+            if (t > 1 || face == null) return null;
+            return new RayTraceResult(new Vec3d(start.x + delta[0] * t,
+                    start.y + delta[1] * t, start.z + delta[2] * t), face, pos);
+        }
+        return null;
+    }
 
     @Override
     public IBlockState getActualState(IBlockState state, IBlockAccess access, BlockPos pos) {
