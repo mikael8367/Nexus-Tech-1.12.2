@@ -1,0 +1,81 @@
+learRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));
+  NuclearRecovery r=NuclearRecovery.get(w);eq(r.size(),3,"reentrant break while draining queues each slot once");
+  r.retry(w);eq(w.spawned.size(),3,"all three stacks delivered exactly once");eq(w.spawned.get(0).getCount(),3,"fuel count under reentry");eq(w.spawned.get(1).getCount(),1,"water bucket count under reentry");eq(w.spawned.get(2).getCount(),2,"empty bucket count under reentry");
+ }
+ static void indeterminateDelivery()throws Exception{
+  for(boolean after:new boolean[]{false,true}){
+   W w=world();w.allow=true;w.throwBefore=!after;w.throwAfter=after;
+   NuclearRecovery r=NuclearRecovery.get(w);r.enqueue(P,new ItemStack(Items.DIAMOND,3));r.retry(w);
+   eq(w.spawned.size(),after?1:0,"side effect before throw");eq(r.size(),1,"ambiguous entry retained");
+   NBTTagCompound saved=r.writeToNBT(new NBTTagCompound());
+   ok(saved.getTagList("Entries",10).getCompoundTagAt(0).getBoolean("Quarantined"),"quarantine persisted");
+   NuclearRecovery loaded=new NuclearRecovery();loaded.readFromNBT(saved);w.throwBefore=false;w.throwAfter=false;
+   int attempts=w.attempts;loaded.retry(w);loaded.retry(w);eq(w.attempts,attempts,"ambiguous entry not retried after reload");
+   eq(w.spawned.size(),after?1:0,"no duplicate after throw");
+  }
+ }
+ static void saveDuringCallback()throws Exception{
+  for(int outcome=0;outcome<4;outcome++){
+   W w=world();w.saveDuringSpawn=true;w.allow=outcome!=0;w.throwAfter=outcome==2;w.errorAfter=outcome==3;
+   NuclearRecovery r=NuclearRecovery.get(w);r.enqueue(P,new ItemStack(Items.DIAMOND,3));
+   try{r.retry(w);if(outcome==3)throw new AssertionError("expected callback error");}catch(AssertionError expected){if(outcome!=3)throw expected;}
+   ok(w.spawnSnapshot!=null,"reentrant snapshot captured");
+   ok(w.spawnSnapshot.getTagList("Entries",10).getCompoundTagAt(0).getBoolean("Quarantined"),"in-flight entry is quarantined in save");
+   NuclearRecovery loaded=new NuclearRecovery();loaded.readFromNBT(w.spawnSnapshot);w.allow=true;w.throwAfter=false;w.errorAfter=false;
+   int attempts=w.attempts;loaded.retry(w);eq(w.attempts,attempts,"in-flight snapshot never auto retries");
+   eq(r.size(),outcome==1?0:1,"live queue after callback outcome");
+   if(outcome==0){w.saveDuringSpawn=false;r.retry(w);eq(r.size(),0,"normal rejection retries");}
+   else if(outcome>=2){r.retry(w);eq(w.attempts,attempts,"ambiguous result remains quarantined");}
+  }
+ }
+ static void inventorySizeRecovery()throws Exception{
+  for(int size:new int[]{0,1,3,9,1000000}){
+   W w=world();NuclearController c=w.tile;NBTTagCompound root=c.writeToNBT(new NBTTagCompound());
+   NBTTagCompound inv=new NBTTagCompound();inv.setInteger("Size",size);net.minecraft.nbt.NBTTagList list=new net.minecraft.nbt.NBTTagList();
+   ItemStack[] stacks={new ItemStack(Items.DIAMOND,3),new ItemStack(Items.WATER_BUCKET),new ItemStack(Items.BUCKET,2),new ItemStack(Items.EMERALD,4),new ItemStack(Items.GOLD_INGOT,5)};
+   int[] slots={0,1,2,5,0};
+   for(int i=0;i<stacks.length;i++){NBTTagCompound t=stacks[i].writeToNBT(new NBTTagCompound());t.setInteger("Slot",slots[i]);list.appendTag(t);}
+   inv.setTag("Items",list);root.setTag("Inventory",inv);c.readFromNBT(root);
+   eq(c.inventory.getSlots(),3,"fixed inventory size");eq(c.inventory.getStackInSlot(0).getCount(),3,"normal slot");
+   NBTTagCompound saved=c.writeToNBT(new NBTTagCompound());c.readFromNBT(saved);eq(c.inventory.getSlots(),3,"fixed size survives reload");
+   eq(saved.getTagList("RecoveryOverflow",10).tagCount(),2,"excess and duplicate saved");
+   NuclearRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));NuclearRecovery r=NuclearRecovery.get(w);eq(r.size(),5,"all normal and overflow stacks recovered");
+   w.allow=true;r.retry(w);eq(w.spawned.size(),5,"all five stacks delivered");eq(w.spawned.get(3).getCount(),4,"excess count");eq(w.spawned.get(4).getCount(),5,"duplicate count");
+  }
+ }
+ static void reentryDuringBucket()throws Exception{
+  W w=world();NuclearController c=w.tile;c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));w.bucketBreak=true;
+  c.update();ok(w.tile==null,"removed during fill callback");NuclearRecovery r=NuclearRecovery.get(w);eq(r.size(),1,"bucket result recovered after operation");
+  w.allow=true;r.retry(w);eq(w.spawned.size(),1,"one bucket delivered");ok(w.spawned.get(0).getItem()==Items.BUCKET,"empty bucket recovered");
+ }
+ static void guiReentry()throws Exception{
+  W w=world();NuclearController c=w.tile;c.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL,3));
+  w.parts=new java.util.HashMap<>();
+  for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+   if(x==0&&y==0&&d==0)continue;
+   BlockPos q=NuclearController.at(P,net.minecraft.util.EnumFacing.NORTH,x,y,d);NuclearPart part=new NuclearPart();part.setWorld(w);part.setPos(q);w.parts.put(q,part);
+  }
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);
+  net.minecraft.entity.player.EntityPlayer player=(net.minecraft.entity.player.EntityPlayer)((Unsafe)f.get(null)).allocateInstance(net.minecraft.client.entity.EntityOtherPlayerMP.class);
+  player.world=w;player.posX=.5;player.posY=64.5;player.posZ=.5;
+  net.minecraft.entity.player.InventoryPlayer inv=new net.minecraft.entity.player.InventoryPlayer(player){
+   @Override public void markDirty(){if(w.reenterOnDirty){w.reenterOnDirty=false;NuclearRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));}}
+  };
+  player.inventory=inv;NuclearContainer gui=new NuclearContainer(inv,c);
+  // These queries used to clear the handler temporarily and invoke markDirty.
+  w.reenterOnDirty=true;ok(gui.inventorySlots.get(0).isItemValid(new ItemStack(NuclearRegistry.FUEL)),"fuel valid");
+  eq(gui.inventorySlots.get(0).getItemStackLimit(new ItemStack(NuclearRegistry.FUEL)),64,"fuel limit");
+  ok(w.tile==c && w.reenterOnDirty,"GUI slot probes do not dirty or remove");
+  // Removal reenters when the player inventory is modified during shift-click.
+  gui.slotClick(0,0,net.minecraft.inventory.ClickType.QUICK_MOVE,player);ok(w.tile==null,"removed during GUI transfer");
+  int held=0;for(ItemStack stack:inv.mainInventory)if(!stack.isEmpty() && stack.getItem()==NuclearRegistry.FUEL)held+=stack.getCount();
+  NuclearRecovery r=NuclearRecovery.get(w);w.allow=true;r.retry(w);
+  int dropped=0;for(ItemStack stack:w.spawned)if(stack.getItem()==NuclearRegistry.FUEL)dropped+=stack.getCount();
+  eq(held+dropped,3,"GUI transfer conserves fuel during removal");
+ }
+ static void reproduceForgeProbeHazard()throws Exception{
+  W w=world();NuclearController c=w.tile;c.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL,3));
+  net.minecraftforge.items.SlotItemHandler stock=new net.minecraftforge.items.SlotItemHandler(c.inventory,0,0,0);
+  w.reenterOnDirty=true;stock.isItemValid(new ItemStack(NuclearRegistry.FUEL));
+  ok(w.tile==null,"stock Forge slot triggers reentrant removal");
+  eq(NuclearRecovery.get(w).size(),0,"stock probe loses temporarily hidden s
