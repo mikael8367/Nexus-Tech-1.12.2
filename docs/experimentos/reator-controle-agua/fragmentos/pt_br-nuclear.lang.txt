@@ -1,0 +1,27 @@
+nuclear.button.on=Ligar
+nuclear.button.off=Desligar
+nuclear.production=Produção
+nuclear.heat=Calor
+nuclear.fuel=Combustível
+nuclear.water=Água
+nuclear.status.scram=PARADA DE SEGURANÇA
+nuclear.status.unformed=Estrutura inválida
+nuclear.status.on=Ligado
+nuclear.status.off=Desligado
+nuclear.status.no_fuel=Sem urânio
+nuclear.fuel.hint=Insira lingote de urânio ou combustível nuclear
+nuclear.fuel.duration=1 unidade = 2400 ticks de geração
+guide.nexustech.chapter.reator=Reator nuclear
+guide.nexustech.page.reator.1=Monte um sólido de 3x3 e 5 de altura: 1 controlador no centro da frente inferior, com a face voltada para fora; 1 núcleo no centro da terceira camada; preencha as outras 43 posições com revestimentos nucleares.
+guide.nexustech.page.reator.2=Abra o controlador formado. No slot de combustível use apenas combustível nuclear ou lingote de urânio Nexus. No slot central coloque balde de água e retire o vazio à direita; o tanque aceita até 8.000 mB e tubos de água. Aperte Ligar.
+nuclear.guard.on=Água: SIM
+nuclear.guard.off=Água: NÃO
+nuclear.guard.hint1=Proteção opcional: para se a água acabar.
+nuclear.guard.hint2=Após esfriar, reponha; ou desative e tente ligar sem água.
+nuclear.status.no_water=Proteção: sem água
+nuclear.status.full=Espera: bateria cheia
+nuclear.heat.hint1=Parada se calor for 1000 ou mais após resfriar no tick.
+nuclear.heat.hint2=Após parada, reinício manual até 400 de calor.
+nuclear.water.hint1=Geração consome 1 mB por tick com água.
+nuclear.water.hint2=Água também ajuda no resfriamento após parada.
+nuclear.energy.hint=Geração pausa quando não cabe mais 200 FE.
