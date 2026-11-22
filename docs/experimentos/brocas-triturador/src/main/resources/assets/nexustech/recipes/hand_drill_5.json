@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    "GDP",
+    " F "
+  ],
+  "key": {
+    "C": {
+      "item": "nexustech:techitem_tin_circuit_board"
+    },
+    "G": {
+      "item": "nexustech:techitem_tin_gear"
+    },
+    "D": {
+      "item": "minecraft:diamond_pickaxe"
+    },
+    "P": {
+      "item": "nexustech:techitem_tin_circuit_board"
+    },
+    "F": {
+      "item": "nexustech:techitem_tin_frame"
+    }
+  },
+  "result": {
+    "item": "nexustech:hand_drill_5"
+  }
+}
