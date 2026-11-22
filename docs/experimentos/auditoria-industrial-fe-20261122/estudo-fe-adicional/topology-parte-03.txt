@@ -1,0 +1,57 @@
+# Fragmento experimental 3 de 3. Não aplicar isoladamente.
++                        }
++                        if (tile == null || endpoints.contains(next)
++                                || (sending && batterySource && tile instanceof MachineTile.Battery)
++                                || (!sending && !allowNexusBatteries && tile instanceof MachineTile.Battery)) continue;
++                        boolean calledReceive = false;
++                        try {
++                            if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                            IEnergyStorage storage = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
++                            if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                            if (storage == null) continue;
++                            boolean allowed = sending ? storage.canReceive() : storage.canExtract();
++                            if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                            if (!allowed) continue;
++                            if (sending && batterySource) {
++                                boolean extracts = false;
++                                for (EnumFacing face : EnumFacing.VALUES) {
++                                    IEnergyStorage output = tile.getCapability(CapabilityEnergy.ENERGY, face);
++                                    if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                                    if (output != null) {
++                                        boolean canExtract = output.canExtract();
++                                        if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                                        if (canExtract) { extracts = true; break; }
++                                    }
++                                }
++                                if (extracts) continue;
++                            }
++                            calledReceive = sending;
++                            int result = sending ? storage.receiveEnergy(amount - moved, simulate)
++                                    : storage.extractEnergy(amount - moved, simulate);
++                            // The call returned: subsequent world-query failures must not
++                            // convert a known partial return into an uncertain full debit.
++                            calledReceive = false;
++                            if (sending && result < 0 && !simulate) { moved = amount; break; }
++                            result = Math.max(0, Math.min(amount - moved, result));
++                            if (result > 0) { moved += result; endpoints.add(next); }
++                            // Even simulations and zero returns may mutate the graph.
++                            if (!t.endpointValid(current, next, tile)) { t.restarts++; continue restart; }
++                        } catch (RuntimeException error) {
++                            if (calledReceive && !simulate) moved = amount;
++                            endpoints.add(next);
++                            logEndpointFailure(next, error);
++                            // A throwing callback can also have changed the route.
++                            if (!t.routeValid(current)) { t.restarts++; continue restart; }
++                        }
++                        if (moved >= amount) break;
+                     }
+-                    if (moved >= amount) break;
+                 }
++                break;
+             }
+             return moved;
+         } catch (RuntimeException error) {
+-            // Preserve earlier successful sends if a later world query throws.
+             logEndpointFailure(origin, error);
+             return moved;
+         } finally { ACTIVE.remove(); }
