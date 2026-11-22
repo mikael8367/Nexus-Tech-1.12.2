@@ -8,8 +8,11 @@ import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.ChunkCache;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.IChunkProvider;
 
 /** Passive, bufferless pipe. It deliberately exposes no fluid capability. */
 public final class FluidPipeBlock extends Block {
@@ -43,29 +46,62 @@ public final class FluidPipeBlock extends Block {
     @Override public IBlockState getStateFromMeta(int meta) { return getDefaultState(); }
     @Override public int getMetaFromState(IBlockState state) { return 0; }
 
+    // The model is narrower than a cube; do not cull adjacent faces as solid.
+    @Override public boolean isOpaqueCube(IBlockState state) { return false; }
+    @Override public boolean isFullCube(IBlockState state) { return false; }
+
     @Override
     public IBlockState getActualState(IBlockState state, IBlockAccess access, BlockPos pos) {
         // Recompute every side, including when the caller passes an old actual state.
         state = state.withProperty(NORTH, false).withProperty(SOUTH, false)
                 .withProperty(EAST, false).withProperty(WEST, false)
                 .withProperty(UP, false).withProperty(DOWN, false);
-        // IBlockAccess (including the usual render ChunkCache) has no public
-        // loaded-chunk query. Do not guess or force-load through an unknown view.
-        if (!(access instanceof World) || pos == null) return state;
-        World world = (World) access;
-        if (!world.isBlockLoaded(pos)) return state;
-        return state.withProperty(NORTH, connects(world, pos, EnumFacing.NORTH))
-                .withProperty(SOUTH, connects(world, pos, EnumFacing.SOUTH))
-                .withProperty(EAST, connects(world, pos, EnumFacing.EAST))
-                .withProperty(WEST, connects(world, pos, EnumFacing.WEST))
-                .withProperty(UP, connects(world, pos, EnumFacing.UP))
-                .withProperty(DOWN, connects(world, pos, EnumFacing.DOWN));
+        if (access == null || pos == null || pos.getY() < 0 || pos.getY() >= 256) return state;
+        try {
+            if (access instanceof World) {
+                if (!((World) access).isBlockLoaded(pos)) return state;
+            } else if (access.getClass() == ChunkCache.class) {
+                // Exact Forge 1.12.2 cache: cached chunks only; absent or out of
+                // bounds returns AIR. Also reject an absent/out-of-bounds origin.
+                IBlockState origin = access.getBlockState(pos);
+                if (origin == null || origin.getBlock() != this) return state;
+            } else {
+                // Unknown wrappers/subclasses may force-load during a read.
+                return state;
+            }
+        } catch (RuntimeException unavailable) {
+            return state;
+        }
+        return state.withProperty(NORTH, connects(access, pos, EnumFacing.NORTH))
+                .withProperty(SOUTH, connects(access, pos, EnumFacing.SOUTH))
+                .withProperty(EAST, connects(access, pos, EnumFacing.EAST))
+                .withProperty(WEST, connects(access, pos, EnumFacing.WEST))
+                .withProperty(UP, connects(access, pos, EnumFacing.UP))
+                .withProperty(DOWN, connects(access, pos, EnumFacing.DOWN));
     }
 
-    private static boolean connects(World world, BlockPos pos, EnumFacing side) {
-        BlockPos neighbor = pos.offset(side);
-        if (!world.isBlockLoaded(neighbor)) return false;
-        Block block = world.getBlockState(neighbor).getBlock();
-        return block instanceof FluidPipeBlock || block instanceof FluidPumpBlock;
+    private static boolean connects(IBlockAccess access, BlockPos pos, EnumFacing side) {
+        try {
+            BlockPos neighbor = pos.offset(side);
+            IBlockState neighborState;
+            if (access instanceof World) {
+                World world = (World) access;
+                if (neighbor.getY() < 0 || neighbor.getY() >= 256 || !world.isBlockLoaded(neighbor)) return false;
+                // World.getBlockState can call provideChunk. Read only an existing
+                // chunk instead, so a change after isBlockLoaded cannot load one.
+                IChunkProvider provider = world.getChunkProvider();
+                if (provider == null) return false;
+                Chunk chunk = provider.getLoadedChunk(neighbor.getX() >> 4, neighbor.getZ() >> 4);
+                if (chunk == null) return false;
+                neighborState = chunk.getBlockState(neighbor);
+            } else {
+                neighborState = access.getBlockState(neighbor);
+            }
+            if (neighborState == null) return false;
+            Block block = neighborState.getBlock();
+            return block instanceof FluidPipeBlock || block instanceof FluidPumpBlock;
+        } catch (RuntimeException unavailable) {
+            return false;
+        }
     }
 }
