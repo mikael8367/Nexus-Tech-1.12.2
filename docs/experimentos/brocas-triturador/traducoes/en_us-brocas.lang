@@ -1,0 +1,4 @@
+item.hand_drill_3.name=3x3x3 Hand Drill
+item.hand_drill_5.name=5x5x5 Hand Drill
+item.hand_drill_10.name=10x10x10 Hand Drill
+tooltip.nexustech.hand_drill.disabled=Area mining disabled; single block only.
