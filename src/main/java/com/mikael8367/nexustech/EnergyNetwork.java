@@ -98,12 +98,12 @@ final class EnergyNetwork {
     static int send(World world, BlockPos origin, BlockPos excludedSource, int amount, boolean simulate, boolean batterySource) {
         if (world == null || world.isRemote || amount <= 0 || Boolean.TRUE.equals(ACTIVE.get()) || !world.isBlockLoaded(origin)) return 0;
         ACTIVE.set(true);
+        int moved = 0;
         try {
             Queue<BlockPos> queue = new ArrayDeque<>();
             Set<BlockPos> cables = new HashSet<>();
             Set<BlockPos> endpoints = new HashSet<>();
             queue.add(origin); cables.add(origin);
-            int moved = 0;
             while (!queue.isEmpty() && moved < amount) {
                 BlockPos current = queue.remove();
                 for (EnumFacing direction : EnumFacing.VALUES) {
@@ -118,6 +118,7 @@ final class EnergyNetwork {
                     // A block may expose different capabilities on different faces: only mark
                     // it visited after a face actually accepts energy.
                     if (endpoints.contains(next)) continue;
+                    boolean calledReceive = false;
                     try {
                         IEnergyStorage receiver = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
                         if (receiver == null || !receiver.canReceive()) continue;
@@ -126,18 +127,27 @@ final class EnergyNetwork {
                         // Inspect every face because input and output may be sided.
                         // Conservatively let such endpoints pull, rather than push to them.
                         if (batterySource && exposesExtraction(tile)) continue;
+                        calledReceive = true;
                         int accepted = receiver.receiveEnergy(amount - moved, simulate);
+                        // An invalid negative response can hide a mutation, like a throw.
+                        // Account for the whole real offer rather than risk a refund.
+                        if (accepted < 0 && !simulate) { moved = amount; break; }
                         accepted = Math.max(0, Math.min(amount - moved, accepted));
                         if (accepted > 0) { moved += accepted; endpoints.add(next); }
                     } catch (RuntimeException error) {
-                        // A throwing endpoint may have mutated without reporting how much.
-                        // Skip its other faces; completed transfers remain accounted for.
+                        // Once real receive starts, its entire offer is uncertain. It may
+                        // lose FE, but must not be refunded or offered to another receiver.
+                        if (calledReceive && !simulate) moved = amount;
                         endpoints.add(next);
                         logEndpointFailure(next, error);
                     }
                     if (moved >= amount) break;
                 }
             }
+            return moved;
+        } catch (RuntimeException error) {
+            // Preserve earlier successful sends if a later world query throws.
+            logEndpointFailure(origin, error);
             return moved;
         } finally { ACTIVE.remove(); }
     }
