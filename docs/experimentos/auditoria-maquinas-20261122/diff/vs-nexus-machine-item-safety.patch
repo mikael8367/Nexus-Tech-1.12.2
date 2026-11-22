@@ -1,0 +1,66 @@
+--- nexus-machine-item-safety/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/ProcessingTile.java
++++ combined/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/ProcessingTile.java
+@@ -55,7 +55,7 @@
+    if(busy || !live() || slot<0 || slot>2 || amount<=0 || slots[slot].isEmpty()) return ItemStack.EMPTY;
+    busy=true; boolean changed=false;
+    try {
+-    ItemStack old=slots[slot], result=old.copy(); int n=Math.min(amount,old.getCount()); result.setCount(n);
++    ItemStack old=slots[slot], result=old.copy(); int n=Math.min(Math.min(amount,old.getCount()),old.getMaxStackSize()); result.setCount(n);
+     if(!simulate){ItemStack remaining=old.copy(); remaining.shrink(n); slots[slot]=remaining.isEmpty()?ItemStack.EMPTY:remaining; if(slot<2)progress=0; changed=true;}
+     return result;
+    } finally {finish(changed);}
+@@ -128,8 +128,22 @@
+  }
+  @Override public NBTTagCompound writeToNBT(NBTTagCompound tag){
+   super.writeToNBT(tag); tag.setInteger("Energy",energy);tag.setInteger("Progress",progress);
++  // Bind paid progress to machine and ingredients; this is validation, not authentication.
++  tag.setString("ProgressKind",kind.name());
++  for(int i=0;i<2;i++) if(kind.required(i)>0 && !slots[i].isEmpty()){
++   ItemStack identity=slots[i].copy();identity.setCount(1);NBTTagCompound n=new NBTTagCompound();identity.writeToNBT(n);tag.setTag("ProgressInput"+i,n);
++  }
+   NBTTagList list=new NBTTagList(); for(int i=0;i<3;i++)if(!slots[i].isEmpty()){NBTTagCompound n=new NBTTagCompound();slots[i].writeToNBT(n);n.setByte("Slot",(byte)i);list.appendTag(n);} tag.setTag("Inventory",list);return tag;
+  }
++ private boolean progressMatches(NBTTagCompound tag){
++  if(!kind.name().equals(tag.getString("ProgressKind")) || kind.result(slots[0],slots[1]).isEmpty())return false;
++  for(int i=0;i<2;i++) if(kind.required(i)>0){
++   if(!tag.hasKey("ProgressInput"+i,10))return false;
++   ItemStack identity=new ItemStack(tag.getCompoundTag("ProgressInput"+i));
++   if(identity.isEmpty() || !ItemStack.areItemsEqual(identity,slots[i]) || !ItemStack.areItemStackTagsEqual(identity,slots[i]))return false;
++  }
++  return true;
++ }
+  @Override public void readFromNBT(NBTTagCompound tag){
+   if(busy || dropped || pendingDrop)return;
+   busy=true;
+@@ -138,7 +152,8 @@
+    progress=Math.max(0,Math.min(TICKS-1,tag.getInteger("Progress")));
+    slots[0]=slots[1]=slots[2]=ItemStack.EMPTY;
+    NBTTagList list=tag.getTagList("Inventory",10);
+-   for(int i=0;i<list.tagCount();i++) { NBTTagCompound n=list.getCompoundTagAt(i);int slot=n.getByte("Slot") & 255;if(slot>=3)continue;ItemStack s=new ItemStack(n); if(!s.isEmpty()){s.setCount(Math.min(s.getCount(),Math.min(64,s.getMaxStackSize())));slots[slot]=s;} }
++   for(int i=0;i<list.tagCount();i++) { NBTTagCompound n=list.getCompoundTagAt(i);int slot=n.getByte("Slot") & 255;if(slot>=3)continue;ItemStack s=new ItemStack(n); if(!s.isEmpty())slots[slot]=s; }
++   if(progress>0 && !progressMatches(tag))progress=0;
+   } finally {busy=false;if(pendingDrop)flushDrops();}
+  }
+  public static final class StoneCutter extends ProcessingTile {public StoneCutter(){super(MachineKind.STONE_CUTTER);}}
+--- nexus-machine-item-safety/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/MachineKind.java
++++ combined/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/MachineKind.java
+@@ -13,7 +13,7 @@
+  private static boolean item(ItemStack s, Item i, int meta) { return !s.isEmpty() && s.getItem() == i && (meta < 0 ? s.getMetadata() >= 0 && s.getMetadata() <= 15 : s.getMetadata() == meta); }
+  private static boolean block(ItemStack s, net.minecraft.block.Block b, int meta) { return item(s, Item.getItemFromBlock(b), meta); }
+  public boolean accepts(int slot, ItemStack s) {
+-  if (s.isEmpty() || s.hasTagCompound() || s.getItem().hasContainerItem(s)) return false;
++  if (s == null || s.isEmpty() || s.hasTagCompound() || s.getItem().hasContainerItem(s)) return false;
+   if (slot == 1) return this == MOSS_ASSEMBLER ? block(s, Blocks.VINE, 0) : this == DYE_MIXER && item(s, Items.DYE, 2);
+   if (slot != 0) return false;
+   switch (this) {
+--- nexus-machine-item-safety/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java
++++ combined/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java
+@@ -109,7 +109,7 @@
+   FakeWorld d=world(false);ProcessingTile breaking=machine(MachineKind.BONE_MILL,d);IItemHandler bi=inv(breaking);bi.insertItem(0,new ItemStack(Items.BONE),false);charge(breaking,2000);tick(breaking,99);
+   d.onDirty=()->{ok(bi.getStackInSlot(0).isEmpty(),"callback sees ingredient consumed");same(bi.getStackInSlot(2),new ItemStack(Items.DYE,3,15),"callback sees complete result");ok(bi.extractItem(2,1,false).isEmpty(),"busy blocks callback extraction");breaking.requestDrops(d,POS);breaking.requestDrops(d,POS);};
+   tick(breaking,1);eq(d.drops.size(),1,"single drop");same(d.drops.get(0),new ItemStack(Items.DYE,3,15),"drop only result");ok(bi.extractItem(2,1,false).isEmpty(),"broken stale handler");breaking.requestDrops(d,POS);eq(d.drops.size(),1,"repeat break no duplication");
+-  FakeWorld n=world(false);ProcessingTile clamp=machine(MachineKind.BONE_MILL,n);NBTTagCompound bad=new NBTTagCompound();bad.setInteger("Energy",Integer.MAX_VALUE);bad.setInteger("Progress",Integer.MAX_VALUE);clamp.readFromNBT(bad);eq(energy(clamp).getEnergyStored(),20000,"NBT energy clamp");eq(clamp.progress(),99,"NBT progress clamp");
++  FakeWorld n=world(false);ProcessingTile clamp=machine(MachineKind.BONE_MILL,n);NBTTagCompound bad=new NBTTagCompound();bad.setInteger("Energy",Integer.MAX_VALUE);bad.setInteger("Progress",Integer.MAX_VALUE);clamp.readFromNBT(bad);eq(energy(clamp).getEnergyStored(),20000,"NBT energy clamp");eq(clamp.progress(),0,"unbound NBT progress reset");
+   Bootstrap.printToSYSOUT("PASS ten machines assertions="+assertions);
+  }
+ }
