@@ -1,0 +1,95 @@
+package com.mikael8367.nexustech.nuclear;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.storage.MapStorage;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
+import sun.misc.Unsafe;
+
+/** Runs real breakBlock/recovery against an isolated World with controllable spawns. */
+public final class NuclearRecoveryTest {
+ static final BlockPos P=new BlockPos(0,64,0);
+ static void ok(boolean value,String label){NuclearReactorTest.ok(value,label);}
+ static void eq(int actual,int expected,String label){NuclearReactorTest.eq(actual,expected,label);}
+ static class W extends World {
+  NuclearController tile; MapStorage storage; boolean allow,loaded,reenter,reenterOnDirty,throwBefore,throwAfter,bucketBreak,saveDuringSpawn,errorAfter; NBTTagCompound spawnSnapshot; int attempts; long time;
+  java.util.Map<BlockPos,TileEntity> parts;
+  public long getTotalWorldTime(){return time;}
+  List<ItemStack> spawned;
+  private W(){super(null,null,null,null,false);}
+  protected IChunkProvider createChunkProvider(){return null;}
+  protected boolean isChunkLoaded(int x,int z,boolean allow){return true;}
+  public boolean isBlockLoaded(BlockPos p){return loaded;}
+  public IBlockState getBlockState(BlockPos p){
+   if(parts==null || p.equals(P))return NuclearRegistry.CONTROLLER.getDefaultState();
+   if(!parts.containsKey(p))return net.minecraft.init.Blocks.AIR.getDefaultState();
+   return p.equals(NuclearController.at(P,net.minecraft.util.EnumFacing.NORTH,0,2,1))?NuclearRegistry.CORE.getDefaultState():NuclearRegistry.CASING.getDefaultState();
+  }
+  public TileEntity getTileEntity(BlockPos p){return parts==null || p.equals(P)?tile:parts.get(p);}
+  @Override public void notifyBlockUpdate(BlockPos p,IBlockState a,IBlockState b,int flags){}
+  public MapStorage getPerWorldStorage(){return storage;}
+  public void markChunkDirty(BlockPos p,TileEntity t){
+   if(bucketBreak && tile!=null && tile.water()==1000 && tile.inventory.getStackInSlot(1).isEmpty()){bucketBreak=false;NuclearRegistry.CONTROLLER.breakBlock(this,P,getBlockState(P));}
+   if(reenterOnDirty){reenterOnDirty=false;NuclearRegistry.CONTROLLER.breakBlock(this,P,getBlockState(P));}
+  }
+  public void removeTileEntity(BlockPos p){if(tile!=null){tile.invalidate();tile=null;}}
+  public boolean spawnEntity(Entity e){
+   attempts++;
+   if(saveDuringSpawn)spawnSnapshot=NuclearRecovery.get(this).writeToNBT(new NBTTagCompound());
+   if(reenter){reenter=false;NuclearRegistry.CONTROLLER.breakBlock(this,P,getBlockState(P));NuclearRecovery.get(this).retry(this);}
+   if(throwBefore)throw new IllegalStateException("spawn rejected by exception");
+   if(!allow)return false;
+   spawned.add(((EntityItem)e).getItem().copy());if(errorAfter)throw new AssertionError("spawn happened before error");if(throwAfter)throw new IllegalStateException("spawn happened before exception");return true;
+  }
+ }
+ static W world()throws Exception{
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);W w=(W)((Unsafe)f.get(null)).allocateInstance(W.class);
+  Field rand=World.class.getDeclaredField("rand");rand.setAccessible(true);rand.set(w,new Random(1));
+  Field provider=World.class.getDeclaredField("provider");provider.setAccessible(true);provider.set(w,new WorldProviderSurface());
+  w.storage=new MapStorage(null);w.spawned=new ArrayList<>();w.loaded=true;w.tile=new NuclearController();w.tile.setWorld(w);w.tile.setPos(P);return w;
+ }
+ static void rejectAndSave()throws Exception{
+  W w=world();NuclearController c=w.tile;
+  // Registered vanilla substitute exercises NBT when the isolated bootstrap has not registered the mod fuel.
+  c.inventory.setStackInSlot(0,new ItemStack(Items.DIAMOND,3));c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.inventory.setStackInSlot(2,new ItemStack(Items.BUCKET,2));
+  IItemHandler cached=c.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY,null);
+  IFluidHandler fluid=c.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY,null);
+  NuclearRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));NuclearRecovery r=NuclearRecovery.get(w);
+  ok(w.tile==null,"tile removed");eq(r.size(),3,"all three stacks queued");
+  for(int i=0;i<3;i++)ok(c.inventory.getStackInSlot(i).isEmpty(),"drained slot "+i);
+  eq(cached.insertItem(0,new ItemStack(NuclearRegistry.FUEL,2),false).getCount(),2,"stale item handler rejects insertion");
+  eq(fluid.fill(new FluidStack(FluidRegistry.WATER,1000),true),0,"stale fluid handler rejects insertion");
+  r.retry(w);eq(w.spawned.size(),0,"rejection has no spawned entities");eq(r.size(),3,"rejected stacks retained");
+  NBTTagCompound saved=r.writeToNBT(new NBTTagCompound());NuclearRecovery loaded=new NuclearRecovery();loaded.readFromNBT(saved);
+  eq(loaded.size(),3,"persisted queue restored");w.loaded=false;int before=w.attempts;loaded.retry(w);eq(w.attempts,before,"unloaded chunk never queried for spawn");
+  w.loaded=true;w.allow=true;loaded.retry(w);eq(loaded.size(),0,"successful delivery removes entries");eq(w.spawned.size(),3,"three delivered stacks");
+  eq(w.spawned.get(0).getCount(),3,"fuel substitute count persisted");eq(w.spawned.get(1).getCount(),1,"filled bucket persisted");eq(w.spawned.get(2).getCount(),2,"empty buckets persisted");
+  loaded.retry(w);eq(w.spawned.size(),3,"no replay after successful delivery");
+ }
+ static void reentryAndRealFuel()throws Exception{
+  W w=world();w.allow=true;w.reenter=true;w.tile.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL,3));
+  NuclearRegistry.CONTROLLER.breakBlock(w,P,w.getBlockState(P));NuclearRecovery r=NuclearRecovery.get(w);eq(r.size(),1,"real fuel queued");
+  r.retry(w);eq(w.spawned.size(),1,"reentrant break and retry deliver once");eq(w.spawned.get(0).getCount(),3,"no fuel duplication");ok(w.spawned.get(0).getItem()==NuclearRegistry.FUEL,"real fuel delivered");eq(r.size(),0,"queue cleared once");
+ }
+ static void reentryDuringRemoval()throws Exception{
+  W w=world();w.allow=true;NuclearController c=w.tile;
+  c.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL,3));c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.inventory.setStackInSlot(2,new ItemStack(Items.BUCKET,2));
+  w.reenterOnDirty=true;Nuc
