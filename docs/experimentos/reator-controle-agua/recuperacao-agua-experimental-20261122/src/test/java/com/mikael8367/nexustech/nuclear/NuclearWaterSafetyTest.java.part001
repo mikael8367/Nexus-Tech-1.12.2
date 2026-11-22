@@ -1,0 +1,92 @@
+package com.mikael8367.nexustech.nuclear;
+
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.HashSet;
+import net.minecraft.block.BlockHorizontal;
+import net.minecraft.init.Bootstrap;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.energy.CapabilityEnergy;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
+import sun.misc.Unsafe;
+
+/** Water regression tests run against actual controller and an isolated server world. */
+public final class NuclearWaterSafetyTest {
+ static void ok(boolean b,String m){if(!b)throw new AssertionError(m);}
+ static void eq(int a,int b,String m){if(a!=b)throw new AssertionError(m+": "+a+" != "+b);}
+ static final class CallbackWorld extends NuclearReactorTest.TestWorld {
+   Runnable callback;
+   @Override public void markChunkDirty(BlockPos p,net.minecraft.tileentity.TileEntity t){super.markChunkDirty(p,t); if(callback!=null){Runnable r=callback;callback=null;r.run();}}
+ }
+ // The lightweight TestWorld above intentionally does not exercise the WorldServer branch.
+ static final class ThreadWorld extends net.minecraft.world.WorldServer {
+   net.minecraft.server.MinecraftServer server; NuclearController controller; int reads;
+   ThreadWorld(){super(null,null,null,0,null);}
+   @Override public net.minecraft.server.MinecraftServer getMinecraftServer(){return server;}
+   @Override public boolean isBlockLoaded(BlockPos p){reads++;return true;}
+   @Override public net.minecraft.tileentity.TileEntity getTileEntity(BlockPos p){reads++;return controller;}
+   @Override public net.minecraft.block.state.IBlockState getBlockState(BlockPos p){reads++;return net.minecraft.init.Blocks.AIR.getDefaultState();}
+   @Override public void markChunkDirty(BlockPos p,net.minecraft.tileentity.TileEntity t){}
+ }
+ static void testServerThread() throws Exception {
+   Field unsafeField=Unsafe.class.getDeclaredField("theUnsafe");unsafeField.setAccessible(true);Unsafe u=(Unsafe)unsafeField.get(null);
+   ThreadWorld w=(ThreadWorld)u.allocateInstance(ThreadWorld.class);
+   w.server=(net.minecraft.server.MinecraftServer)u.allocateInstance(net.minecraft.server.dedicated.DedicatedServer.class);
+   Field thread=net.minecraft.server.MinecraftServer.class.getDeclaredField("serverThread");thread.setAccessible(true);thread.set(w.server,Thread.currentThread());
+   NuclearController c=new NuclearController();w.controller=c;c.setWorld(w);c.setPos(NuclearReactorTest.P);IFluidHandler f=fluid(c);
+   final int[] result={-1};Thread worker=new Thread(()->result[0]=f.fill(new FluidStack(FluidRegistry.WATER,1000),true));worker.start();worker.join();
+   eq(result[0],0,"WorldServer rejects off-thread fill");eq(w.reads,0,"off-thread call avoids world reads");eq(c.water(),0,"off-thread call does not fill");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,1000),false),1000,"server thread simulation allowed");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,1000),true),1000,"server thread fill allowed");eq(c.water(),1000,"server thread water committed");
+ }
+ static CallbackWorld world() throws Exception {
+   Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);
+   CallbackWorld w=(CallbackWorld)((Unsafe)f.get(null)).allocateInstance(CallbackWorld.class);
+   w.states=new HashMap<>();w.tiles=new HashMap<>();w.missing=new HashSet<>();return w;
+ }
+ static IFluidHandler fluid(NuclearController c){return c.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY,null);}
+ static NuclearController fresh(CallbackWorld w){return NuclearReactorTest.build(w,EnumFacing.NORTH);}
+ static void setup() throws Exception {
+   Bootstrap.register();
+   net.minecraft.tileentity.TileEntity.register("nexustech:nuclear_controller",NuclearController.class);
+   net.minecraft.tileentity.TileEntity.register("nexustech:nuclear_part",NuclearPart.class);
+   CapabilityEnergy.ENERGY=NuclearReactorTest.capability("test:energy");
+   CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY=NuclearReactorTest.capability("test:fluid");
+   CapabilityItemHandler.ITEM_HANDLER_CAPABILITY=NuclearReactorTest.capability("test:item");
+ }
+ static void testFluidRegressions() throws Exception {
+   CallbackWorld w=world(); NuclearController c=fresh(w); c.prepareForGui();
+   IFluidHandler f=fluid(c);
+   net.minecraftforge.fluids.capability.IFluidTankProperties[] props=f.getTankProperties();
+   ok(props[0].canFill() && !props[0].canDrain(),"tank properties directions");
+   ok(props[0].canFillFluidType(new FluidStack(FluidRegistry.WATER,1)),"properties accept water");
+   ok(!props[0].canFillFluidType(new FluidStack(FluidRegistry.LAVA,1)),"properties reject lava");
+   props[0]=null; ok(f.getTankProperties()[0]!=null,"properties array isolated");
+   int dirty=w.dirty; eq(f.fill(new FluidStack(FluidRegistry.WATER,1),false),1,"simulation amount");
+   eq(w.dirty,dirty,"simulation does not dirty"); eq(c.water(),0,"simulation empty");
+   c.scrammed=true;c.temperature=900;
+   w.callback=()->{ok(c.beginOperation(),"GUI not blocked by pipe fill");c.endOperation();c.update();};
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,1),true),1,"reentrant tick cannot corrupt fill result");
+   eq(c.water(),1,"nested tick did not consume filling water");eq(c.temperature,900,"nested tick deferred");
+   c.update();eq(c.water(),0,"normal next tick consumes coolant");eq(c.temperature,895,"normal next tick cooling");
+   FluidStack tagged=new FluidStack(FluidRegistry.WATER,500);tagged.tag=new NBTTagCompound();tagged.tag.setInteger("variant",1);
+   eq(f.fill(tagged,true),500,"tagged water accepted");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,500),true),500,"normal water merges after tagged");
+   c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.scrammed=false;c.update();
+   eq(c.water(),2000,"bucket merges after tagged water");
+   net.minecraftforge.fluids.FluidStack exposed=f.getTankProperties()[0].getContents();exposed.amount=5;eq(c.water(),2000,"tank contents returned as copy");
+   NBTTagCompound n=c.writeToNBT(new NBTTagCompound());
+   n.getCompoundTag("Tank").setInteger("Amount",Integer.MIN_VALUE);c.readFromNBT(n);eq(c.water(),0,"negative NBT amount discarded");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,1000),true),1000,"fill after corrupt NBT");
+   n=c.writeToNBT(new NBTTagCompound());n.getCompoundTag("Tank").setInteger("Amount",Integer.MAX_VALUE);c.readFromNBT(n);eq(c.water(),8000,"oversize NBT clamped");
+   n=c.writeToNBT(new NBTTagCompound());n.getCompoundTag("Tank").setString("FluidName","lava");c.readFromNBT(n);eq(c.water(),0,"nonwater NBT discarded");
+   n=c.writeToNBT(new NBTT
