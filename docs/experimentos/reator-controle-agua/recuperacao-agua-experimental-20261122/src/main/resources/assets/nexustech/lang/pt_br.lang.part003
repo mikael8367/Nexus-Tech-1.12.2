@@ -1,0 +1,39 @@
+or a carvão aceita combustível de fornalha; o de lava usa balde de lava. Conecte a fonte às máquinas com cabos de energia. A bateria armazena energia.
+guide.nexustech.lesson.2=O painel solar simples gera energia durante o dia sob céu visível. A turbina elétrica precisa de água corrente vanilla em um bloco adjacente. Procure os nomes em Receitas para fabricar cada peça.
+guide.nexustech.lesson.3=Painel solar Nexus 3x3: fabrique 1 controlador, 2 postes e 9 módulos. Coloque o controlador embaixo, os 2 postes empilhados acima e os 9 módulos em uma camada 3x3 centralizada sobre o poste. Os módulos são fabricados de 3 em 3.
+guide.nexustech.lesson.4=Para o painel 3x3 funcionar: dia, sem chuva ou tempestade, e céu livre acima de todos os módulos. Não sobreponha estruturas. Toque no controlador para ver energia e estado. Conecte o controlador ao cabo; módulos e postes não armazenam energia.
+guide.nexustech.lesson.5=Fornalha, triturador e compressor elétricos: ligue energia, abra a máquina e coloque uma entrada válida. Retire o resultado da saída. O compressor pode precisar de vários itens; receitas de processamento não são receitas da bancada mostradas aqui.
+guide.nexustech.lesson.6=Quebrador: forneça FE e picareta válida; trabalha no bloco à frente, respeitando permissões. Colhedora: forneça FE no nível das plantas; upgrades aumentam a velocidade, não a área.
+guide.nexustech.lesson.7=Cabo azul extrai de origem compatível e o cinza liga destinos. A chave de fenda alterna faces. Cabos de itens não funcionam com máquinas Nexus nem baús duplos; conexão visual não garante transporte.
+guide.nexustech.lesson.8=Ferramentas tecnológicas: segure a ferramenta na mão principal e use a tecla configurável G para abrir as opções de velocidade e área. Em controles de toque, configure ou mapeie essa tecla no seu lançador. Algumas restrições impedem mineração em área.
+guide.nexustech.lesson.9=Este catálogo mostra as receitas de bancada registradas no namespace Nexus Tech, inclusive variantes. Itens alternativos giram no mesmo espaço; receitas especiais sem formato conhecido são indicadas sem grade. Não cria itens nem altera seu inventário.
+
+# Guide chapters and pages: keys are consumed by GuideBookContent.
+guide.nexustech.chapter.inicio=Primeiros passos
+guide.nexustech.page.inicio.0=Para fabricar o Guia Nexus Tech, coloque na bancada, na mesma coluna: 1 livro normal em cima, 1 redstone no meio e 1 lingote de ferro embaixo. Abra o guia e busque receitas pelo nome ou ID. O catálogo mostra receitas de bancada registradas no Forge, não todas as de processamento.
+guide.nexustech.page.inicio.1=No catálogo, toque nos ingredientes e resultado para identificar; cada quadrado indica um ingrediente e o número no resultado indica a quantidade. Alternativas giram. Um ? indica ingrediente sem alternativas registradas; receitas especiais podem não mostrar a grade. Inclui receitas Nexus e outras de bancada que produzam itens Nexus.
+guide.nexustech.page.inicio.2=Comece minerando, fundindo minérios, fabricando gerador e máquina. Leve energia Forge Energy (FE) por cabo; confira entrada, saída e estado da máquina.
+guide.nexustech.chapter.minerios=Minérios e camadas
+guide.nexustech.page.minerios.0=Os minérios Nexus surgem na dimensão 0 (mundo normal), em pedra, durante a geração de chunks. Procure em chunks novos; não é garantido em cada chunk ou veia.
+guide.nexustech.page.minerios.1=Veja a coordenada Y na tela de depuração F3, se disponível. Em lançador de celular, mapeie F3 ou use um recurso de coordenadas. Y é altura, não X nem Z.
+guide.nexustech.page.minerios.2=Alturas inclusivas: cobre Y 40–96; estanho 32–80; alumínio 32–96; zinco 24–72. Fundir cada minério Nexus produz seu lingote.
+guide.nexustech.page.minerios.3=Alturas inclusivas: níquel Y 8–48; prata 5–40; chumbo 8–48; urânio 4–28; titânio 4–24; tungstênio 4–20.
+guide.nexustech.page.minerios.4=Use picareta de pedra ou melhor para cobre, estanho, alumínio e zinco; ferro ou melhor para níquel, prata, chumbo, urânio e titânio; diamante ou melhor para tungstênio.
+guide.nexustech.page.minerios.5=Esses minérios não são gerados pelo Nexus no Nether ou no End. O gerador substitui somente pedra vanilla; cavernas e outros blocos podem interromper veios.
+guide.nexustech.chapter.energia=Energia e solar
+guide.nexustech.page.energia.0=Gerador a carvão: insira combustível de fornalha. Gerador a lava: coloque balde de lava e retire o balde vazio. Cabos de energia levam FE; baterias armazenam FE.
+guide.nexustech.page.energia.1=Painel simples: precisa de dia, céu visível e tempo limpo. Turbina: precisa de água vanilla corrente em uma face adjacente, não apenas fonte parada.
+guide.nexustech.page.energia.2=Solar Nexus 3x3: coloque 1 controlador no chão, 2 postes empilhados acima e 9 módulos em camada 3x3 centralizada acima deles. Fabrique módulos pelo catálogo.
+guide.nexustech.page.energia.3=No solar 3x3, verifique estrutura, dia, tempo limpo e céu acima dos módulos. Conecte energia ao controlador e toque nele para ver o estado; não sobreponha estruturas.
+guide.nexustech.page.energia.4=Há também painel grande compacto de um bloco e baterias avançada e elite. O painel precisa de céu, dia e tempo limpo; consulte receitas pelo nome.
+guide.nexustech.chapter.processamento=Processamento
+guide.nexustech.page.processamento.0=Fornalha elétrica: forneça FE e insira algo que tenha receita de fornalha. Aguarde e retire a saída. Minérios Nexus podem ser fundidos para obter lingotes.
+guide.nexustech.page.processamento.1=Triturador elétrico: pedregulho vira cascalho; cascalho vira areia; minério vanilla de ferro ou ouro vira 2 lingotes correspondentes. Não pressupõe duplicar os minérios Nexus.
+guide.nexustech.page.processamento.2=Compressor elétrico: 9 carvões, 9 lingotes de ferro ou 9 de ouro viram o bloco correspondente; 4 bolas de argila viram bloco de argila.
+guide.nexustech.page.processamento.3=Prensa sem GUI: com FE, insira lingote de cobre ou estanho usando o item na máquina; retire placa com mão vazia. Agachado e mão vazia recupera entradas.
+guide.nexustech.page.processamento.4=Fundidora de ligas sem GUI: insira 3 cobres e 1 estanho para 4 bronzes, ou 3 cobres e 1 zinco para 4 latões. Mão vazia retira saída; agachado recupera entradas.
+guide.nexustech.page.processamento.5=Serraria: tronco vanilla vira 6 tábuas. Composteira: 8 sementes ou mudas vanilla iguais viram farinha de osso. Engarrafadora: frasco vazio e fonte de água adjacente produzem frasco de água.
+guide.nexustech.page.processamento.6=Serraria, composteira e engarrafadora recebem FE e não têm GUI: use entrada na máquina, mão vazia retira produto, agachado recupera entrada.
+guide.nexustech.chapter.automacao=Automação e cabos
+guide.nexustech.page.automacao.0=Cabo extrator azul procura uma origem adjacente; cabo comum cinza liga a rede aos destinos. A chave de fenda alterna a conexão na face tocada.
+guide.nexustech.page.automacao.1=Limite importante: cabo de itens não funciona com máquinas Nexus nem baús duplos. Aceita baús v
