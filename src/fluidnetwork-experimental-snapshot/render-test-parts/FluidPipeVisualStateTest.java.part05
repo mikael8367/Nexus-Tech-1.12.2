@@ -1,0 +1,13 @@
+lState(base, w, ORIGIN), 1 << i);
+            }
+        }
+        w.failure = new IllegalStateException("corruption");
+        mask(pipe.getActualState(base, w, ORIGIN), 0);
+        w.failure = null; w.fatal = new LinkageError("fatal");
+        try { pipe.getActualState(base, w, ORIGIN); throw new AssertionError("fatal error masked"); }
+        catch (LinkageError expected) { check(expected == w.fatal, "original fatal error"); }
+        check(!pipe.isOpaqueCube(base) && !pipe.isFullCube(base), "narrow pipe does not occlude like a cube");
+        cacheTests(pipe, pump, (Unsafe) unsafeField.get(null));
+        System.out.println("PASS 64 world + 64 real cache masks, bounds, pipe/pump, stale, unloaded, failures, occlusion");
+    }
+}
