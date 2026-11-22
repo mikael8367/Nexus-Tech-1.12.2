@@ -1,0 +1,58 @@
+ustech.page.automacao.8=For organized output, use the machine GUI and separate chests by product. Nexus item cable does not transport from Nexus machines; do not confuse it with other compatible automation.
+guide.nexustech.page.mina.3=If the mine stops, confirm it is enabled and formed, has power and space for drops, and that the area is loaded. Protected ores may be skipped due to permissions.
+guide.nexustech.page.reator.4=The GUI shows stored FE, production in FE/t, heat, remaining fuel, water and status. Invalid structure requires checking parts and chunks; no uranium requires accepted fuel.
+guide.nexustech.page.reator.5=When formed, enabled and with buffer space, it produces 200 FE/t. Each accepted fuel lasts 2,400 production ticks; the buffer holds 1,000,000 FE. Production pauses if another tick will not fit.
+guide.nexustech.page.reator.6=If heat is 1,000 or more after cooling in the tick, a safety shutdown occurs. After cooling to 400 or less, enable it manually. After loading the world, check its status and restart when safe; do not dismantle it hot.
+guide.nexustech.page.equipamento.3=On the G screen, the speed button cycles 4, 6 and 8; the area button cycles default, 1x2x1 and 3x3x3. Done closes the screen. Hold the tool in your main hand to open it.
+guide.nexustech.page.equipamento.4=For expanded mining, extra blocks must be appropriate, reachable and permitted; blocks with a tile entity are skipped. The tool takes normal wear; check its durability.
+
+guide.nexustech.page.inicio.5=For a recipe, tap Recipes and the search box; type the output name or ID, or the recipe ID. Use the arrows to browse results; tap ingredients and output to identify them. Guide returns to Contents.
+
+guide.nexustech.page.processamento.11=Furnace, crusher and compressor: craft via Recipes, place the machine and connect an energy cable to an FE source. Open its GUI, insert valid material, wait and take the output.
+
+guide.nexustech.page.processamento.12=Press and alloy smelter: connect FE, use the ingots directly on the block and wait. Interact with an empty hand to take output; sneak and interact with an empty hand to recover inputs.
+
+guide.nexustech.page.processamento.13=Sawmill, composter and water bottler: connect FE and use input directly on the block. The bottler also needs an adjacent water source. Take output with an empty hand; sneak to recover input.
+
+guide.nexustech.page.processamento.14=If a machine does not work, look up its crafting recipe in Recipes and check energy, ingredient, quantity and free output. Internal processing recipes do not necessarily appear in the catalog.
+
+guide.nexustech.page.automacao.9=Item cable example: separate two single vanilla chests, with no other chest touching either. Put items in the first (source) and leave space in the second (destination). Do not use double chests or chests with pending loot.
+
+guide.nexustech.page.automacao.10=Place the blue extractor cable against the source; connect one or more ordinary gray cables from it to the destination. Path: source → blue extractor → gray cable → destination. Do not attach the destination only to the extractor.
+
+guide.nexustech.page.automacao.11=The extractor looks for sources on adjacent faces; gray cable delivers to adjacent destinations. Test with one item and wait: faces and slots are checked gradually. This is not an energy cable.
+
+guide.nexustech.page.automacao.12=Holding the screwdriver, interact with a cable face to block or unblock the connection. If nothing moves, check the faces between cables and at both ends. A drawn connection does not guarantee compatibility.
+
+guide.nexustech.page.automacao.13=To craft, search Recipes for Item Cable, Item Extractor Cable and Screwdriver. The ordinary cable uses iron and redstone; the extractor combines ordinary cable, hopper and lapis lazuli; the screwdriver uses iron and a stick. Check the grids in the book.
+
+guide.nexustech.page.automacao.14=It does not transfer directly to or from Nexus machines. Other inventories work only if their handler is accepted. Check items in the source, space at the destination, open faces and loaded chunks, including neighbors.
+
+guide.nexustech.page.automacao.15=The network allows up to 128 connected cables; an unloaded boundary can stop it. If it still fails, test just two single chests and a short path. A visible connection or a double chest does not guarantee transfer.
+
+guide.nexustech.page.equipamento.5=In Recipes, search separately for Technological Pickaxe, Technological Axe and Technological Shovel; or use IDs techtool_pickaxe, techtool_axe and techtool_shovel. Inspect the grid and component names before crafting.
+
+guide.nexustech.page.equipamento.6=Each recipe uses the corresponding diamond tool, two Copper Circuit Board Components, one Silver Gear Component and one Copper Frame Component. Search each component in Recipes to see how to craft it.
+
+guide.nexustech.page.equipamento.7=The technological pickaxe is suitable for rock, iron and anvil materials. The technological axe is suitable for wood, plants and vines. The shovel is suitable for ground, grass, sand, snow and clay.
+
+guide.nexustech.page.equipamento.8=The 1x2x1 area also attempts the block directly above; 3x3x3 attempts neighboring blocks in a cube around the target. Extra blocks must be within reach and visible, no harder than the target, and pass harvest checks.
+
+guide.nexustech.page.equipamento.9=If the extra area does not work, check the tool in the main hand, mode in the G screen, suitable material, reach, line of sight, harvest level and permissions. Tile entity blocks are not extras; creative mode does not expand.
+
+guide.nexustech.page.equipamento.10=Speed 4, 6 or 8 applies only to suitable materials; on others it is 1. The tools use durability, not FE. Their registered harvest level is 3; this does not guarantee drops from every block.
+
+guide.nexustech.page.reator.7=The formed reactor can output up to 400 FE per tick total, shared across outputs. Connect a compatible energy network and check it can receive energy; generation is 200 FE/t, not 400.
+
+# Renewable generators and utility machines
+tile.nexustech.wind_generator.name=Wind Generator
+tile.nexustech.hydro_generator.name=Hydrokinetic Generator
+tile.nexustech.utility_recycler.name=Recycler
+tile.nexustech.utility_purifier.name=Purifier
+tooltip.nexustech.utilitymachines.0=Recycles glass panes and iron bars.
+tooltip.nexustech.utilitymachines.1=Purifies rotten flesh into leather.
+tooltip.nexustech.utilitymachines.controls=Use the machine to open its interface.
+tooltip.nexustech.utilitymachines.controls2=Put ingredients in the input and take products from the output.
+message.nexustech.utilitymachines.energy=Energy: %s / %s FE
+guide.nexustech.page.energia.9=Wind Generator: produces 24 FE/t at Y 80 or above if the dimension has sky and the block above is loaded and can see the sky. It works day or night, including in rain.
+guide.nexustech.page.energia.10=Hydrokinetic Generator: produces 32 FE/t wi
