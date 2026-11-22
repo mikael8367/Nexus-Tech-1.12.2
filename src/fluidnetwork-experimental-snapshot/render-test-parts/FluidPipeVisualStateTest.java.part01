@@ -1,0 +1,69 @@
+package com.mikael8367.nexustech.fluidnetwork.pipe;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import net.minecraft.block.Block;
+import net.minecraft.block.properties.PropertyBool;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Bootstrap;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.ChunkCache;
+import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.IChunkProvider;
+import sun.misc.Unsafe;
+
+/** Isolated regression; does not register or activate experimental blocks. */
+public final class FluidPipeVisualStateTest {
+    static final BlockPos ORIGIN = new BlockPos(15, 64, 15);
+    static final EnumFacing[] SIDES = {EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.EAST,
+            EnumFacing.WEST, EnumFacing.UP, EnumFacing.DOWN};
+    static final PropertyBool[] PROPS = {FluidPipeBlock.NORTH, FluidPipeBlock.SOUTH,
+            FluidPipeBlock.EAST, FluidPipeBlock.WEST, FluidPipeBlock.UP, FluidPipeBlock.DOWN};
+    static void check(boolean ok, String description) { if (!ok) throw new AssertionError(description); }
+    static final class W extends World {
+        Map<BlockPos, IBlockState> blocks;
+        Set<BlockPos> unloaded;
+        Map<String, Chunk> chunks;
+        int reads, tiles, chunkReads, loadedQueries;
+        boolean missingProvider, missingChunk;
+        IChunkProvider provider;
+        @Override public IChunkProvider getChunkProvider() { return missingProvider ? null : provider; }
+        @Override public Chunk getChunkFromChunkCoords(int x, int z) {
+            chunkReads++; return chunks.get(x + ":" + z);
+        }
+        RuntimeException failure;
+        Error fatal;
+        W() { super(null, null, null, null, false); }
+        @Override protected IChunkProvider createChunkProvider() { return null; }
+        @Override protected boolean isChunkLoaded(int x, int z, boolean empty) { return true; }
+        @Override public boolean isBlockLoaded(BlockPos pos) { return !unloaded.contains(pos); }
+        @Override public IBlockState getBlockState(BlockPos pos) {
+            check(isBlockLoaded(pos), "read unloaded position");
+            reads++;
+            if (failure != null) throw failure;
+            if (fatal != null) throw fatal;
+            IBlockState state = blocks.get(pos);
+            return state == null ? Blocks.AIR.getDefaultState() : state;
+        }
+        @Override public TileEntity getTileEntity(BlockPos pos) { tiles++; throw new AssertionError("tile access"); }
+    }
+    static W world() throws Exception {
+        Field f = Unsafe.class.getDeclaredField("theUnsafe"); f.setAccessible(true);
+        Unsafe unsafe = (Unsafe) f.get(null);
+        W w = (W) unsafe.allocateInstance(W.class);
+        w.blocks = new HashMap<>(); w.unloaded = new HashSet<>(); w.chunks = new HashMap<>();
+        DirectChunk direct = (DirectChunk) unsafe.allocateInstance(DirectChunk.class);
+        direct.owner = w;
+        w.provider = (IChunkProvider) Proxy.newProxyInstance(IChunkProvider.class.getClassLoader(),
+                new Class<?>[]{IChunkProvider.class}, (p, m, a) -> {
+                    if (m.getName().equals("getLoadedChunk")) {
+                        w.loade
