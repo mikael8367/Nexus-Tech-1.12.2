@@ -1,0 +1,76 @@
+package com.mikael8367.nexustech.experiment.tenmachines;
+
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.Callable;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.init.Bootstrap;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.energy.CapabilityEnergy;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
+import sun.misc.Unsafe;
+
+public final class TenMachinesTest {
+ static int assertions;
+ static final BlockPos POS=new BlockPos(0,64,0);
+ static void ok(boolean x,String msg){assertions++;if(!x)throw new AssertionError(msg);}
+ static void eq(int x,int y,String msg){ok(x==y,msg+" got="+x+" expected="+y);}
+ static final class FakeWorld extends World {
+  TileEntity tile; boolean loaded; Runnable onDirty; List<ItemStack> drops;
+  private FakeWorld(){super(null,null,null,null,false);}
+  protected IChunkProvider createChunkProvider(){return null;}
+  protected boolean isChunkLoaded(int x,int z,boolean allow){return loaded;}
+  @Override public boolean isBlockLoaded(BlockPos p){return loaded;}
+  @Override public TileEntity getTileEntity(BlockPos p){return tile;}
+  @Override public IBlockState getBlockState(BlockPos p){return Blocks.AIR.getDefaultState();}
+  @Override public void markChunkDirty(BlockPos p,TileEntity t){if(onDirty!=null){Runnable r=onDirty;onDirty=null;r.run();}}
+  @Override public boolean spawnEntity(Entity e){drops.add(((EntityItem)e).getItem().copy());return true;}
+  void put(ProcessingTile t){tile=t;t.setWorld(this);t.setPos(POS);}
+ }
+ static FakeWorld world(boolean remote)throws Exception{
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+  FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();
+  u.putBoolean(w,u.objectFieldOffset(World.class.getField("isRemote")),remote);
+  u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;
+ }
+ @SuppressWarnings("unchecked") static void caps()throws Exception{
+  Constructor<?> c=Capability.class.getDeclaredConstructors()[0];c.setAccessible(true);
+  CapabilityEnergy.ENERGY=(Capability<IEnergyStorage>)c.newInstance("test:energy",null,(Callable<IEnergyStorage>)()->null);
+  CapabilityItemHandler.ITEM_HANDLER_CAPABILITY=(Capability<IItemHandler>)c.newInstance("test:items",null,(Callable<IItemHandler>)()->null);
+ }
+ static IItemHandler inv(ProcessingTile t){return t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY,EnumFacing.UP);}
+ static IEnergyStorage energy(ProcessingTile t){return t.getCapability(CapabilityEnergy.ENERGY,EnumFacing.DOWN);}
+ static void charge(ProcessingTile t,int n){while(n>0){int got=energy(t).receiveEnergy(n,false);ok(got>0,"charge");n-=got;}}
+ static void tick(ProcessingTile t,int n){while(n-->0)t.update();}
+ static void same(ItemStack a,ItemStack b,String msg){ok(ItemStack.areItemsEqual(a,b) && a.getCount()==b.getCount(),msg+" got="+a+" expected="+b);}
+ static ProcessingTile machine(MachineKind k,FakeWorld w){ProcessingTile t=(ProcessingTile)ExperimentalRegistry.createTile(k);w.put(t);return t;}
+ static void runRecipe(MachineKind kind,ItemStack a,ItemStack b,ItemStack result)throws Exception{
+  FakeWorld w=world(false);ProcessingTile t=machine(kind,w);IItemHandler h=inv(t);
+  ok(h.insertItem(0,a,false).isEmpty(),kind+" input0");if(!b.isEmpty())ok(h.insertItem(1,b,false).isEmpty(),kind+" input1");
+  eq(energy(t).receiveEnergy(2000,true),1000,"rate simulate");eq(energy(t).getEnergyStored(),0,"simulate FE");
+  charge(t,2000);tick(t,99);eq(t.progress(),99,kind+" progress");eq(energy(t).getEnergyStored(),20,"FE at 99");ok(h.getStackInSlot(2).isEmpty(),"no early output");
+  tick(t,1);eq(t.progress(),0,"complete progress");eq(energy(t).getEnergyStored(),0,"2000 FE/cycle");same(h.getStackInSlot(2),result,kind+" result");
+  ok(h.getStackInSlot(0).isEmpty() && h.getStackInSlot(1).isEmpty(),"ingredients consumed");
+  eq(h.extractItem(2,64,true).getCount(),result.getCount(),"simulate extraction");same(h.getStackInSlot(2),result,"simulate unchanged");
+  h.getStackInSlot(2).setCount(0);same(h.getStackInSlot(2),result,"defensive copy");
+  eq(h.extractItem(2,64,false).getCount(),result.getCount(),"real extraction");
+ }
+ public static void main(String[] args)throws Exception{
+  Bootstrap.register();caps();ExperimentalRegistry.registerTiles();
+  eq(ExperimentalRegistry.blocks().size(),10,"10 blocks");Set<Class<?>> classes=new HashSet<>();for(MachineKind k:MachineKind.values()){ok(ExperimentalRegistry.blocks().get(k).getRegistryName().toString().equals("nexustech:"+k.id),"registry id");ok(classes.add(ExperimentalRegistry.createTile(k).getClass()),"unique tile class");}
+  runRecipe(MachineKind.STONE_CUTTER,new ItemStack(Blocks.STONE,4,0),ItemStack.EMPTY,new ItemStack(Blocks.STONEBRICK,4,0));
+  runRecipe(MachineKind.MOSS_ASSEMBLER,new ItemStack(B
