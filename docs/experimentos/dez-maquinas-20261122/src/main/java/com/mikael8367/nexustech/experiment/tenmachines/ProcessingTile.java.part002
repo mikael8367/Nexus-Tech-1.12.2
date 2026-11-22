@@ -1,0 +1,43 @@
+toImmutable();
+  if(!busy)flushDrops();
+ }
+ private void flushDrops(){
+  if(!pendingDrop || dropped)return;
+  World w=dropWorld; BlockPos p=dropPos;
+  ItemStack[] saved={slots[0],slots[1],slots[2]};
+  slots[0]=slots[1]=slots[2]=ItemStack.EMPTY; energy=0;progress=0;
+  pendingDrop=false; dropped=true;dropWorld=null;dropPos=null;
+  for(ItemStack s:saved)if(!s.isEmpty())w.spawnEntity(new EntityItem(w,p.getX()+0.5,p.getY()+0.5,p.getZ()+0.5,s));
+ }
+ @Override public boolean hasCapability(Capability<?> cap,@Nullable EnumFacing side){return cap==CapabilityEnergy.ENERGY || cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(cap,side);}
+ @Override public <T>T getCapability(Capability<T> cap,@Nullable EnumFacing side){
+  if(cap==CapabilityEnergy.ENERGY)return CapabilityEnergy.ENERGY.cast(energyAccess);
+  if(cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(itemAccess);
+  return super.getCapability(cap,side);
+ }
+ @Override public NBTTagCompound writeToNBT(NBTTagCompound tag){
+  super.writeToNBT(tag); tag.setInteger("Energy",energy);tag.setInteger("Progress",progress);
+  NBTTagList list=new NBTTagList(); for(int i=0;i<3;i++)if(!slots[i].isEmpty()){NBTTagCompound n=new NBTTagCompound();slots[i].writeToNBT(n);n.setByte("Slot",(byte)i);list.appendTag(n);} tag.setTag("Inventory",list);return tag;
+ }
+ @Override public void readFromNBT(NBTTagCompound tag){
+  if(busy || dropped || pendingDrop)return;
+  busy=true;
+  try {
+   super.readFromNBT(tag); energy=Math.max(0,Math.min(CAPACITY,tag.getInteger("Energy")));
+   progress=Math.max(0,Math.min(TICKS-1,tag.getInteger("Progress")));
+   slots[0]=slots[1]=slots[2]=ItemStack.EMPTY;
+   NBTTagList list=tag.getTagList("Inventory",10);
+   for(int i=0;i<list.tagCount();i++) { NBTTagCompound n=list.getCompoundTagAt(i);int slot=n.getByte("Slot") & 255;if(slot>=3)continue;ItemStack s=new ItemStack(n); if(!s.isEmpty()){s.setCount(Math.min(s.getCount(),Math.min(64,s.getMaxStackSize())));slots[slot]=s;} }
+  } finally {busy=false;if(pendingDrop)flushDrops();}
+ }
+ public static final class StoneCutter extends ProcessingTile {public StoneCutter(){super(MachineKind.STONE_CUTTER);}}
+ public static final class MossAssembler extends ProcessingTile {public MossAssembler(){super(MachineKind.MOSS_ASSEMBLER);}}
+ public static final class GlassShaper extends ProcessingTile {public GlassShaper(){super(MachineKind.GLASS_SHAPER);}}
+ public static final class FiberSpinner extends ProcessingTile {public FiberSpinner(){super(MachineKind.FIBER_SPINNER);}}
+ public static final class PaperPress extends ProcessingTile {public PaperPress(){super(MachineKind.PAPER_PRESS);}}
+ public static final class SugarMill extends ProcessingTile {public SugarMill(){super(MachineKind.SUGAR_MILL);}}
+ public static final class BreadBaker extends ProcessingTile {public BreadBaker(){super(MachineKind.BREAD_BAKER);}}
+ public static final class SeedExtractor extends ProcessingTile {public SeedExtractor(){super(MachineKind.SEED_EXTRACTOR);}}
+ public static final class DyeMixer extends ProcessingTile {public DyeMixer(){super(MachineKind.DYE_MIXER);}}
+ public static final class BoneMill extends ProcessingTile {public BoneMill(){super(MachineKind.BONE_MILL);}}
+}
