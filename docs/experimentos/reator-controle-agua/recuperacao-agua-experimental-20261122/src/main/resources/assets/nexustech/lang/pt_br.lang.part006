@@ -1,0 +1,55 @@
+reia, neve e argila.
+
+guide.nexustech.page.equipamento.8=Área 1x2x1 tenta também o bloco logo acima; 3x3x3 tenta blocos vizinhos num cubo ao redor do alvo. Os extras precisam estar ao alcance e visíveis, não mais duros que o alvo, e passar nas verificações de colheita.
+
+guide.nexustech.page.equipamento.9=Se a área extra não funcionar, confirme a ferramenta na mão principal, modo na tela G, material apropriado, alcance, linha de visão, nível de colheita e permissões. Blocos com entidade de bloco não são extras; no criativo não expande.
+
+guide.nexustech.page.equipamento.10=A velocidade 4, 6 ou 8 só se aplica aos materiais apropriados; nos demais é 1. As ferramentas usam durabilidade, não FE. O nível de colheita registrado é 3; isso não garante gotas de qualquer bloco.
+
+guide.nexustech.page.reator.7=O reator formado pode entregar até 400 FE por tick no total, compartilhados entre as saídas. Conecte uma rede de energia compatível e confira se há espaço para receber; a geração é de 200 FE/t, não 400.
+
+# Renewable generators and utility machines
+tile.nexustech.wind_generator.name=Gerador Eólico
+tile.nexustech.hydro_generator.name=Gerador Hidrocinético
+tile.nexustech.utility_recycler.name=Recicladora
+tile.nexustech.utility_purifier.name=Purificadora
+tooltip.nexustech.utilitymachines.0=Recicla painéis de vidro e grades de ferro.
+tooltip.nexustech.utilitymachines.1=Purifica carne podre em couro.
+tooltip.nexustech.utilitymachines.controls=Toque na máquina para abrir sua interface.
+tooltip.nexustech.utilitymachines.controls2=Coloque os ingredientes na entrada e retire os produtos da saída.
+message.nexustech.utilitymachines.energy=Energia: %s / %s FE
+guide.nexustech.page.energia.9=Gerador Eólico: produz 24 FE/t em Y 80 ou mais, se a dimensão tiver céu e o bloco acima estiver carregado e com céu visível. Funciona de dia ou à noite, inclusive na chuva.
+guide.nexustech.page.energia.10=Gerador Hidrocinético: produz 32 FE/t com água corrente vanilla em pelo menos duas faces horizontais diferentes. Fontes paradas não contam; água caindo conta. Os quatro blocos vizinhos horizontais precisam estar carregados.
+guide.nexustech.page.energia.11=Cada gerador renovável guarda até 16.000 FE e só fornece energia, até 128 FE/t no total das faces. Conecte um receptor ou cabo de energia. Se o buffer encher, a produção excedente se perde; quebrar o gerador perde a energia guardada.
+guide.nexustech.page.energia.12=Em Receitas, busque wind_generator ou hydro_generator para ver a grade. Cada um usa 4 lingotes de ferro, 1 redstone e 1 gerador a carvão; o eólico usa 1 pena, o hidrocinético 1 balde de água.
+guide.nexustech.page.processamento.15=Recicladora: conecte FE. Ela converte 4 painéis de vidro vanilla em 1 bloco de vidro, ou 4 grades de ferro vanilla em 1 lingote de ferro. Use apenas um tipo por vez.
+guide.nexustech.page.processamento.16=Purificadora: conecte FE e insira 2 carnes podres vanilla para obter 1 couro. As receitas internas destas máquinas não são receitas de bancada do catálogo.
+guide.nexustech.page.processamento.17=Recicladora e Purificadora têm interface: toque no bloco para abri-la. Coloque ingredientes na entrada à esquerda e retire os produtos da saída à direita. A interface mostra a energia e o progresso.
+guide.nexustech.page.processamento.18=Cada operação leva 80 ticks de trabalho e consome 20 FE/t, total 1.600 FE. Capacidade: 20.000 FE. Sem energia, pausa; mudar a entrada ou bloquear a saída reinicia o progresso sem devolver FE. Aceitam apenas itens vanilla indicados, sem NBT e com metadado zero.
+guide.nexustech.page.processamento.19=Em Receitas, busque utility_recycler ou utility_purifier para ver as grades. Cada receita usa 4 ferros e 2 redstones; a recicladora usa 2 grades e 1 funil, a purificadora 2 vidros e 1 caldeirão. O cabo de itens Nexus não transfere diretamente para ou dessas máquinas.
+tile.nexustech.tech_chest.name=Baú Tecnológico
+gui.nexustech.tech_chest.page=Página %s
+tile.nexustech.double_tech_chest.name=Baú Tecnológico Duplo
+
+item.nexustech.tech_bucket.name=Balde Tecnológico
+item.nexustech.tech_bucket.empty=Vazio
+item.nexustech.tech_bucket.contents=%s: %s / %s mB
+item.nexustech.tech_bucket.help=Usar: recolher fonte ou retirar de tanque. Agachar e usar: depositar em tanque. Não coloca líquido no mundo.
+tile.nexustech.electric_anvil.name=Bigorna Elétrica
+tile.electric_anvil.name=Bigorna Elétrica
+gui.nexustech.electric_anvil.title=Bigorna Elétrica
+item.hand_drill_3.name=Broca de mão 3x3x3
+item.hand_drill_5.name=Broca de mão 5x5x5
+item.hand_drill_10.name=Broca de mão 10x10x10
+tooltip.nexustech.hand_drill.disabled=Mineração em área desativada; apenas um bloco.
+nuclear.guard.on=Água: SIM
+nuclear.guard.off=Água: NÃO
+nuclear.guard.hint1=Proteção opcional: para se a água acabar.
+nuclear.guard.hint2=Após esfriar, reponha; ou desative e tente ligar sem água.
+nuclear.status.no_water=Proteção: sem água
+nuclear.status.full=Espera: bateria cheia
+nuclear.heat.hint1=Parada se calor for 1000 ou mais após resfriar no tick.
+nuclear.heat.hint2=Após parada, reinício manual até 400 de calor.
+nuclear.water.hint1=Geração consome 1 mB por tick com água.
+nuclear.water.hint2=Água também ajuda no resfriamento após parada.
+nuclear.energy.hint=Geração pausa quando não cabe mais 200 FE.
