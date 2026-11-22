@@ -1,0 +1,30 @@
+locks.STONEBRICK,1,0),new ItemStack(Blocks.VINE),new ItemStack(Blocks.STONEBRICK,1,1));
+  runRecipe(MachineKind.GLASS_SHAPER,new ItemStack(Blocks.GLASS,3),ItemStack.EMPTY,new ItemStack(Blocks.GLASS_PANE,8));
+  for(int i=0;i<16;i++)runRecipe(MachineKind.FIBER_SPINNER,new ItemStack(Blocks.WOOL,1,i),ItemStack.EMPTY,new ItemStack(Items.STRING,4));
+  runRecipe(MachineKind.PAPER_PRESS,new ItemStack(Items.REEDS,3),ItemStack.EMPTY,new ItemStack(Items.PAPER,3));
+  runRecipe(MachineKind.SUGAR_MILL,new ItemStack(Items.REEDS),ItemStack.EMPTY,new ItemStack(Items.SUGAR));
+  runRecipe(MachineKind.BREAD_BAKER,new ItemStack(Items.WHEAT,3),ItemStack.EMPTY,new ItemStack(Items.BREAD));
+  runRecipe(MachineKind.SEED_EXTRACTOR,new ItemStack(Blocks.PUMPKIN),ItemStack.EMPTY,new ItemStack(Items.PUMPKIN_SEEDS,4));
+  runRecipe(MachineKind.SEED_EXTRACTOR,new ItemStack(Items.MELON),ItemStack.EMPTY,new ItemStack(Items.MELON_SEEDS));
+  runRecipe(MachineKind.DYE_MIXER,new ItemStack(Items.DYE,1,4),new ItemStack(Items.DYE,1,2),new ItemStack(Items.DYE,2,6));
+  runRecipe(MachineKind.BONE_MILL,new ItemStack(Items.BONE),ItemStack.EMPTY,new ItemStack(Items.DYE,3,15));
+  FakeWorld w=world(false);ProcessingTile t=machine(MachineKind.DYE_MIXER,w);IItemHandler h=inv(t);
+  ok(!h.insertItem(0,new ItemStack(Items.DYE,1,2),false).isEmpty(),"wrong input metadata");ok(!h.insertItem(1,new ItemStack(Items.DYE,1,4),false).isEmpty(),"wrong second metadata");
+  ItemStack tagged=new ItemStack(Items.DYE,1,4);tagged.setTagCompound(new NBTTagCompound());ok(!h.insertItem(0,tagged,false).isEmpty(),"reject tags");
+  ok(!h.insertItem(2,new ItemStack(Items.DYE,1,4),false).isEmpty(),"output insertion rejected");
+  h.insertItem(0,new ItemStack(Items.DYE,2,4),false);charge(t,2000);tick(t,100);eq(energy(t).getEnergyStored(),2000,"missing second input costs nothing");
+  h.insertItem(1,new ItemStack(Items.DYE,1,2),false);tick(t,20);eq(t.progress(),20,"progress before save");
+  NBTTagCompound save=t.writeToNBT(new NBTTagCompound());ProcessingTile restored=machine(MachineKind.DYE_MIXER,w);restored.readFromNBT(save);eq(restored.progress(),20,"progress restored");eq(energy(restored).getEnergyStored(),1600,"energy restored");tick(restored,80);same(inv(restored).getStackInSlot(2),new ItemStack(Items.DYE,2,6),"restored cycle");ok(h.extractItem(0,1,false).isEmpty(),"stale handle");
+  // Output incompatibility and capacity reject production and energy debit.
+  FakeWorld q=world(false);ProcessingTile full=machine(MachineKind.BONE_MILL,q);IItemHandler fi=inv(full);fi.insertItem(0,new ItemStack(Items.BONE,23),false);charge(full,20000);tick(full,2000);eq(fi.getStackInSlot(2).getCount(),30,"ten cycles consume buffer");charge(full,20000);tick(full,1000);eq(fi.getStackInSlot(2).getCount(),60,"20 cycles");charge(full,6000);tick(full,100);eq(fi.getStackInSlot(2).getCount(),63,"21 cycles");int e=energy(full).getEnergyStored();tick(full,200);eq(energy(full).getEnergyStored(),e,"full output no FE");eq(fi.getStackInSlot(0).getCount(),2,"full output retains inputs");
+  // A crafted incompatible output blocks completion without consuming FE.
+  FakeWorld z=world(false);ProcessingTile incompatible=machine(MachineKind.BONE_MILL,z);inv(incompatible).insertItem(0,new ItemStack(Items.BONE),false);charge(incompatible,2000);
+  NBTTagCompound altered=incompatible.writeToNBT(new NBTTagCompound());net.minecraft.nbt.NBTTagCompound wrong=new NBTTagCompound();new ItemStack(Items.IRON_INGOT,3).writeToNBT(wrong);wrong.setByte("Slot",(byte)2);altered.getTagList("Inventory",10).appendTag(wrong);incompatible.readFromNBT(altered);tick(incompatible,100);eq(energy(incompatible).getEnergyStored(),2000,"incompatible output no energy");eq(inv(incompatible).getStackInSlot(0).getCount(),1,"incompatible output preserves ingredient");
+  // Reentrant NBT read and energy insertion in markDirty are not allowed to alter an in-flight operation.
+  FakeWorld re=world(false);ProcessingTile locked=machine(MachineKind.SUGAR_MILL,re);NBTTagCompound inject=new NBTTagCompound();inject.setInteger("Energy",20000);inject.setInteger("Progress",99);
+  re.onDirty=()->{locked.readFromNBT(inject);eq(energy(locked).receiveEnergy(100,false),0,"busy refuses reentrant FE");ok(!inv(locked).insertItem(0,new ItemStack(Items.REEDS),false).isEmpty(),"busy refuses reentrant item");};
+  inv(locked).insertItem(0,new ItemStack(Items.REEDS),false);eq(energy(locked).getEnergyStored(),0,"reentrant NBT ignored");eq(locked.progress(),0,"reentrant progress ignored");eq(inv(locked).getStackInSlot(0).getCount(),1,"reentrant item ignored");
+  // Pause resumes with the already paid progress, then a changed input resets it.
+  charge(locked,100);tick(locked,10);eq(locked.progress(),5,"energy shortage pauses");charge(locked,1000);tick(locked,1);eq(locked.progress(),6,"energy restore resumes");
+  FakeWorld client=world(true);ProcessingTile ct=machine(MachineKind.SUGAR_MILL,client);ok(!inv(ct).insertItem(0,new ItemStack(Items.REEDS),false).isEmpty(),"client insertion blocked");eq(energy(ct).receiveEnergy(100,false),0,"client FE blocked");tick(ct,200);ok(inv(ct).getStackInSlot(2).isEmpty(),"client update blocked");
+  FakeWorld feedWorld=world(false); ProcessingTile fed=machine(MachineKind.SUGAR_MILL,feedWorld); IItemHandler feed=inv(fed); feed.insertItem(0,new ItemStack(Items.REEDS),false); charge(fed,2000); tick(fed,50); feed.insertItem(0,new ItemStack(Items.REEDS),false); eq(fed.progress(),50,"same ingredient insertion preserves progress"); tick(fed,50); eq(feed.ge
