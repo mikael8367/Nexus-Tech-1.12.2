@@ -1,0 +1,4 @@
+item.hand_drill_3.name=Broca de mão 3x3x3
+item.hand_drill_5.name=Broca de mão 5x5x5
+item.hand_drill_10.name=Broca de mão 10x10x10
+tooltip.nexustech.hand_drill.disabled=Mineração em área desativada; apenas um bloco.
