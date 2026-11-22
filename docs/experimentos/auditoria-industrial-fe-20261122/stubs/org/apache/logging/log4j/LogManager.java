@@ -1,0 +1,1 @@
+package org.apache.logging.log4j; public class LogManager { private static final Logger L=new Logger(){public void warn(String f,Object...args){}}; public static Logger getLogger(String name){return L;} }

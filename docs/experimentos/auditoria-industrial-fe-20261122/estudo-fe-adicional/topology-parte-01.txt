@@ -1,0 +1,113 @@
+# Fragmento experimental 1 de 3. Não aplicar isoladamente.
+--- a/src/com/mikael8367/nexustech/EnergyNetwork.java
++++ b/src/com/mikael8367/nexustech/EnergyNetwork.java
+@@ -37,116 +37,151 @@
+             suppressedFailures++;
+         }
+     }
+-    /**
+-     * Pull from loaded endpoints adjacent to the origin or its cable component.
+-     * A machine origin must be the excluded consumer; a cable origin can be
+-     * used by a sided external consumer. The shared guard also covers direct
+-     * neighbours and callbacks while resolving capabilities.
+-     */
++    // Bound both graph growth and the cumulative cost of validating long routes.
++    private static final int MAX_CABLES = 4096;
++    private static final int MAX_ROUTE_STEPS = 131072;
++    private static final int MAX_RESTARTS = 8;
++
++    private static final class Route {
++        final BlockPos pos;
++        final TileEntity tile;
++        final Route parent;
++        Route(BlockPos pos, TileEntity tile, Route parent) {
++            this.pos = pos; this.tile = tile; this.parent = parent;
++        }
++    }
++    private static final class Traversal {
++        final World world;
++        final BlockPos origin, excluded;
++        final TileEntity start, external;
++        int steps, restarts;
++        Traversal(World world, BlockPos origin, BlockPos excluded, TileEntity start, TileEntity external) {
++            this.world = world; this.origin = origin; this.excluded = excluded;
++            this.start = start; this.external = external;
++        }
++        boolean same(BlockPos p, TileEntity expected) {
++            return ++steps <= MAX_ROUTE_STEPS && world.isBlockLoaded(p)
++                    && world.getTileEntity(p) == expected;
++        }
++        boolean rootValid() {
++            return same(origin, start) && (excluded == null || excluded.equals(origin)
++                    || same(excluded, external));
++        }
++        boolean routeValid(Route route) {
++            if (!rootValid()) return false;
++            for (Route r = route; r.parent != null; r = r.parent) {
++                if (!same(r.pos, r.tile)) return false;
++            }
++            return true;
++        }
++        boolean endpointValid(Route route, BlockPos pos, TileEntity tile) {
++            return routeValid(route) && same(pos, tile);
++        }
++    }
++
+     static int pull(World world, BlockPos origin, BlockPos excludedConsumer, int amount,
+                     boolean simulate, boolean allowNexusBatteries) {
+-        if (world == null || origin == null || world.isRemote || amount <= 0
+-                || Boolean.TRUE.equals(ACTIVE.get()) || !world.isBlockLoaded(origin)) return 0;
+-        ACTIVE.set(true);
+-        try {
+-            TileEntity start = world.getTileEntity(origin);
+-            if (!(start instanceof MachineTile.Cable)
+-                    && (!(start instanceof MachineTile) || !origin.equals(excludedConsumer))) return 0;
+-            Queue<BlockPos> queue = new ArrayDeque<>();
+-            Set<BlockPos> cables = new HashSet<>();
+-            Set<BlockPos> endpoints = new HashSet<>();
+-            queue.add(origin); cables.add(origin);
+-            int moved = 0;
+-            while (!queue.isEmpty() && moved < amount) {
+-                BlockPos current = queue.remove();
+-                for (EnumFacing direction : EnumFacing.VALUES) {
+-                    BlockPos next = current.offset(direction);
+-                    if (next.equals(excludedConsumer) || !world.isBlockLoaded(next)) continue;
+-                    TileEntity tile = world.getTileEntity(next);
+-                    if (tile instanceof MachineTile.Cable) {
+-                        if (cables.add(next)) queue.add(next);
+-                        continue;
+-                    }
+-                    if (tile == null || (!allowNexusBatteries && tile instanceof MachineTile.Battery)
+-                            || endpoints.contains(next)) continue;
+-                    // Try other faces only until this endpoint supplies energy.
+-                    try {
+-                        IEnergyStorage source = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
+-                        if (source == null || !source.canExtract()) continue;
+-                        int extracted = source.extractEnergy(amount - moved, simulate);
+-                        extracted = Math.max(0, Math.min(amount - moved, extracted));
+-                        if (extracted > 0) { moved += extracted; endpoints.add(next); }
+-                    } catch (RuntimeException error) {
+-                        // No return value is available if the endpoint mutated before throwing.
+-                        // Do not retry another face in this traversal; preserve earlier transfers.
+-                        endpoints.add(next);
+-                        logEndpointFailure(next, error);
+-                    }
+-                    if (moved >= amount) break;
+-                }
+-            }
+-            return moved;
+-        } finally { ACTIVE.remove(); }
++        return transfer(world, origin, excludedConsumer, amount, simulate, false, false,
++                allowNexusBatteries);
+     }
+-    private static boolean exposesExtraction(TileEntity tile) {
+-        for (EnumFacing face : EnumFacing.VALUES) {
+-            IEnergyStorage storage = tile.getCapability(CapabilityEnergy.ENERGY, face);
+-            if (storage != null && storage.canExtract()) return true;
+-        }
+-        return false;
++
++    static int send(World world, BlockPos origin, BlockPos excludedSource, int amount,
++                    boolean simulate, boolean batterySource) {
++        return transfer(world, origin, excludedSource, amount, simulate, true, batterySource, true);
+     }

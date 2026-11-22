@@ -1,0 +1,84 @@
+# Fragmento experimental 2 de 3. Não aplicar isoladamente.
+-    static int send(World world, BlockPos origin, BlockPos excludedSource, int amount, boolean simulate, boolean batterySource) {
+-        if (world == null || world.isRemote || amount <= 0 || Boolean.TRUE.equals(ACTIVE.get()) || !world.isBlockLoaded(origin)) return 0;
++
++    private static int transfer(World world, BlockPos origin, BlockPos excluded, int amount,
++                                boolean simulate, boolean sending, boolean batterySource,
++                                boolean allowNexusBatteries) {
++        if (world == null || origin == null || world.isRemote || amount <= 0
++                || Boolean.TRUE.equals(ACTIVE.get())) return 0;
+         ACTIVE.set(true);
+         int moved = 0;
+         try {
+-            Queue<BlockPos> queue = new ArrayDeque<>();
+-            Set<BlockPos> cables = new HashSet<>();
++            if (!world.isBlockLoaded(origin)) return 0;
++            TileEntity start = world.getTileEntity(origin);
++            if (start == null) return 0;
++            if (!sending && !(start instanceof MachineTile.Cable)
++                    && (!(start instanceof MachineTile) || !origin.equals(excluded))) return 0;
++            TileEntity external = null;
++            if (excluded != null && !excluded.equals(origin)) {
++                if (!world.isBlockLoaded(excluded)) return 0;
++                external = world.getTileEntity(excluded);
++            }
++            Traversal t = new Traversal(world, origin, excluded, start, external);
+             Set<BlockPos> endpoints = new HashSet<>();
+-            queue.add(origin); cables.add(origin);
+-            while (!queue.isEmpty() && moved < amount) {
+-                BlockPos current = queue.remove();
+-                for (EnumFacing direction : EnumFacing.VALUES) {
+-                    BlockPos next = current.offset(direction);
+-                    if (next.equals(excludedSource) || !world.isBlockLoaded(next)) continue;
+-                    TileEntity tile = world.getTileEntity(next);
+-                    if (tile instanceof MachineTile.Cable) {
+-                        if (cables.add(next)) queue.add(next);
+-                        continue;
+-                    }
+-                    if (tile == null || (batterySource && tile instanceof MachineTile.Battery)) continue;
+-                    // A block may expose different capabilities on different faces: only mark
+-                    // it visited after a face actually accepts energy.
+-                    if (endpoints.contains(next)) continue;
+-                    boolean calledReceive = false;
+-                    try {
+-                        IEnergyStorage receiver = tile.getCapability(CapabilityEnergy.ENERGY, direction.getOpposite());
+-                        if (receiver == null || !receiver.canReceive()) continue;
+-                        // A storage endpoint can be empty after a pull; excluding only
+-                        // this tick's donors makes it bounce back on the next tick.
+-                        // Inspect every face because input and output may be sided.
+-                        // Conservatively let such endpoints pull, rather than push to them.
+-                        if (batterySource && exposesExtraction(tile)) continue;
+-                        calledReceive = true;
+-                        int accepted = receiver.receiveEnergy(amount - moved, simulate);
+-                        // An invalid negative response can hide a mutation, like a throw.
+-                        // Account for the whole real offer rather than risk a refund.
+-                        if (accepted < 0 && !simulate) { moved = amount; break; }
+-                        accepted = Math.max(0, Math.min(amount - moved, accepted));
+-                        if (accepted > 0) { moved += accepted; endpoints.add(next); }
+-                    } catch (RuntimeException error) {
+-                        // Once real receive starts, its entire offer is uncertain. It may
+-                        // lose FE, but must not be refunded or offered to another receiver.
+-                        if (calledReceive && !simulate) moved = amount;
+-                        endpoints.add(next);
+-                        logEndpointFailure(next, error);
++            // A restart finds alternate paths in shared/cyclic graphs after a mutation.
++            // Successful and uncertain endpoints remain consumed across restarts.
++            restart: while (t.restarts <= MAX_RESTARTS && t.steps < MAX_ROUTE_STEPS) {
++                if (!t.rootValid()) break;
++                Queue<Route> queue = new ArrayDeque<>();
++                Set<BlockPos> cables = new HashSet<>();
++                queue.add(new Route(origin, start, null)); cables.add(origin);
++                while (!queue.isEmpty() && moved < amount) {
++                    Route current = queue.remove();
++                    if (!t.routeValid(current)) { t.restarts++; continue restart; }
++                    for (EnumFacing direction : EnumFacing.VALUES) {
++                        if (!t.routeValid(current)) { t.restarts++; continue restart; }
++                        BlockPos next = current.pos.offset(direction);
++                        if (next.equals(excluded) || !world.isBlockLoaded(next)) continue;
++                        TileEntity tile = world.getTileEntity(next);
++                        if (tile instanceof MachineTile.Cable) {
++                            if (!cables.contains(next)) {
++                                if (cables.size() >= MAX_CABLES) return moved;
++                                cables.add(next); queue.add(new Route(next, tile, current));
++                            }
++                            continue;

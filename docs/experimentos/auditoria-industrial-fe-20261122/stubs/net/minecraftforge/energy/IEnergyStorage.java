@@ -1,0 +1,1 @@
+package net.minecraftforge.energy; public interface IEnergyStorage { int receiveEnergy(int n,boolean sim); int extractEnergy(int n,boolean sim); int getEnergyStored(); int getMaxEnergyStored(); boolean canExtract(); boolean canReceive(); }

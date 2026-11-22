@@ -1,0 +1,1 @@
+package com.mikael8367.nexustech; import net.minecraft.tileentity.TileEntity; public class MachineTile extends TileEntity { public static class Cable extends MachineTile {} public static class Battery extends MachineTile {} }
