@@ -1,0 +1,29 @@
+# Dez máquinas — código experimental isolado
+
+## Auditoria posterior e estado atual
+Uma revisão independente confirmou que os cabos de itens atuais do Nexus Tech rejeitam o handler experimental: as máquinas não funcionam com esses cabos. Não há GUI ou acesso manual aos itens; um automatizador externo compatível é necessário. Todas as faces permitem extrair insumos, e o botão de status não é localizado. Ainda é preciso resolver extração por face, compatibilidade com cabos, aba criativa, sincronização, carga real de receitas e recursos, possível conflito de receita de vidro via Ore Dictionary, quebra/spawn falho e persistência. Não integre nem distribua como produto pronto.
+
+O reset de progresso ao inserir mais do mesmo item foi corrigido: o progresso continua nesse caso. Após a correção, o conjunto foi compilado de forma isolada com Java 8, e `TenMachinesTest` passou com 537 verificações. Não é uma compilação integral, nem teste no Minecraft. As traduções experimentais devem ser mescladas com as existentes; nunca substituir os arquivos de idiomas. A revisão de recursos confirmou os dez IDs e JSONs entre código e recursos, mas não testou sua carga no jogo.
+
+O snapshot GitHub salva PNGs em arquivos `.png.b64` e arquivos longos em partes, para preservar todos os bytes; o arquivo `INDICE_SNAPSHOT.md` explica a remontagem. Os arquivos locais originais continuam PNGs normais.
+
+Não integrado ao source set ativo, não registrado no mod, não publicado, não testado no Minecraft. Os recursos em `src/main/resources` são de trabalho independente e ainda precisam ser validados com o código. Este diretório é uma proposta experimental para Forge 1.12.2 14.23.5.2860, mappings snapshot_20171003 e Java 8; não é uma versão lançada.
+
+## Arquivos de código
+- `src/main/java/com/mikael8367/nexustech/experiment/tenmachines/MachineKind.java`: especificações das dez receitas e identificação.
+- `ProcessingTile.java`: dez subclasses distintas, processamento no servidor, capacidades FE e item, NBT, remoção e salvaguardas locais.
+- `ProcessingBlock.java`: bloco por tipo; clicar informa FE/progresso, sem GUI nem inventário manual.
+- `ExperimentalRegistry.java`: dez blocos e ItemBlocks e dez IDs distintos de TileEntity; métodos explícitos, nenhuma anotação de evento e nenhuma chamada no mod ativo.
+- `ExperimentalClientModels.java`: método de registro de modelos explícito, somente cliente.
+- `src/test/java/.../TenMachinesTest.java`: testes executáveis sem Minecraft em execução.
+- `build/classes`: classes experimentais de compilação, nenhuma delas adicionada ao projeto ativo; não é JAR.
+
+## Receitas e acesso
+Slots 0 e 1 são entradas específicas e slot 2 é saída; extrair é permitido dos três slots; inserir somente na entrada correta, de qualquer face. Stone cutter: 4 stone meta 0 -> 4 stonebrick meta 0; moss assembler: stonebrick meta 0 + vine meta 0 -> stonebrick meta 1; glass shaper: 3 glass -> 8 glass pane; fiber spinner: wool vanilla metas 0–15 -> 4 string; paper press: 3 reeds -> 3 paper; sugar mill: reeds -> sugar; bread baker: 3 wheat -> bread; seed extractor: pumpkin -> 4 pumpkin_seeds OU melon (fatia) -> melon_seeds; dye mixer: dye meta 4 + dye meta 2 -> 2 dye meta 6; bone mill: bone -> 3 dye meta 15. São itens vanilla exatos sem NBT e sem container, não OreDictionary. Conferência de metadados e nomes: https://www.digminecraft.com/lists/item_id_list_pc_1_12.php .
+
+20 FE/t durante 100 ticks efetivos (2000 FE), buffer 20000 FE, entrada push de até 1000 FE por chamada; não há limite acumulado por tick e não há extração de energia. Não faz pull de vizinhos: fonte/cabo precisa empurrar FE. Inventário cheio ou incompatível não consome energia; falta de FE pausa; mudar entrada cancela progresso sem restituir FE já gasto. NBT persiste inventário, progresso e energia em condições normais.
+
+## Segurança e limitações
+- Todas as alterações das capacidades e processamento exigem servidor, chunk carregado, TileEntity vivo e identidade correta; handles obsoletos recusam mutações. Um bloqueio de reentrada impede mutation/readFromNBT durante processamento e callbacks; cópias defensivas impedem alteração pelo valor retornado. Após montar as pilhas de saída, o estado interno é alterado sem chamada deliberada ao mundo até terminar, e só então ocorre `markDirty`. Remoção durante uma operação pendente é adiada; estoques são destacados antes de spawnar os drops, e a mesma TileEntity não os entrega duas vezes.
+- Isto NÃO é uma transação distribuída nem durável. Num crash/desligamento há possíveis perdas/duplicações entre o último salvamento, a máquina e inventários externos; o protocolo IItemHandler não oferece commit atômico com o chamador. Por exemplo, uma quebra reentrante durante uma inserção pode spawnar o item antes de o chamador debitar sua origem. Servidores/mods hostis, threading fora do padrão e callbacks que lançam exceção não são totalmente seguros. ItemStack/registro não são interfaces transacionais. NBT adulterado, duplicado ou de outro tipo de máquina não é autenticado; limites são truncados e pode haver perda. `spawnEntity` recusado/lançando exceção pode perder itens porque já foram destacados; nunca há retry inseguro. Uma remoção que não chama `breakBlock` pode perder conteúdo. Faça testes de integração de carga/remoção e recuperação com backup antes de usar.
+- Não existe GUI nem inserir/retirar com a mão: requer automação IItemHandler; o clique só mostra status. A capacidade de energia não puxa de fontes passivas; confirme compatib
