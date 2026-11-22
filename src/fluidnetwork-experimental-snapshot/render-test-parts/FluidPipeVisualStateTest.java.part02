@@ -1,0 +1,63 @@
+dQueries++; return w.missingChunk ? null : direct;
+                    }
+                    throw new AssertionError("unexpected provider call: " + m.getName());
+                });
+        return w;
+    }
+    static final class DirectChunk extends Chunk {
+        W owner;
+        DirectChunk(World w) { super(w, 0, 0); }
+        @Override public IBlockState getBlockState(BlockPos p) { return owner.getBlockState(p); }
+    }
+    static final class SnapshotChunk extends Chunk {
+        Map<BlockPos, IBlockState> states;
+        int reads, tiles;
+        BlockPos failing, returningNull;
+        SnapshotChunk(World w) { super(w, 0, 0); }
+        @Override public boolean isEmptyBetween(int a, int b) { return false; }
+        @Override public IBlockState getBlockState(BlockPos p) {
+            reads++;
+            if (p.equals(failing)) throw new IllegalStateException("injected cache failure");
+            if (p.equals(returningNull)) return null;
+            IBlockState result = states.get(p);
+            return result == null ? Blocks.AIR.getDefaultState() : result;
+        }
+        @Override public TileEntity getTileEntity(BlockPos p, Chunk.EnumCreateEntityType type) {
+            tiles++; throw new AssertionError("tile access");
+        }
+    }
+    static SnapshotChunk chunk(Unsafe unsafe) throws Exception {
+        SnapshotChunk c = (SnapshotChunk) unsafe.allocateInstance(SnapshotChunk.class);
+        c.states = new HashMap<>(); return c;
+    }
+    static final class UnknownCache extends ChunkCache {
+        UnknownCache(World w, BlockPos p) { super(w, p, p, 0); }
+        @Override public IBlockState getBlockState(BlockPos p) { throw new AssertionError("unknown cache read"); }
+    }
+    static void mask(IBlockState state, int expected) {
+        for (int i = 0; i < 6; i++) check(state.getValue(PROPS[i]) == ((expected & (1 << i)) != 0), "side " + SIDES[i] + " mask " + expected);
+    }
+    static void cacheTests(FluidPipeBlock pipe, FluidPumpBlock pump, Unsafe unsafe) throws Exception {
+        W w = world();
+        SnapshotChunk c00 = chunk(unsafe), c10 = chunk(unsafe), c01 = chunk(unsafe), c11 = chunk(unsafe);
+        w.chunks.put("0:0", c00); w.chunks.put("1:0", c10);
+        w.chunks.put("0:1", c01); w.chunks.put("1:1", c11);
+        c00.states.put(ORIGIN, pipe.getDefaultState());
+        ChunkCache cache = new ChunkCache(w, ORIGIN.add(-1, -1, -1), ORIGIN.add(1, 1, 1), 0);
+        int constructionReads = w.chunkReads;
+        for (int bits = 0; bits < 64; bits++) {
+            for (SnapshotChunk c : new SnapshotChunk[]{c00, c10, c01, c11}) c.states.clear();
+            c00.states.put(ORIGIN, pipe.getDefaultState());
+            for (int i = 0; i < 6; i++) if ((bits & (1 << i)) != 0) {
+                BlockPos p = ORIGIN.offset(SIDES[i]);
+                SnapshotChunk c = p.getX() >= 16 ? c10 : p.getZ() >= 16 ? c01 : c00;
+                c.states.put(p, (i % 2 == 0 ? pipe : pump).getDefaultState());
+            }
+            mask(pipe.getActualState(pipe.getDefaultState(), cache, ORIGIN), bits);
+        }
+        check(w.chunkReads == constructionReads && w.reads == 0 && w.tiles == 0, "cache reads must not access world chunks, state or tiles");
+        check(c00.tiles + c10.tiles + c01.tiles + c11.tiles == 0, "no cache tile lookup");
+        // Exercise all horizontal chunk borders, including negative coordinates.
+        for (int i = 0; i < 4; i++) {
+            BlockPos edge = new BlockPos(i == 3 ? 0 : i == 2 ? 15 : 8, 64,
+         
