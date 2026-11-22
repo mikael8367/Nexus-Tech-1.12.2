@@ -1,0 +1,10 @@
+tStackInSlot(2).getCount(),1,"continuous feed completes cycle");
+   FakeWorld u=world(false);ProcessingTile reset=machine(MachineKind.PAPER_PRESS,u);inv(reset).insertItem(0,new ItemStack(Items.REEDS,4),false);charge(reset,2000);tick(reset,10);inv(reset).extractItem(0,1,false);eq(reset.progress(),0,"input mutation resets progress");u.loaded=false;eq(energy(reset).receiveEnergy(10,false),0,"unloaded refused");
+  // Reentrant block removal in dirty notification: entire committed output is dropped once.
+  FakeWorld d=world(false);ProcessingTile breaking=machine(MachineKind.BONE_MILL,d);IItemHandler bi=inv(breaking);bi.insertItem(0,new ItemStack(Items.BONE),false);charge(breaking,2000);tick(breaking,99);
+  d.onDirty=()->{ok(bi.getStackInSlot(0).isEmpty(),"callback sees ingredient consumed");same(bi.getStackInSlot(2),new ItemStack(Items.DYE,3,15),"callback sees complete result");ok(bi.extractItem(2,1,false).isEmpty(),"busy blocks callback extraction");breaking.requestDrops(d,POS);breaking.requestDrops(d,POS);};
+  tick(breaking,1);eq(d.drops.size(),1,"single drop");same(d.drops.get(0),new ItemStack(Items.DYE,3,15),"drop only result");ok(bi.extractItem(2,1,false).isEmpty(),"broken stale handler");breaking.requestDrops(d,POS);eq(d.drops.size(),1,"repeat break no duplication");
+  FakeWorld n=world(false);ProcessingTile clamp=machine(MachineKind.BONE_MILL,n);NBTTagCompound bad=new NBTTagCompound();bad.setInteger("Energy",Integer.MAX_VALUE);bad.setInteger("Progress",Integer.MAX_VALUE);clamp.readFromNBT(bad);eq(energy(clamp).getEnergyStored(),20000,"NBT energy clamp");eq(clamp.progress(),99,"NBT progress clamp");
+  Bootstrap.printToSYSOUT("PASS ten machines assertions="+assertions);
+ }
+}
