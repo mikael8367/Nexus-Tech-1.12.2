@@ -1,0 +1,1 @@
+{"parent":"minecraft:block/block","textures":{"particle":"nexustech:blocks/fluid_pipe","all":"nexustech:blocks/fluid_pipe"},"elements":[{"from":[0,6,6],"to":[4,10,10],"faces":{"down":{"texture":"#all"},"up":{"texture":"#all"},"north":{"texture":"#all"},"south":{"texture":"#all"},"west":{"texture":"#all"}}}]}
