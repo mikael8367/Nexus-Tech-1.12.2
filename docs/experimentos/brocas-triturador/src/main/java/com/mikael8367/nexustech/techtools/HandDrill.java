@@ -39,6 +39,12 @@ public final class HandDrill extends ItemTool implements ToolEnergy.PoweredTool 
     @Override public float getDestroySpeed(ItemStack stack, IBlockState state) {
         return ToolEnergy.stored(stack) >= ToolEnergy.USE && appropriate(state) ? 8.0F : 1.0F;
     }
+    /** Vanilla calls this for a successful melee hit on a living target. The
+     * shared AttackEntityEvent gate rejects an unpowered player attack first. */
+    @Override public boolean hitEntity(ItemStack stack, EntityLivingBase target, EntityLivingBase attacker) {
+        if (ToolEnergy.allowed(stack, attacker)) ToolEnergy.consume(stack, attacker);
+        return true;
+    }
     @Override public boolean onBlockDestroyed(ItemStack stack, World world, IBlockState state, BlockPos pos, EntityLivingBase user) {
         boolean paid = ToolEnergy.allowed(stack, user);
         if (paid) ToolEnergy.consume(stack, user);
