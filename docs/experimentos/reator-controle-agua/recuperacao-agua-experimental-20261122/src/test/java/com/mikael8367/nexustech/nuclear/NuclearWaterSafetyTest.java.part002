@@ -1,0 +1,59 @@
+agCompound());n.setTag("Tank",tagged.writeToNBT(new NBTTagCompound()));c.readFromNBT(n);
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,500),true),500,"legacy tagged save permits plain water");
+ }
+ public static void main(String[] args)throws Exception {
+   setup(); CallbackWorld w=world(); NuclearController c=fresh(w); IFluidHandler f=fluid(c);
+   eq(f.fill(new FluidStack(FluidRegistry.LAVA,1000),true),0,"reject lava");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,-1),true),0,"reject negative");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,Integer.MAX_VALUE),false),8000,"overflow simulation");eq(c.water(),0,"simulation does not mutate");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,7000),true),7000,"fill");
+   eq(f.fill(new FluidStack(FluidRegistry.WATER,Integer.MAX_VALUE),true),1000,"bounded actual fill");eq(c.water(),8000,"capacity");ok(f.drain(1,true)==null,"external drain denied");
+   c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.update();
+   eq(c.water(),8000,"full tank unchanged");ok(c.inventory.getStackInSlot(1).getItem()==Items.WATER_BUCKET,"full tank keeps bucket");ok(c.inventory.getStackInSlot(2).isEmpty(),"no empty bucket created");
+
+   w=world();c=fresh(w);f=fluid(c);f.fill(new FluidStack(FluidRegistry.WATER,7501),true);c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.update();eq(c.water(),7501,"partial space no fill");ok(!c.inventory.getStackInSlot(1).isEmpty(),"partial space keeps bucket");
+   w=world();c=fresh(w);c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));c.inventory.setStackInSlot(2,new ItemStack(Items.BUCKET,16));c.update();eq(c.water(),0,"full output blocks conversion");ok(!c.inventory.getStackInSlot(1).isEmpty(),"full output keeps input");
+   ItemStack tagged=new ItemStack(Items.BUCKET);tagged.setTagCompound(new NBTTagCompound());tagged.getTagCompound().setInteger("custom",1);c.inventory.setStackInSlot(2,tagged);c.update();eq(c.water(),0,"tagged output not merged");
+   c.inventory.setStackInSlot(2,ItemStack.EMPTY);c.update();eq(c.water(),1000,"bucket provides exactly 1000");ok(c.inventory.getStackInSlot(1).isEmpty(),"bucket consumed");eq(c.inventory.getStackInSlot(2).getCount(),1,"empty bucket returned");ok(c.inventory.getStackInSlot(2).getItem()==Items.BUCKET,"correct output");
+   NBTTagCompound saved=c.writeToNBT(new NBTTagCompound());NuclearController copy=new NuclearController();copy.readFromNBT(saved);eq(copy.water(),1000,"tank survives NBT");ok(copy.inventory.getStackInSlot(2).getItem()==Items.BUCKET,"output survives NBT");
+
+   w=world();c=fresh(w); final NuclearController attacked=c; final IFluidHandler attackFluid=fluid(c); final IItemHandler item=c.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY,null);
+   c.inventory.setStackInSlot(1,new ItemStack(Items.WATER_BUCKET));
+   // Bind once before arming callback, so it triggers on the actual tank change.
+   c.prepareForGui();
+   w.callback=()->{eq(attackFluid.fill(new FluidStack(FluidRegistry.WATER,1000),true),0,"reentrant fill blocked");ok(item.extractItem(2,1,false).isEmpty(),"reentrant extraction blocked");ok(!item.insertItem(1,new ItemStack(Items.WATER_BUCKET),false).isEmpty(),"reentrant insertion blocked");ok(!attacked.beginOperation(),"reentrant GUI blocked");attacked.update();};
+   c.update();eq(c.water(),1000,"reentrant conversion water");ok(c.inventory.getStackInSlot(1).isEmpty(),"reentrant conversion input");eq(c.inventory.getStackInSlot(2).getCount(),1,"reentrant conversion output");
+
+   // A real container transfer has identical conservation in survival and creative.
+   // Creative does not grant an extra bucket once the player put it in the slot.
+   for(boolean creative:new boolean[]{false,true}){
+     CallbackWorld gw=world();NuclearController gc=fresh(gw);gc.prepareForGui();
+     NuclearGuiAccessTest.MockPlayer player=NuclearGuiAccessTest.player(gw);
+     player.capabilities=new net.minecraft.entity.player.PlayerCapabilities();player.capabilities.isCreativeMode=creative;
+     NuclearGuiAccessTest.at(player,NuclearReactorTest.P,0,0,0);
+     NuclearContainer gui=new NuclearContainer(player.inventory,gc);
+     player.inventory.setInventorySlotContents(0,new ItemStack(Items.WATER_BUCKET));
+     ok(!gui.transferStackInSlot(player,30).isEmpty(),"GUI accepts water bucket");
+     ok(player.inventory.getStackInSlot(0).isEmpty(),"GUI moved original bucket");
+     gc.update();eq(gc.water(),1000,"GUI bucket converted");
+     ok(gc.inventory.getStackInSlot(1).isEmpty(),"GUI input consumed");
+     ok(gc.inventory.getStackInSlot(2).getItem()==Items.BUCKET,"GUI returns empty bucket");
+     ok(!gui.transferStackInSlot(player,2).isEmpty(),"GUI retrieves empty bucket");
+     int count=0;for(int i=0;i<36;i++)if(player.inventory.getStackInSlot(i).getItem()==Items.BUCKET)count+=player.inventory.getStackInSlot(i).getCount();
+     eq(count,1,"GUI empty bucket conserved");
+   }
+
+   w=world();c=fresh(w);f=fluid(c);f.fill(new FluidStack(FluidRegistry.WATER,2000),true);c.inventory.setStackInSlot(0,new ItemStack(NuclearRegistry.FUEL));c.setEnabled(true);c.temperature=0;
+   for(int i=0;i<10;i++){c.update();eq(c.temperature,0,"normal cooling floor");eq(c.production,200,"normal output preserved");}
+   eq(c.energy,2000,"normal FE unchanged");eq(c.water(),1990,"normal cooling consumption unchanged");
+   c.enabled=false;c.scrammed=true;c.temperature=405;int before=c.water();c.update();eq(c.temperature,400,"SCRAM water stops at reset");eq(c.water(),before-1,"SCRAM uses one mB");ok(c.scrammed&&!c.enabled,"SCRAM latched");
+   c.update();eq(c.temperature,399,"passive cooling remains");eq(c.water(),before-1,"safe SCRAM does not waste water");ok(c.scrammed&&!c.enabled,"no auto restart");
+   saved=c.writeToNBT(new NBTTagCompound());copy=new NuclearController();copy.readFromNBT(saved);ok(copy.scrammed&&!copy.enabled,"SCRAM latched through NBT");eq(copy.water(),c.water(),"SCRAM water NBT");
+   c.setEnabled(true);ok(c.enabled&&!c.scrammed,"manual reset at safe temperature");
+   c.enabled=false;c.scrammed=true;c.temperature=900; BlockPos missing=NuclearController.at(NuclearReactorTest.P,EnumFacing.NORTH,1,4,2);w.missing.add(missing);before=c.water();c.update();eq(c.temperature,900,"unloaded structure pauses cooling");eq(c.water(),before,"unloaded structure pauses water");
+   w.missing.clear();w.states.put(missing,net.minecraft.init.Blocks.AIR.getDefaultState());c.update();ok(!c.formed && c.scrammed&&!c.enabled,"broken structure stays shut down");
+   w.tiles.remove(NuclearReactorTest.P);eq(f.fill(new FluidStack(FluidRegistry.WATER,1),true),0,"stale capability rejects after removal");
+   testFluidRegressions();testServerThread();
+   System.out.println("NuclearWaterSafetyTest: PASS");
+ }
+}
