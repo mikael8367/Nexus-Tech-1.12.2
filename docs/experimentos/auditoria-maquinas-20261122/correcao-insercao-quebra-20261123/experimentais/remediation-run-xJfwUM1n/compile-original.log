@@ -1,0 +1,13 @@
+/home/daytona/workspace/nexus-release-stage/experiments/ten_machines/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:25: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+/home/daytona/workspace/nexus-release-stage/experiments/ten_machines/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+          ^
+/home/daytona/workspace/nexus-release-stage/experiments/ten_machines/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+                                                                           ^
+/home/daytona/workspace/nexus-release-stage/experiments/ten_machines/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+                                                                                     ^
+4 warnings
