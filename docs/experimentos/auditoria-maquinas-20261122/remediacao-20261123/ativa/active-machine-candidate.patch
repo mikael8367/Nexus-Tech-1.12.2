@@ -1,0 +1,156 @@
+--- a/src/main/java/com/mikael8367/nexustech/techmachines/TechMachineTile.java
++++ b/src/main/java/com/mikael8367/nexustech/techmachines/TechMachineTile.java
+@@ -27,32 +27,49 @@
+     private final int kind;
+     private int energy, progress;
+     private boolean busy;
+-    private final ItemStackHandler inventory = new ItemStackHandler(2) {
++    private final MachineInventory inventory = new MachineInventory();
++    private final class MachineInventory extends ItemStackHandler {
++        MachineInventory() { super(2); }
+         @Override protected void onContentsChanged(int slot) {
+-            if (!busy && slot == 0) progress = 0;
++            if (slot == 0) progress = 0;
+             markDirty();
+         }
+-    };
++        // All replacements are prepared before these callback-free assignments.
++        void commit(ItemStack input, ItemStack output) {
++            stacks.set(0, input);
++            stacks.set(1, output);
++        }
++    }
+     private final IItemHandler access = new IItemHandler() {
+         public int getSlots() { return 2; }
+         public ItemStack getStackInSlot(int slot) { return slot < 0 || slot > 1 ? ItemStack.EMPTY : inventory.getStackInSlot(slot).copy(); }
+         public int getSlotLimit(int slot) { return slot < 0 || slot > 1 ? 0 : inventory.getSlotLimit(slot); }
+         public boolean isItemValid(int slot, ItemStack stack) { return slot == 0 && validInput(stack); }
+         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+-            if (!live() || busy || slot != 0 || !validInput(stack)) return stack;
+-            return inventory.insertItem(0, stack, simulate);
++            if (busy || slot != 0) return stack;
++            busy = true;
++            try {
++                if (!live() || !validInput(stack)) return stack;
++                return inventory.insertItem(0, stack, simulate);
++            } finally { busy = false; }
+         }
+         public ItemStack extractItem(int slot, int amount, boolean simulate) {
+-            if (!live() || busy || slot < 0 || slot > 1 || amount <= 0) return ItemStack.EMPTY;
+-            return inventory.extractItem(slot, amount, simulate);
++            if (busy || slot < 0 || slot > 1 || amount <= 0) return ItemStack.EMPTY;
++            busy = true;
++            try { return live() ? inventory.extractItem(slot, amount, simulate) : ItemStack.EMPTY; }
++            finally { busy = false; }
+         }
+     };
+     private final IEnergyStorage power = new IEnergyStorage() {
+         public int receiveEnergy(int amount, boolean simulate) {
+-            if (!live() || busy || amount <= 0) return 0;
+-            int received = Math.min(Math.min(amount, RATE), CAPACITY - energy);
+-            if (!simulate && received > 0) { energy += received; markDirty(); }
+-            return received;
++            if (busy || amount <= 0) return 0;
++            busy = true;
++            try {
++                if (!live()) return 0;
++                int received = Math.min(Math.min(amount, RATE), CAPACITY - energy);
++                if (!simulate && received > 0) { energy += received; markDirty(); }
++                return received;
++            } finally { busy = false; }
+         }
+         public int extractEnergy(int amount, boolean simulate) { return 0; }
+         public int getEnergyStored() { return energy; }
+@@ -103,11 +120,9 @@
+                 && ItemStack.areItemStackTagsEqual(out, result) && out.getCount() <= limit - result.getCount();
+     }
+     private void pullEnergy() {
+-        if (!live() || busy) return;
++        if (!live()) return;
+         World expected = world; BlockPos origin = pos.toImmutable();
+-        busy = true;
+-        try {
+-            for (EnumFacing side : EnumFacing.VALUES) {
++        for (EnumFacing side : EnumFacing.VALUES) {
+                 if (world != expected || !origin.equals(pos) || !live() || energy >= COST) break;
+                 BlockPos next = origin.offset(side);
+                 if (!expected.isBlockLoaded(next)) continue;
+@@ -124,28 +139,42 @@
+                     if (world != expected || !origin.equals(pos) || !live()) break;
+                     if (extracted > 0 && extracted <= request) { energy += extracted; markDirty(); }
+                 } catch (RuntimeException ignored) { /* Unknown foreign mutation must not credit FE. */ }
+-            }
+-        } finally { busy = false; }
++        }
+     }
+     @Override public void update() {
+-        if (!live() || busy) return;
+-        ItemStack result = result();
+-        if (!fits(result)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+-        if (energy < COST) {
+-            pullEnergy();
+-            if (!live()) return;
+-            result = result();
+-            if (!fits(result)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+-        }
+-        if (energy < COST) return;
++        if (busy) return;
+         busy = true;
+         try {
+-            energy -= COST;
+-            if (++progress >= TIME) {
+-                ItemStack old = inventory.getStackInSlot(1);
+-                if (old.isEmpty()) inventory.setStackInSlot(1, result.copy());
+-                else { ItemStack updated = old.copy(); updated.grow(result.getCount()); inventory.setStackInSlot(1, updated); }
+-                inventory.extractItem(0, inputCount(), false);
++            if (!live()) return;
++            ItemStack product = result();
++            if (!live()) return;
++            if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
++            if (energy < COST) {
++                pullEnergy();
++                if (!live()) return;
++                product = result();
++                if (!live()) return;
++                if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
++            }
++            if (energy < COST) return;
++            if (progress + 1 < TIME) {
++                energy -= COST;
++                progress++;
++            } else {
++                // Prepare off-inventory; no mutation or notification until all copies succeed.
++                ItemStack beforeInput = inventory.getStackInSlot(0).copy();
++                ItemStack beforeOutput = inventory.getStackInSlot(1).copy();
++                ItemStack input = beforeInput.copy(); input.shrink(inputCount());
++                ItemStack output = beforeOutput.isEmpty() ? product.copy() : beforeOutput.copy();
++                if (!beforeOutput.isEmpty()) output.grow(product.getCount());
++                // Recheck result, endpoint and snapshots after any world/item callbacks.
++                if (!ItemStack.areItemStacksEqual(product, result()) || !fits(product) || !live()
++                        || progress + 1 < TIME || energy < COST
++                        || !ItemStack.areItemStacksEqual(beforeInput, inventory.getStackInSlot(0))
++                        || !ItemStack.areItemStacksEqual(beforeOutput, inventory.getStackInSlot(1))) return;
++                // No callbacks between these assignments and accounting. markDirty follows the commit.
++                inventory.commit(input.isEmpty() ? ItemStack.EMPTY : input, output);
++                energy -= COST;
+                 progress = 0;
+             }
+             markDirty();
+@@ -164,9 +193,13 @@
+         super.writeToNBT(tag); tag.setInteger("Energy", energy); tag.setInteger("Progress", progress); tag.setTag("Inventory", inventory.serializeNBT()); return tag;
+     }
+     @Override public void readFromNBT(NBTTagCompound tag) {
+-        super.readFromNBT(tag);
+-        energy = Math.max(0, Math.min(CAPACITY, tag.getInteger("Energy")));
+-        if (tag.hasKey("Inventory", 10)) { NBTTagCompound saved = tag.getCompoundTag("Inventory").copy(); saved.setInteger("Size", 2); inventory.deserializeNBT(saved); }
+-        progress = Math.max(0, Math.min(TIME - 1, tag.getInteger("Progress")));
++        if (busy) return;
++        busy = true;
++        try {
++            super.readFromNBT(tag);
++            energy = Math.max(0, Math.min(CAPACITY, tag.getInteger("Energy")));
++            if (tag.hasKey("Inventory", 10)) { NBTTagCompound saved = tag.getCompoundTag("Inventory").copy(); saved.setInteger("Size", 2); inventory.deserializeNBT(saved); }
++            progress = Math.max(0, Math.min(TIME - 1, tag.getInteger("Progress")));
++        } finally { busy = false; }
+     }
+ }
