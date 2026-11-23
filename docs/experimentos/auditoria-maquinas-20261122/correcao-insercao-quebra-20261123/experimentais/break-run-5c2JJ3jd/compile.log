@@ -1,0 +1,27 @@
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:25: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/SpawnFailureProbe.java:15: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+          ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+                                                                           ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java:45: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);
+                                                                                     ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/SpawnFailureProbe.java:30: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);W w=(W)u.allocateInstance(W.class);w.throwsSpawn=throwing;u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;
+          ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/SpawnFailureProbe.java:30: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);W w=(W)u.allocateInstance(W.class);w.throwsSpawn=throwing;u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;
+                                                                           ^
+src/test/java/com/mikael8367/nexustech/experiment/tenmachines/SpawnFailureProbe.java:30: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);W w=(W)u.allocateInstance(W.class);w.throwsSpawn=throwing;u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;
+                                                                                     ^
+Note: src/main/java/com/mikael8367/nexustech/experiment/tenmachines/ProcessingBlock.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+8 warnings
