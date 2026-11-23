@@ -1,0 +1,57 @@
+--- previous/TechMachineTile.java
++++ candidate/TechMachineTile.java
+@@ -34,7 +34,8 @@
+             if (slot == 0) progress = 0;
+             markDirty();
+         }
+-        // All replacements are prepared before these callback-free assignments.
++        // Assignments contain no external notification; caller must prepare all copies first.
++        void commitInput(ItemStack input) { stacks.set(0, input); }
+         void commit(ItemStack input, ItemStack output) {
+             stacks.set(0, input);
+             stacks.set(1, output);
+@@ -50,7 +51,25 @@
+             busy = true;
+             try {
+                 if (!live() || !validInput(stack)) return stack;
+-                return inventory.insertItem(0, stack, simulate);
++                if (simulate) return inventory.insertItem(0, stack, true);
++                // Preflight on copies, then notify BEFORE ownership is transferred. An
++                // exception or break during notification cannot expose a new item twice.
++                ItemStack offered = stack.copy();
++                ItemStack before = inventory.getStackInSlot(0).copy();
++                int oldProgress = progress;
++                ItemStack remainder = inventory.insertItem(0, offered, true).copy();
++                int accepted = offered.getCount() - remainder.getCount();
++                if (accepted <= 0) return stack;
++                ItemStack after = before.isEmpty() ? offered.copy() : before.copy();
++                if (before.isEmpty()) after.setCount(accepted); else after.grow(accepted);
++                markDirty();
++                // Notification may drain, replace/unload the tile or mutate the offer.
++                if (!live() || !validInput(stack) || progress != oldProgress
++                        || !ItemStack.areItemStacksEqual(offered, stack)
++                        || !ItemStack.areItemStacksEqual(before, inventory.getStackInSlot(0))) return stack;
++                inventory.commitInput(after);
++                progress = 0;
++                return remainder;
+             } finally { busy = false; }
+         }
+         public ItemStack extractItem(int slot, int amount, boolean simulate) {
+@@ -157,6 +176,17 @@
+                 if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+             }
+             if (energy < COST) return;
++            // A live/world/water callback can drain input after result(). Verify a
++            // fresh recipe and snapshots *after* the last world callback on every tick.
++            ItemStack tickInput = inventory.getStackInSlot(0).copy();
++            ItemStack tickOutput = inventory.getStackInSlot(1).copy();
++            int tickEnergy = energy, tickProgress = progress;
++            ItemStack checked = result();
++            if (!ItemStack.areItemStacksEqual(product, checked) || !fits(checked) || !live()
++                    || energy != tickEnergy || progress != tickProgress || energy < COST
++                    || !ItemStack.areItemStacksEqual(tickInput, inventory.getStackInSlot(0))
++                    || !ItemStack.areItemStacksEqual(tickOutput, inventory.getStackInSlot(1))) return;
++            product = checked;
+             if (progress + 1 < TIME) {
+                 energy -= COST;
+                 progress++;
