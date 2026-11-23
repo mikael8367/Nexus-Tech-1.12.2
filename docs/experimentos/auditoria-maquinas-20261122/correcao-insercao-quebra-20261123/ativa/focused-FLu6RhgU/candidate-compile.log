@@ -1,0 +1,37 @@
+RealBlockFakeWorldTests.java:17: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+AdjustedRealBlockFakeWorldTests.java:17: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+FocusedRegressionTests.java:8: warning: Unsafe is internal proprietary API and may be removed in a future release
+import sun.misc.Unsafe;
+               ^
+RealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                  ^
+RealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                                                                                   ^
+RealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                                                                                             ^
+AdjustedRealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                  ^
+AdjustedRealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                                                                                   ^
+AdjustedRealBlockFakeWorldTests.java:35: warning: Unsafe is internal proprietary API and may be removed in a future release
+ static FakeWorld world()throws Exception{Field f=Unsafe.class.getDeclaredField("theUnsafe");f.setAccessible(true);Unsafe u=(Unsafe)f.get(null);FakeWorld w=(FakeWorld)u.allocateInstance(FakeWorld.class);w.loaded=true;w.drops=new ArrayList<>();u.putObject(w,u.objectFieldOffset(World.class.getField("provider")),new WorldProviderSurface());return w;}
+                                                                                                                             ^
+FocusedRegressionTests.java:22: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe"); f.setAccessible(true); Unsafe u=(Unsafe)f.get(null);
+          ^
+FocusedRegressionTests.java:22: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe"); f.setAccessible(true); Unsafe u=(Unsafe)f.get(null);
+                                                                             ^
+FocusedRegressionTests.java:22: warning: Unsafe is internal proprietary API and may be removed in a future release
+  Field f=Unsafe.class.getDeclaredField("theUnsafe"); f.setAccessible(true); Unsafe u=(Unsafe)f.get(null);
+                                                                                       ^
+12 warnings
