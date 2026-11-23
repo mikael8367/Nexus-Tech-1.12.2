@@ -1,0 +1,37 @@
+package com.mikael8367.nexustech.experiment.tenmachines;
+import static com.mikael8367.nexustech.experiment.tenmachines.TenMachinesTest.*;
+import net.minecraft.init.Bootstrap;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.items.IItemHandler;
+
+/** Fake-world tests; never a substitute for lifecycle and crash tests in game. */
+public final class RemediationTest {
+ static NBTTagCompound save(ProcessingTile t){return t.writeToNBT(new NBTTagCompound());}
+ static void removeIdentity(NBTTagCompound t){t.removeTag("ProgressKind");t.removeTag("ProgressInput0");t.removeTag("ProgressInput1");}
+ public static void main(String[] args)throws Exception{
+  Bootstrap.register();caps();ExperimentalRegistry.registerTiles();
+  FakeWorld w=world(false);ProcessingTile t=machine(MachineKind.BONE_MILL,w);IItemHandler a=inv(t),f=SidedAutomationTest.side(t,EnumFacing.UP);
+  ok(a==f,"null and face alias the same public handler");
+  f.insertItem(0,new ItemStack(Items.BONE,2),false);charge(t,2000);tick(t,30);
+  eq(f.extractItem(0,1,true).getCount(),1,"physical simulate input");eq(t.progress(),30,"simulate preserves progress");eq(a.getStackInSlot(0).getCount(),2,"simulate preserves stack");
+  eq(f.extractItem(0,1,false).getCount(),1,"physical recovery");eq(t.progress(),0,"real extraction resets paid work");eq(a.getStackInSlot(0).getCount(),1,"shared alias observes extraction");
+  NBTTagCompound legacy=save(t);legacy.setInteger("Progress",30);legacy.setInteger("Energy",1400);removeIdentity(legacy);
+  ProcessingTile q=machine(MachineKind.BONE_MILL,w);q.readFromNBT(legacy);ok(q.isQuarantined(),"legacy quarantined");eq(q.progress(),0,"unverified progress not used");
+  ok(inv(q).getStackInSlot(0).isEmpty(),"quarantine does not expose parsed inventory");eq(energy(q).receiveEnergy(100,false),0,"quarantine blocks energy");ok(!inv(q).insertItem(0,new ItemStack(Items.BONE),false).isEmpty(),"quarantine blocks insertion");tick(q,200);eq(save(q).getInteger("Progress"),30,"paid progress preserved without producing");eq(save(q).getInteger("Energy"),1400,"remaining FE preserved");ok(save(q).getTagList("Inventory",10).equals(legacy.getTagList("Inventory",10)),"raw inventory preserved");
+  ProcessingTile q2=machine(MachineKind.BONE_MILL,w);q2.readFromNBT(save(q));ok(q2.isQuarantined(),"quarantine persists on reload");w.loaded=false;ok(!q2.acceptTrustedLegacy(),"cannot migrate unloaded");w.loaded=true;ok(q2.acceptTrustedLegacy(),"explicit trusted migration");eq(q2.progress(),30,"trusted paid progress restored");eq(energy(q2).getEnergyStored(),1400,"trusted FE restored");NBTTagCompound bound=save(q2);ok(bound.hasKey("ProgressKind")&&bound.hasKey("ProgressInput0"),"new bound identity saved");tick(q2,70);eq(inv(q2).getStackInSlot(2).getCount(),3,"migration spends remaining 1400 FE for one recipe");eq(energy(q2).getEnergyStored(),0,"no FE created");
+  FakeWorld dw=world(false);ProcessingTile d=machine(MachineKind.BONE_MILL,dw);NBTTagCompound dup=new NBTTagCompound();NBTTagList dl=new NBTTagList();dl.appendTag(ProcessingSafetyTest.entry(new ItemStack(Items.BONE,5),0));dl.appendTag(ProcessingSafetyTest.entry(new ItemStack(Items.BONE,7),0));dup.setTag("Inventory",dl);dup.setInteger("Progress",10);d.readFromNBT(dup);
+  ok(d.isQuarantined(),"duplicate quarantined");ok(!d.acceptTrustedLegacy(),"duplicate cannot migrate as trusted legacy");NBTTagCompound ds=save(d);ok(ds.getTagList("Inventory",10).equals(dl),"all duplicate entries survive save");eq(ds.getInteger("Progress"),10,"duplicate progress retained");ProcessingTile d2=machine(MachineKind.BONE_MILL,dw);d2.readFromNBT(ds);ok(d2.isQuarantined(),"duplicate survives reload");ok(inv(d2).extractItem(0,64,false).isEmpty(),"duplicate cannot be accidentally extracted");
+  NBTTagCompound malformed=new NBTTagCompound();NBTTagList ints=new NBTTagList();ints.appendTag(new NBTTagInt(5));malformed.setTag("Inventory",ints);d2.readFromNBT(malformed);ok(d2.isQuarantined(),"wrong list type quarantined");ok(save(d2).getTag("Inventory").equals(ints),"wrong type remains verbatim");
+  FakeWorld mw=world(false);ProcessingTile m=machine(MachineKind.DYE_MIXER,mw);inv(m).insertItem(0,new ItemStack(Items.DYE,1,4),false);inv(m).insertItem(1,new ItemStack(Items.DYE,1,2),false);charge(m,2000);tick(m,50);NBTTagCompound partial=save(m);partial.removeTag("ProgressInput1");ProcessingTile mm=machine(MachineKind.DYE_MIXER,mw);mm.readFromNBT(partial);ok(mm.isQuarantined(),"partial bound identity quarantined");ok(!mm.acceptTrustedLegacy(),"partial binding cannot be promoted");tick(mm,100);eq(save(mm).getInteger("Progress"),50,"partial binding retained not executed");
+  FakeWorld cw=world(false);ProcessingTile c=machine(MachineKind.BONE_MILL,cw);inv(c).insertItem(0,new ItemStack(Items.BONE),false);charge(c,2000);tick(c,40);NBTTagCompound congest=save(c);congest.getTagList("Inventory",10).appendTag(ProcessingSafetyTest.entry(new ItemStack(Items.IRON_INGOT),2));ProcessingTile cc=machine(MachineKind.BONE_MILL,cw);cc.readFromNBT(congest);ok(!cc.isQuarantined(),"congested bound save valid");tick(cc,5);eq(cc.progress(),40,"incompatible output pauses paid progress");eq(energy(cc).getEnergyStored(),1200,"congestion consumes no energy");inv(cc).extractItem(2,1,false);tick(cc,60);eq(inv(cc).getStackInSlot(2).getCount(),3,"unblocked paid cycle finishes");
+  FakeWorld ew=world(false);ProcessingTile ex=machine(MachineKind.BONE_MILL,ew);ew.onDirty=()->{throw new RuntimeException("callback failure");};boolean thrown=false;try{inv(ex).insertItem(0,new ItemStack(Items.BONE),false);}catch(RuntimeException err){thrown=true;}ok(thrown,"callback exception propagated");eq(inv(ex).getStackInSlot(0).getCount(),1,"exception after insert left committed state: external caller cannot infer rollback");eq(inv(ex).extractItem(0,1,false).getCount(),1,"busy lock released after callback exception");
+  FakeWorld ow=world(false);ProcessingTile over=machine(MachineKind.BONE_MILL,ow);NBTTagCompound overData=new NBTTagCompound();NBTTagList ol=new NBTTagList();ol.appendTag(ProcessingSafetyTest.entry(new ItemStack(Items.BONE,100),0));overData.setTag("Inventory",ol);over.readFromNBT(overData);ok(!over.isQuarantined(),"decodable oversized stack is not discarded");IItemHandler oh=inv(over);eq(oh.extractItem(0,100,true).getCount(),64,"oversized simulation capped");eq(oh.getStackInSlot(0).getCount(),100,"simulation unchanged");eq(oh.extractItem(0,100,false).getCount(),64,"oversized real extraction capped");ProcessingTile or=machine(MachineKind.BONE_MILL,ow);or.readFromNBT(save(over));eq(inv(or).extractItem(0,100,false).getCount(),36,"oversized remainder survives reload");
+  FakeWorld sw=world(false);ProcessingTile sides=machine(MachineKind.BONE_MILL,sw);IItemHandler shared=inv(sides);for(EnumFacing face:EnumFacing.values()){IItemHandler s=SidedAutomationTest.side(sides,face);ok(s==shared,"face and null are aliases");s.insertItem(0,new ItemStack(Items.BONE),false);eq(s.extractItem(0,1,true).getCount(),1,"all faces simulate recovery");eq(s.extractItem(0,1,false).getCount(),1,"all faces recover");}sw.loaded=false;ok(!shared.insertItem(0,new ItemStack(Items.BONE),false).isEmpty(),"unloaded rejects input");eq(energy(sides).receiveEnergy(100,false),0,"unloaded rejects FE");
+  Bootstrap.printToSYSOUT("PASS remediation assertions="+assertions);
+ }
+}
