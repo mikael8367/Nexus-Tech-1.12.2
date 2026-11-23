@@ -1,0 +1,7 @@
+[13:32:54] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:32:54] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+Exception in thread "main" java.lang.AssertionError: only old destination drained got=1 want=0
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.ok(FocusedRegressionTests.java:12)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.eq(FocusedRegressionTests.java:13)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.insertThrow(FocusedRegressionTests.java:35)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.main(FocusedRegressionTests.java:83)
