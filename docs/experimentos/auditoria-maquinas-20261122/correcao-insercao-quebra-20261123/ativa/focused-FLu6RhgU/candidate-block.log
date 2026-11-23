@@ -1,0 +1,4 @@
+[13:33:20] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:33:20] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+[13:33:21] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `test_machine2`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+PASS FocusedRegressionTests block assertions=3

@@ -1,0 +1,6 @@
+[13:32:49] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:32:49] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+Exception in thread "main" java.lang.AssertionError: drained tick progress=1 expected=0 energy=1560 expected=1580
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.ok(FocusedRegressionTests.java:12)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.tickDrain(FocusedRegressionTests.java:50)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.main(FocusedRegressionTests.java:81)
