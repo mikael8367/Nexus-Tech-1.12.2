@@ -1,0 +1,31 @@
+baseline source-sha256 70b9152d913515215bc5e956573b1a11c5a1c697aef9c8b101599129a578fe3f
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+compile baseline 0  
+baseline save exit 1 
+Exception in thread "main" java.lang.AssertionError: accepted data not dirty after a reentrant old save
+	at TechMachineTile.check(TechMachineTile.java:49)
+	at TechMachineTile.testSave(TechMachineTile.java:56)
+	at TechMachineTile.main(TechMachineTile.java:102)
+
+baseline normal exit 0 
+PASS assertions=4 cases=normal
+
+candidate source-sha256 24d657ca5f4fc53f002d1ba5d224a959fea53327475da00892011659e5952a05
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+compile candidate 0  
+candidate save exit 0 
+PASS assertions=4 cases=save
+
+candidate normal exit 0 
+PASS assertions=4 cases=normal
+
+candidate after exit 0 
+PASS assertions=4 cases=after
+
+candidate crash-risk exit 0 
+RISK REPRODUCED: crash before retry restores stale snapshot
+PASS assertions=2 cases=crash-risk
+
+HARNESS completed: baseline save fails as expected; candidate fragment passes all model tests
