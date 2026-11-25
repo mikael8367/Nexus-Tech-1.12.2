@@ -1,0 +1,19 @@
+FAIL fuel notification throws after mutation preserves conversion :: java.lang.RuntimeException: callback
+FAIL fuel callback snapshot sees item and credit consistent :: java.lang.AssertionError: partial fuel snapshot
+FAIL fuel dirty reentry does not take a second item :: java.lang.AssertionError: second conversion
+PASS fuel callback independently changes remaining count
+FAIL fuel preflight callback throws before any mutation :: java.lang.AssertionError: no exception
+FAIL fuel preflight callback changes credit fail closed :: java.lang.AssertionError: overwrote preflight credit
+PASS fuel last item without callback
+FAIL energy dirty exception still returns committed debit :: java.lang.RuntimeException: callback
+PASS energy callback snapshot sees debit and budget
+FAIL energy notification reentry blocked :: java.lang.AssertionError: nested energy
+FAIL energy bind reentry blocked before debit :: java.lang.AssertionError: nested bind
+PASS energy bind callback throws before debit
+PASS energy bind mutates available balance
+PASS energy bind invalidates lease
+PASS energy simulation no dirty or debit
+PASS energy normal respects shared tick cap
+PASS energy teardown throws after committed debit
+FAIL energy negative balance fails closed :: java.lang.AssertionError: negative extraction
+RESULT passed=9 failed=9
