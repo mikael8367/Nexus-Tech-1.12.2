@@ -1,0 +1,1 @@
+NuclearController.java está em quatro partes sequenciais .part1 a .part4 para preservação literal. Una na ordem sem inserir caracteres. SHA-256 esperado: 3d615c20fdf0e45b3ed4f50c09cf2a27c8e58d3336b7073e0351c3afae21f4cc. Não integrar: consulte REVISAO-INDEPENDENTE.md.
