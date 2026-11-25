@@ -1,0 +1,4 @@
+PASS removal in conversion notification retains two items :: inventory+overflow=2, fuelTicks=0, removing=true
+FAIL later removal preserves full unburnt fuel credit :: inventory+overflow=1, stranded fuelTicks=2400
+FAIL notification-time flush includes conversion :: flushed items=2 ticks=0, live items=1 ticks=2400 (no later notification in helper model)
+RESULT passed=1 failed=2
