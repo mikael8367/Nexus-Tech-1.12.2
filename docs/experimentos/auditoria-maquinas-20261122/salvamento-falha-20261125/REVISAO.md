@@ -1,0 +1,5 @@
+# Revisão independente (não integrar)
+
+Variante funcional: Chunk.markDirty é virtual e pode reentrar depois das validações; um override que drena o inventário diretamente poderia causar duplicação ao restaurar o snapshot no commit. Isso é análise hipotética, não comportamento demonstrado em Forge. Marcar chunk diretamente não equivale a TileEntity.markDirty e pode deixar comparadores/hooks sem atualização. A extração pode sofrer falha após mutação no handler Forge, não coberta pelo stub. O teste de chunk não carregado termina na primeira consulta live e não exercita retorno nulo específico de getLoadedChunk. Save antigo que limpa dirty depois da inserção é controle negativo simulado, não ordem comprovada de execução real.
+
+Quarentena: rejeita todas as ofertas, não apenas as perigosas, e paralisa abastecimento pela capability. Os testes só comprovam rejeição no modelo. Outras vias, processamento, quebra e extração continuam fora da proteção. Nem o candidato nem a quarentena garantem atomicidade entre inventários/chunks.
