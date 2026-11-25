@@ -1,0 +1,11 @@
+PASS critical already running: latch, indicator, dirty
+PASS coolant trip indicator reentry cannot restart
+PASS coolant trip dirty reentry cannot restart or disable guard
+PASS legacy no water capacity after fuel callback
+PASS legacy no water negative energy callback
+PASS legacy no water still generates when capacity fits
+PASS nested stop during start still latches
+PASS manual restart only after trip finishes
+PASS trip callback exception keeps latch and releases guard
+PASS automatic no-drain capacity after extraction
+RESULT passed=10 failed=0
