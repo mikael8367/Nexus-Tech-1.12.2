@@ -1,0 +1,104 @@
+package com.mikael8367.nexustech.nuclear;
+
+import javax.annotation.Nullable;
+import com.mikael8367.nexustech.ores.OreRegistry;
+import com.mikael8367.nexustech.ores.OreType;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
+import net.minecraft.block.BlockHorizontal;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ITickable;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.energy.CapabilityEnergy;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidTank;
+import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidTankProperties;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.ItemStackHandler;
+import net.minecraftforge.items.IItemHandler;
+
+/** One owner, one store. No remote loading, no processing by passive parts. */
+public final class NuclearController extends TileEntity implements ITickable {
+ public static final int CAPACITY=1000000, FE_PER_TICK=200, FUEL_TICKS=2400, WATER_CAPACITY=8000, SCRAM=1000, RESET=400, OUTPUT=400;
+ public int energy,temperature,fuelTicks,production; public boolean enabled, scrammed, formed;
+ private final AutoThermalControl autoThermal=new AutoThermalControl();
+ public boolean autoTemperatureEnabled(){return autoThermal.enabled();}
+ public boolean autoTemperatureInvalid(){return autoThermal.invalid();}
+ public int autoTemperatureTarget(){return autoThermal.target();}
+ // Server-side API only; no network handler/GUI is added by this experiment.
+ public boolean setAutoTemperatureTarget(int target){
+   if(world==null || world.isRemote || updating || reserved || filling || activeOperations>0 || removing)return false;
+   if(!autoThermal.setTarget(target))return false;markDirty();return true;
+ }
+ public boolean setAutoTemperatureEnabled(boolean value){
+   if(world==null || world.isRemote || updating || reserved || filling || activeOperations>0 || removing)return false;
+   if(value && autoThermal.invalid())return false;
+   autoThermal.setEnabled(value);markDirty();return true;
+ }
+ /** Diagnostic is instantaneous, not a guarantee of future stability. */
+ public String autoTemperatureStatus(){
+   if(autoThermal.invalid())return "INVALID_CONFIG";
+   if(!autoThermal.enabled())return "OFF";
+   if(scrammed || temperature>=SCRAM)return "PROTECTION";
+   if(!enabled)return "REACTOR_OFF";
+   if(!formed)return "STRUCTURE";
+   if(coolantGuard && water()==0)return "NO_COOLANT_PROTECTION";
+   if(!hasFuel())return "NO_FUEL";
+   if(energy>CAPACITY-FE_PER_TICK)return "ENERGY_SATURATED";
+   if(water()>0 && autoThermal.target()>0)return "COOLING_EXCEEDS_HEAT";
+   return temperature==autoThermal.target()?"AT_TARGET":"ADJUSTING";
+ }
+ // Opt-in for old worlds: empty coolant trips a latched manual reset.
+ private boolean coolantGuard;
+ public boolean coolantGuard(){return coolantGuard;}
+ void setCoolantGuard(boolean value){
+   if(!usable())return;
+   coolantGuard=value;
+   if(value && enabled && water()==0)tripCoolantGuard();
+   markDirty();
+ }
+ private void tripCoolantGuard(){
+   enabled=false;scrammed=true;production=0;setIndicator(false);markDirty();
+ }
+ private boolean reserved, updating, removing, removalDrained, removalFinalizing, removalUncertain, bucketTransfer, filling, automationExtracting; private int activeOperations;
+ private boolean visualFormed;
+ boolean visualFormed(){return visualFormed;}
+ private void setVisualFormed(boolean value){
+   if(visualFormed==value)return;
+   visualFormed=value;
+   if(world!=null && !world.isRemote && world.isBlockLoaded(pos)){
+     IBlockState s=world.getBlockState(pos);world.notifyBlockUpdate(pos,s,s,3);
+   }
+ }
+ @Override public NBTTagCompound getUpdateTag(){NBTTagCompound n=super.writeToNBT(new NBTTagCompound());n.setBoolean("VisualFormed",visualFormed);return n;}
+ @Override public void handleUpdateTag(NBTTagCompound n){visualFormed=n.getBoolean("VisualFormed");}
+ @Override public SPacketUpdateTileEntity getUpdatePacket(){return new SPacketUpdateTileEntity(pos,0,getUpdateTag());}
+ @Override public void onDataPacket(NetworkManager net,SPacketUpdateTileEntity packet){handleUpdateTag(packet.getNbtCompound());if(world!=null)world.markBlockRangeForRenderUpdate(pos,pos);}
+ private final List<ItemStack> recoveryOverflow=new ArrayList<>();
+ private int outputThisTick; private long outputTick=Long.MIN_VALUE;
+ /** Move inventory to dimension storage before the tile is removed; callbacks cannot drain it twice. */
+ void onControllerRemoved(){
+   if(removing)return;
+   NuclearRecovery recovery=NuclearRecovery.get(world);
+   removing=true;
+   try{setVisualFormed(false);syncPartVisuals(false);}
+   finally{if(activeOperations==0)finishRemoval(recovery);}
+ }
+ private void finishRemoval(NuclearRecovery recovery){
+   if(removalDrained || removalFinalizing || removalUncertain)return;
+  
