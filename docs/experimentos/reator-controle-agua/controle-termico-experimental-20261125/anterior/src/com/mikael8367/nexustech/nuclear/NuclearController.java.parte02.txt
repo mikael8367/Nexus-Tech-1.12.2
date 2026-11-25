@@ -1,0 +1,88 @@
+ removalFinalizing=true;
+   try {
+     // Mapped Forge setFluid and our raw slot assignment have no world callback.
+     int amount=water();if(amount>0){recovery.enqueueWater(pos,amount);tank.setFluid(null);}
+     for(int i=0;i<inventory.getSlots();i++){
+       ItemStack stack=inventory.getStackInSlot(i);
+       if(!stack.isEmpty()){
+         recovery.enqueue(pos,stack);
+         recoveryInventory.setWithoutNotification(i,ItemStack.EMPTY);
+       }
+     }
+     while(!recoveryOverflow.isEmpty()){
+       recovery.enqueue(pos,recoveryOverflow.get(0));recoveryOverflow.remove(0);
+     }
+     removalDrained=true;
+   } catch(RuntimeException | Error ex){
+     // Ownership may have changed before a failure. Never automatically replay it.
+     removalUncertain=true;throw ex;
+   } finally {removalFinalizing=false;}
+   releaseStructure();
+ }
+ // Defer inventory draining until the outermost GUI/tick transaction finishes.
+ boolean beginOperation(){if(bucketTransfer || automationExtracting || !usable() || validateStructure()!=1)return false;activeOperations++;return true;}
+ private boolean beginTickOperation(){if(!usable())return false;activeOperations++;return true;}
+ void endOperation(){if(--activeOperations==0 && removing)finishRemoval(NuclearRecovery.get(world));}
+ private final RecoveryInventory recoveryInventory=new RecoveryInventory();
+ // Keep the public field's ItemStackHandler descriptor for existing integrations.
+ public final ItemStackHandler inventory=recoveryInventory;
+ private final class RecoveryInventory extends ItemStackHandler {
+   RecoveryInventory(){super(3);}
+   // Internal ownership transfer only; caller arranges notification if needed.
+   void setWithoutNotification(int slot,ItemStack stack){validateSlotIndex(slot);stacks.set(slot,stack);}
+   @Override public boolean isItemValid(int slot,ItemStack s){ return slot==0?isFuel(s):slot==1?s.getItem()==Items.WATER_BUCKET:false; }
+   @Override public ItemStack insertItem(int slot,ItemStack s,boolean simulate){
+     if(!s.isEmpty() && !isItemValid(slot,s))return s;
+     return super.insertItem(slot,s,simulate);
+   }
+   @Override protected void onContentsChanged(int slot){markDirty();}
+ }
+ // Automation can insert only inputs and extract only the output. Internal operations use inventory.
+ private final IItemHandler automation=new IItemHandler(){
+   public int getSlots(){return inventory.getSlots();}
+   public ItemStack getStackInSlot(int slot){return inventory.getStackInSlot(slot).copy();}
+   public ItemStack insertItem(int slot,ItemStack stack,boolean simulate){return !bucketTransfer && !automationExtracting && usable()?inventory.insertItem(slot,stack,simulate):stack;}
+   public ItemStack extractItem(int slot,int amount,boolean simulate){
+     if(bucketTransfer || automationExtracting || activeOperations>0 || !usable())return ItemStack.EMPTY;
+     if(slot!=2){inventory.getStackInSlot(slot);return ItemStack.EMPTY;}
+     if(amount<=0)return ItemStack.EMPTY;
+     // Copies may invoke foreign capabilities: defer removal, block nested operations.
+     automationExtracting=true;activeOperations++;
+     try{
+       ItemStack original=inventory.getStackInSlot(slot);
+       if(original.isEmpty())return ItemStack.EMPTY;
+       int count=Math.min(amount,Math.min(original.getCount(),original.getMaxStackSize()));
+       if(count<=0 || !usable())return ItemStack.EMPTY;
+       ItemStack result=original.copy();result.setCount(count);
+       if(!usable())return ItemStack.EMPTY;
+       if(simulate)return result;
+       ItemStack remaining=ItemStack.EMPTY;
+       if(count<original.getCount()){
+         remaining=original.copy();remaining.shrink(count);
+         if(!usable())return ItemStack.EMPTY;
+       }
+       // Commit before notifying: do not undo a successful transfer on callback failure.
+       recoveryInventory.setWithoutNotification(slot,remaining);
+       try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear extraction notification failed after mutation; chunk may not be marked dirty",ex);}
+       return result;
+     }finally{
+       try{endOperation();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear removal finalization failed after extraction; inspect recovery and inventory",ex);}
+       finally{automationExtracting=false;}
+     }
+   }
+   public int getSlotLimit(int slot){return inventory.getSlotLimit(slot);}
+ };
+ private final FluidTank tank=new FluidTank(WATER_CAPACITY) {
+   @Override public boolean canFillFluidType(FluidStack f){return f!=null && f.getFluid()==FluidRegistry.WATER;}
+   @Override public boolean canDrain(){return false;}
+   @Override public boolean canDrainFluidType(FluidStack f){return false;}
+   @Override protected void onContentsChanged(){
+     // Mutation already happened: a failed notification must not turn success into zero.
+     try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear water notification failed after mutation",ex);}
+   }
+ };
+ // Cached capabilities must not accept contents after the controller is removed.
+ private final IFluidHandler fluidInput=new IFluidHandler(){
+   public IFluidTankProperties[] getTankProperties(){return tank.getTankProperties().clone();}
+   public int fill(FluidStack fluid,boolean doFill){
+     if(bucketTransfer || filling || automationExtracting || !usable() || fluid==null || fluid.getFluid()!=FluidRegistry.WATER ||
