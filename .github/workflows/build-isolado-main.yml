@@ -16,12 +16,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '8'
+      - name: Preparar verificador adaptado para a main
+        run: python3 .github/workflows/create_main_validator.py "$RUNNER_TEMP/nexus-main-validator"
+      - name: Testar verificadores
+        run: |
+          cd "$RUNNER_TEMP/nexus-main-validator"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_validate_jar test_main_logo
+          cd "$GITHUB_WORKSPACE/.github/workflows"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_check_preservation
       - name: Compilar e testar
         run: sh ./gradlew --no-daemon --max-workers=2 build
       - name: Verificar artefato
         run: |
           set -eu
-          python3 .github/workflows/validate_jar.py --jar build/libs/nexustech-1.0.jar --source . --version 1.0
+          python3 "$RUNNER_TEMP/nexus-main-validator/validate_jar.py" --jar build/libs/nexustech-1.0.jar --source . --version 1.0
           python3 .github/workflows/check_preservation.py . build/libs/nexustech-1.0.jar
           if unzip -Z1 build/libs/nexustech-1.0.jar | grep -Ei '(^|/)(nuclear|reactor|reator)(/|[^/]*)'; then echo 'Classe ou recurso nuclear nao esperado' >&2; exit 1; fi
           sha256sum build/libs/nexustech-1.0.jar > build/libs/SHA256SUMS
