@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Compiles extracted real methods in Java 8 stubs; NO full Forge or production build."""
+from pathlib import Path
+import hashlib, subprocess, sys
+root=Path(__file__).resolve().parent
+prior=Path('/home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/salvamento-20261125')
+paths={'baseline':prior.parent/'correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java', 'anterior':prior/'TechMachineTile.java', 'novo':root/'TechMachineTile.java'}
+jdk=Path('/home/daytona/workspace/nexus-jdk8/jdk8u514-b01/bin')
+def method(src,sig):
+ i=src.index(sig); j=src.index('{',i); depth=0
+ for k in range(j,len(src)):
+  if src[k]=='{': depth+=1
+  elif src[k]=='}':
+   depth-=1
+   if depth==0: return src[i:k+1]
+ raise Exception('unmatched method')
+template=r'''
+import java.util.logging.*;
+class TechMachineTile {
+ boolean busy, insertionDirtyRetry, loaded=true; int progress; int calls, queries; int snap; Runnable tileCallback, queryCallback, validCallback;
+ World world=new World(); BlockPos pos=new BlockPos(); MachineInventory inventory=new MachineInventory();
+ boolean live(){queries++; if(queryCallback!=null)queryCallback.run(); return loaded && world.present && !world.invalid;}
+ boolean validInput(ItemStack s){if(validCallback!=null)validCallback.run(); return s.n>0;}
+ boolean isInvalid(){return world.invalid;}
+ void markDirty(){calls++; if(tileCallback!=null)tileCallback.run(); world.chunk.markDirty();}
+ RETRY_METHOD
+ INSERT_METHOD
+ EXTRACT_METHOD
+ static class BlockPos {int x,z; BlockPos toImmutable(){BlockPos b=new BlockPos();b.x=x;b.z=z;return b;} int getX(){return x;} int getZ(){return z;} public boolean equals(Object o){return o instanceof BlockPos && x==((BlockPos)o).x && z==((BlockPos)o).z;}}
+ static class World {boolean present=true, invalid; Chunk chunk=new Chunk(); ChunkProvider provider=new ChunkProvider(this); ChunkProvider getChunkProvider(){return provider;}}
+ static class ChunkProvider {World w; Runnable callback; ChunkProvider(World w){this.w=w;} Chunk getLoadedChunk(int x,int z){if(callback!=null)callback.run();return w.present?w.chunk:null;}}
+ static class Chunk {boolean dirty; Runnable callback; void markDirty(){dirty=true; if(callback!=null)callback.run();}}
+ static class ItemStack {
+  static final ItemStack EMPTY=new ItemStack(0); int n; ItemStack(int x){n=x;} int getCount(){return n;} boolean isEmpty(){return n==0;} ItemStack copy(){return new ItemStack(n);} void setCount(int c){n=c;} void grow(int c){n+=c;}
+  static boolean areItemStacksEqual(ItemStack a,ItemStack b){return a.n==b.n;}
+ }
+ class MachineInventory {int amount; Runnable callback;
+  ItemStack getStackInSlot(int s){return new ItemStack(amount);}
+  ItemStack insertItem(int s,ItemStack offer,boolean sim){if(callback!=null)callback.run();return new ItemStack(Math.max(0,offer.n-(64-amount)));}
+  ItemStack extractItem(int s,int n,boolean sim){int count=Math.min(n,amount);if(!sim&&count>0){amount-=count;progress=0;markDirty();}return new ItemStack(count);}
+  void commitInput(ItemStack x){amount=x.n;}
+ }
+ static int n; static void ck(boolean v,String s){n++;if(!v)throw new AssertionError(s);}
+ static void ordinary(){TechMachineTile t=new TechMachineTile();t.inventory.amount=63;ItemStack o=new ItemStack(3);
+  ck(t.insertItem(0,o,true).n==2&&t.inventory.amount==63&&!t.world.chunk.dirty,"simulate");
+  ck(t.insertItem(0,o,false).n==2&&t.inventory.amount==64&&o.n==3&&t.world.chunk.dirty,"partial");
+  ck(t.insertItem(0,o,false).n==3&&t.inventory.amount==64,"full false");
+  ck(t.extractItem(0,2,true).n==2&&t.inventory.amount==64,"extract sim");
+  ck(t.extractItem(0,2,false).n==2&&t.inventory.amount==62,"extract real");
+  ck(t.insertItem(0,new ItemStack(1),false).n==0&&t.inventory.amount==63&&!t.busy,"continuity");
+  ck(t.insertItem(1,o,false)==o&&t.extractItem(7,2,false).n==0,"wrong slot");
+ }
+ static void recursion(){TechMachineTile t=new TechMachineTile();int[] nested={-1,-1};t.inventory.callback=()->{nested[0]=t.insertItem(0,new ItemStack(2),false).n;nested[1]=t.extractItem(0,1,false).n;};
+  ck(t.insertItem(0,new ItemStack(3),false).n==0&&t.inventory.amount==3&&nested[0]==2&&nested[1]==0,"reentry blocked");}
+ static void queryChanges(){TechMachineTile t=new TechMachineTile();t.inventory.amount=2;ItemStack o=new ItemStack(3);
+  t.queryCallback=()->{if(t.queries==2){t.inventory.amount=1;}};
+  ck(t.insertItem(0,o,false).n==3&&t.inventory.amount==1&&!t.busy,"snapshot changed");
+  t.queryCallback=null; ck(t.insertItem(0,o,false).n==0&&t.inventory.amount==4,"continued after rejection");}
+ static void throwing(){TechMachineTile t=new TechMachineTile();t.inventory.callback=()->{throw new IllegalStateException();};boolean thrown=false;
+  try{t.insertItem(0,new ItemStack(3),false);}catch(IllegalStateException x){thrown=true;}
+  ck(thrown&&t.inventory.amount==0&&!t.busy,"query throw prior to commit"); t.inventory.callback=null;ck(t.insertItem(0,new ItemStack(2),false).n==0&&t.inventory.amount==2,"continuity after throw");}
+ static void oldSaveWindow(String v){TechMachineTile t=new TechMachineTile();ItemStack offer=new ItemStack(3);
+  // Identical old-save event during the second live() query in each variant.
+  t.queryCallback=()->{if(t.queries==2){t.snap=t.inventory.amount;t.world.chunk.dirty=false;}};
+  // The previous candidate additionally fails its post-commit dirty attempt.
+  if(v.equals("anterior"))t.tileCallback=()->{if(t.calls==2)throw new IllegalStateException("second notification befo
