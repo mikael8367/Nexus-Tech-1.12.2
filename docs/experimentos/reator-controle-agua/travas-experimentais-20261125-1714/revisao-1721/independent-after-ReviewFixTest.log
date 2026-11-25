@@ -1,0 +1,17 @@
+PASS 999 manual
+PASS 998 manual
+PASS 997 manual
+PASS 999 auto
+PASS 998 auto
+PASS 997 auto
+PASS 996 below threshold
+PASS critical manual preexisting
+PASS dry already running
+PASS stop indicator reentry
+PASS stop inside start
+PASS stop dirty reentry
+PASS dry during start
+PASS fuel callback critical auto=false
+PASS fuel callback critical auto=true
+PASS tank markDirty exception swallowed
+RESULT passed=16 failed=0
