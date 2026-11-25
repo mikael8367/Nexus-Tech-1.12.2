@@ -1,0 +1,64 @@
+diff --git a/home/daytona/workspace/nexus-reactor-experimental-reentrancy-20261125-1746/src/com/mikael8367/nexustech/nuclear/NuclearController.java b/src/com/mikael8367/nexustech/nuclear/NuclearController.java
+index 1b069a0..d4dd311 100644
+--- a/home/daytona/workspace/nexus-reactor-experimental-reentrancy-20261125-1746/src/com/mikael8367/nexustech/nuclear/NuclearController.java
++++ b/src/com/mikael8367/nexustech/nuclear/NuclearController.java
+@@ -111,8 +111,12 @@ public final class NuclearController extends TileEntity implements ITickable {
+    Throwable first=null;
+    try{
+      // Clear before callback so a reentrant SCRAM can set the flag again.
+-     if(pendingScramIndicator){pendingScramIndicator=false;try{setIndicator(false);}catch(RuntimeException | Error ex){pendingScramIndicator=true;first=ex;}}
+-     if(pendingScramDirty){pendingScramDirty=false;try{markDirty();}catch(RuntimeException | Error ex){pendingScramDirty=true;if(first==null)first=ex;else if(first!=ex)first.addSuppressed(ex);}}
++     if(pendingScramIndicator){pendingScramIndicator=false;try{if(!setIndicator(false))pendingScramIndicator=true;}catch(RuntimeException | Error ex){pendingScramIndicator=true;first=ex;}}
++     if(pendingScramDirty){
++       pendingScramDirty=false;
++       try{if(usable()){markDirty();if(!usable())pendingScramDirty=true;}else pendingScramDirty=true;}
++       catch(RuntimeException | Error ex){pendingScramDirty=true;if(first==null)first=ex;else if(first!=ex)first.addSuppressed(ex);}
++     }
+    }finally{enabled=false;scrammed=true;production=0;}
+    if(first instanceof RuntimeException)throw (RuntimeException)first;
+    if(first instanceof Error)throw (Error)first;
+@@ -439,8 +443,9 @@ public final class NuclearController extends TileEntity implements ITickable {
+  private void abortUnsafeStart(boolean latch){
+    if(pendingScramDirty || pendingScramIndicator){retryScramNotifications();return;}
+    if(enabled && (temperature>=SCRAM || ((coolantGuard || autoThermal.enabled()) && water()==0))){tripCoolantGuard();return;}
++   if(latch){tripCoolantGuard();return;}
+    boolean wasEnabled=enabled;
+-   enabled=false;production=0;if(latch)scrammed=true;
++   enabled=false;production=0;
+    if(wasEnabled){setIndicator(false);markDirty();}
+  }
+  public void setEnabled(boolean value){
+@@ -474,8 +479,14 @@ public final class NuclearController extends TileEntity implements ITickable {
+  }
+  /** A structural interruption is latched; restoring chunks/blocks alone cannot restart. */
+  private void stopForStructureLoss(){
+-   if(enabled)scrammed=true;
+-   enabled=false; formed=false; production=0; setVisualFormed(false);syncPartVisuals(false);setIndicator(false); markDirty();
++   boolean latch=enabled;
++   enabled=false;formed=false;production=0;
++   if(latch){scrammed=true;pendingScramIndicator=true;pendingScramDirty=true;}
++   try{setVisualFormed(false);syncPartVisuals(false);}
++   catch(RuntimeException | Error ex){notifyScramAfterFailure(ex);throw ex;}
++   if(latch){retryScramNotifications();return;}
++   try{setIndicator(false);if(usable())markDirty();}
++   catch(RuntimeException | Error ex){notifyScramAfterFailure(ex);throw ex;}
+  }
+  @Override public void update(){
+    // Guard the whole tick, including operation setup and teardown, against callbacks.
+@@ -559,10 +570,13 @@ public final class NuclearController extends TileEntity implements ITickable {
+    } catch(RuntimeException | Error ex){notifyScramAfterFailure(ex);throw ex;}
+    finally {if(temperature>=SCRAM || autoThermal.invalid()){enabled=false;scrammed=true;}updating=false;}
+  }
+- private void setIndicator(boolean active){
+-   if(world==null || !world.isBlockLoaded(pos))return;
++ private boolean setIndicator(boolean active){
++   // A callback may have installed another controller at this position.
++   if(!usable())return false;
+    IBlockState s=world.getBlockState(pos);
+-   if(s.getBlock()==NuclearRegistry.CONTROLLER && s.getValue(NuclearBlock.ACTIVE)!=active)world.setBlockState(pos,s.withProperty(NuclearBlock.ACTIVE,active),3);
++   if(!usable() || s.getBlock()!=NuclearRegistry.CONTROLLER)return false;
++   if(s.getValue(NuclearBlock.ACTIVE)==active)return usable();
++   return world.setBlockState(pos,s.withProperty(NuclearBlock.ACTIVE,active),3) && usable();
+  }
+  private void pushOutput(){
+    if(validateStructure()!=1)return;
