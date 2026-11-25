@@ -1,0 +1,24 @@
+PASS target recursive dirty bounded and blocked
+PASS target callback may emergency stop
+PASS enable callback may emergency stop
+PASS repair callback blocks cross setters
+PASS indicator exception still attempts dirty
+PASS both exceptions retain original and suppressed
+PASS failed dirty blocks restart until tick retry
+PASS success and validation
+PASS each legacy operation guard still blocks setters
+PASS callbacks reject nested start and tick
+PASS recursive automatic enable blocked
+PASS config dirty failure latches and retries
+PASS already scrammed config dirty failure still notifies
+PASS indicator retry blocks restart until healthy
+PASS persistent dirty failure stays latched
+PASS Error propagated with dirty attempted
+PASS manual stop indicator failure latches and notifies
+PASS tick indicator failure latches and notifies
+PASS coolant configuration callback may stop
+PASS nested setter matrix 3x3x4
+PASS invalid automatic config cannot repair in enable callback
+PASS stop during startup bind notifies latched SCRAM
+PASS reentrant SCRAM during dirty remains pending
+RESULT passed=23 failed=0
