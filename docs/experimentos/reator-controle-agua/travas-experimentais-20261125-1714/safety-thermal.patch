@@ -1,0 +1,21 @@
+--- ../nexus-reactor-valve-experimental-20261125/src/com/mikael8367/nexustech/nuclear/AutoThermalControl.java	2026-11-25 19:29:02.411044155 +0000
++++ src/com/mikael8367/nexustech/nuclear/AutoThermalControl.java	2026-11-25 20:05:49.390751111 +0000
+@@ -14,11 +14,16 @@
+     int target() { return target; }
+     boolean setTarget(int value) {
+         if (value < 0 || value > MAX_TARGET) return false;
++        if (invalid) return false; // Only an explicit repair can clear a corrupt save.
+         target = value;
+-        invalid = false;
+         return true;
+     }
+-    void setEnabled(boolean value) { enabled = value; invalid = false; }
++    void setEnabled(boolean value) { enabled = value && !invalid; }
++    void invalidate() { enabled = false; invalid = true; }
++    boolean repair(int value) {
++        if (value < 0 || value > MAX_TARGET) return false;
++        target = value; enabled = false; invalid = false; return true;
++    }
+ 
+     /** Valve decision only: never writes temperature and never supplies water. */
+     boolean applyWater(int temperature) { return !enabled || temperature >= target; }
