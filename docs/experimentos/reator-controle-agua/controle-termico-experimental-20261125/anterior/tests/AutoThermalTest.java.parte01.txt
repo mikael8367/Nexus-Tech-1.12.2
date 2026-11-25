@@ -1,0 +1,35 @@
+package com.mikael8367.nexustech.nuclear;
+import net.minecraft.nbt.NBTTagCompound;
+public class AutoThermalTest {
+ static int checks=0;
+ static void check(boolean v,String msg){checks++;if(!v)throw new AssertionError(msg);}
+ static FakeTile tile(int temp,int target,int water,boolean guard){FakeTile t=new FakeTile();t.temperature=temp;t.fuelTicks=500000;t.tank.amount=water;t.coolantGuard=guard;check(t.setAutoTemperatureTarget(target),"target accepted");check(t.setAutoTemperatureEnabled(true),"auto enabled");return t;}
+ static void step(FakeTile t,int drain){t.update();t.energy-=Math.min(t.energy,drain);}
+ public static void main(String[] args){
+  FakeTile t=tile(0,400,0,false);int peak=0;
+  for(int i=0;i<50000;i++){step(t,200);peak=Math.max(peak,t.temperature);if(i>=200)check(t.temperature==400,"long hold tick "+i+" temp "+t.temperature);}
+  check(peak==400,"no overshoot");check(t.production==66,"partial 66 FE");check(!t.scrammed,"no false scram");
+  System.out.println("PASS dry: 50,000 ticks, target 400, post-convergence exactly 400, peak="+peak+", 66 FE/t, full fuel tick");
+  FakeTile v=tile(400,400,0,false);
+  for(int i=0;i<60000;i++){step(v,(i%500<250)?0:132);check(v.temperature==400,"variable load tick "+i);}
+  System.out.println("PASS variable load: 60,000 ticks, alternating 0/132 FE extraction, exactly 400");
+  FakeTile o=tile(470,400,0,false);for(int i=0;i<70;i++){step(o,200);check(o.production==0,"overshoot produces no heat");}check(o.temperature==400,"overshoot returns");
+  FakeTile cold=tile(0,900,0,false);for(int i=0;i<451;i++)step(cold,200);check(cold.temperature==900,"cold to target 900");
+  System.out.println("PASS overshoot 470->400 in 70 ticks; cold 0->900 without overshoot");
+  FakeTile wet=tile(300,400,1000,true);for(int i=0;i<600;i++)step(wet,200);check(wet.temperature==0 && wet.fuelTicks==500000 && wet.tank.amount==1000,"water cannot warm positive target");check(wet.autoTemperatureStatus().equals("COOLING_EXCEEDS_HEAT"),"wet status");
+  FakeTile zero=tile(0,0,1,true);zero.update();check(zero.scrammed&&!zero.enabled&&zero.tank.amount==0&&zero.energy==200&&zero.production==0,"last mB guard");
+  FakeTile dryGuard=tile(400,400,0,true);dryGuard.update();check(dryGuard.scrammed&&!dryGuard.enabled&&dryGuard.energy==0,"dry guard trip");
+  System.out.println("PASS coolant: wet positive target impossible; last mB and no-water protection SCRAM");
+  FakeTile out=tile(400,400,0,false);out.fuelTicks=1;out.update();check(!out.enabled&&out.temperature==400&&out.fuelTicks==0,"last fuel tick");out.update();check(out.temperature==399&&out.production==0,"no fuel cools");
+  FakeTile full=tile(400,400,0,false);full.energy=FakeTile.CAPACITY;check(full.autoTemperatureStatus().equals("ENERGY_SATURATED"),"saturated status");full.update();check(full.temperature==399&&full.fuelTicks==500000&&full.energy==FakeTile.CAPACITY,"saturation cools");
+  FakeTile crit=tile(1000,400,0,false);crit.update();check(crit.scrammed&&!crit.enabled&&crit.production==0&&crit.temperature==999,"critical pre-trip");
+  FakeTile badStructure=tile(400,400,0,false);badStructure.structure=0;badStructure.update();check(badStructure.scrammed&&!badStructure.enabled,"structure trip");
+  FakeTile unloaded=tile(400,400,0,false);unloaded.structure=-1;unloaded.update();check(unloaded.temperature==400&&unloaded.scrammed,"unloaded pause");
+  System.out.println("PASS fuel exhaustion, saturation, critical SCRAM, invalid/unloaded structure");
+  FakeTile legacy=new FakeTile();legacy.temperature=20;legacy.fuelTicks=10;legacy.update();check(legacy.temperature==22&&legacy.energy==200&&legacy.fuelTicks==9,"legacy dry");
+  FakeTile lw=new FakeTile();lw.temperature=20;lw.fuelTicks=10;lw.tank.amount=5;lw.update();check(lw.temperature==18&&lw.energy==200&&lw.tank.amount==4,"legacy wet");
+  FakeTile invalid=tile(400,400,0,false);check(!invalid.setAutoTemperatureTarget(-1)&&!invalid.setAutoTemperatureTarget(901)&&invalid.autoTemperatureTarget()==400,"invalid targets rejected unchanged");invalid.world.isRemote=true;check(!invalid.setAutoTemperatureTarget(1)&&!invalid.setAutoTemperatureEnabled(false),"client rejected");invalid.world.isRemote=false;invalid.activeOperations=1;check(!invalid.setAutoTemperatureTarget(1),"reentrance rejected");
+  NBTTagCompound n=new NBTTagCompound();AutoThermalControl a=new AutoThermalControl();a.setTarget(777);a.setEnabled(true);a.write(n);AutoThermalControl b=new AutoThermalControl();b.read(n);check(b.enabled()&&b.target()==777&&!b.invalid(),"round trip");
+  FakeTile before=tile(777,777,0,false);NBTTagCompound saved=new NBTTagCompound();before.autoThermal.write(saved);FakeTile after=new FakeTile();after.temperature=before.temperature;after.fuelTicks=before.fuelTicks;after.autoThermal.read(saved);check(after.autoTemperatureTarget()==777 && after.autoTemperatureEnabled(),"restored config");for(int z=0;z<1000;z++){step(before,200);step(after,200);check(before.temperature==after.temperature && before.energy==after.energy && before.fuelTicks==after.fuelTicks,"restored deterministic physics");}
+  b.read(new NBTTagCompound());check(!b.enabled()&&b.target()==400&&!b.invalid(),"legacy absent fields");
+  NBTTagCompound malformed=new NBTTagCompound();malformed.setBoolean("AutoThermal",true);malformed.setInteger("AutoTarget",1001);b.read(malformed);check(b.invalid()&&!b.enabled()&&b.target()==400,"invalid range");NBTTagCompound resave=new NBTTagCompound();b.write(resave);AutoThermalControl c=new AutoThermalControl();c.read(resave);check(c.
