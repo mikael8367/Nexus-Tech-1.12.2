@@ -1,0 +1,37 @@
+--- /home/daytona/workspace/nexus-reactor-experimental-extraction-20261125-2046/src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:48:58.699562238 +0000
++++ src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:58:23.461618850 +0000
+@@ -417,17 +417,26 @@
+      try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear bucket conversion notification failed after mutation; chunk may not be marked dirty",ex);}
+    } finally {bucketTransfer=false;}
+  }
+- // Commit item removal and fuel credit before notifying foreign code.
++ // EXPERIMENT ONLY: pre-notification avoids conversion if that callback removes
++ // the controller. Not safe for integration: a save during that callback may
++ // clear dirty state before the later commit, and later removal loses fuelTicks.
++ private boolean fuelConverting;
+  private boolean consumeOneFuel(){
+-   if(fuelTicks!=0 || removing || !usable() || fuelTicks!=0 || removing)return false;
++   if(fuelConverting || fuelTicks!=0 || removing || !usable() || fuelTicks!=0 || removing)return false;
+    ItemStack stack=inventory.getStackInSlot(0);
+    if(!isFuel(stack) || stack.getCount()<=0)return false;
+-   // Vanilla ItemStack.shrink/setCount and NonNullList.set have no callbacks.
+-   if(stack.getCount()==1)recoveryInventory.setWithoutNotification(0,ItemStack.EMPTY);
+-   else stack.shrink(1);
+-   fuelTicks=FUEL_TICKS;
+-   try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear fuel conversion committed but dirty notification failed; persistence is uncertain",ex);}
+-   return true;
++   fuelConverting=true;
++   try{
++     markDirty();
++     if(fuelTicks!=0 || removing || !usable() || fuelTicks!=0 || removing)return false;
++     stack=inventory.getStackInSlot(0);
++     if(!isFuel(stack) || stack.getCount()<=0)return false;
++     // Experimental: no callback between these mutations, under mapped assumptions.
++     if(stack.getCount()==1)recoveryInventory.setWithoutNotification(0,ItemStack.EMPTY);
++     else stack.shrink(1);
++     fuelTicks=FUEL_TICKS;
++     return true;
++   }finally{fuelConverting=false;}
+  }
+  private boolean startSafe(){
+    return !startInterrupted && !autoThermal.invalid() && temperature>=0 && temperature<SCRAM
