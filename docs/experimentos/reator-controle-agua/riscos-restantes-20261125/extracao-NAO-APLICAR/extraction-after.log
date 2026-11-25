@@ -1,0 +1,19 @@
+PASS fuel notification throws after mutation preserves conversion
+PASS fuel callback snapshot sees item and credit consistent
+PASS fuel dirty reentry does not take a second item
+PASS fuel callback independently changes remaining count
+PASS fuel preflight callback throws before any mutation
+PASS fuel preflight callback changes credit fail closed
+PASS fuel last item without callback
+PASS energy dirty exception still returns committed debit
+PASS energy callback snapshot sees debit and budget
+PASS energy notification reentry blocked
+PASS energy bind reentry blocked before debit
+PASS energy bind callback throws before debit
+PASS energy bind mutates available balance
+PASS energy bind invalidates lease
+PASS energy simulation no dirty or debit
+PASS energy normal respects shared tick cap
+PASS energy teardown throws after committed debit
+PASS energy negative balance fails closed
+RESULT passed=18 failed=0
