@@ -1,0 +1,9 @@
+100,true);sat.fuelTicks=0;sat.fuelAvailable=true;sat.onExtract=new Runnable(){public void run(){sat.energy=FakeTile.CAPACITY;}};sat.update();ok(sat.energy==FakeTile.CAPACITY&&sat.production==0,"callback energy");
+  final FakeTile hotcb=tile(0,400,100,true);hotcb.fuelTicks=0;hotcb.fuelAvailable=true;hotcb.onExtract=new Runnable(){public void run(){hotcb.temperature=1000;}};hotcb.update();ok(hotcb.scrammed&&!hotcb.enabled&&hotcb.energy==0,"callback hot");
+  FakeTile oneFuel=tile(0,400,100,true);oneFuel.fuelTicks=1;oneFuel.update();ok(!oneFuel.enabled&&oneFuel.energy==200&&oneFuel.fuelTicks==0,"last fuel");
+  FakeTile forged=tile(400,400,100,true);forged.autoThermal.read(partial);ok(forged.autoTemperatureInvalid()&&!forged.setAutoTemperatureEnabled(true),"malformed can't enable");
+  FakeTile nullWorld=new FakeTile();nullWorld.world=null;ok(!nullWorld.setAutoTemperatureTarget(1)&&!nullWorld.setAutoTemperatureEnabled(true),"null world");
+  FakeTile legacyLast=new FakeTile();legacyLast.temperature=20;legacyLast.fuelTicks=10;legacyLast.tank.amount=1;legacyLast.coolantGuard=true;legacyLast.update();ok(legacyLast.scrammed&&legacyLast.energy==200&&legacyLast.production==0,"legacy last mB unchanged");
+  System.out.println("PASS legacy, setters thread/tile, invalid targets, stub NBT malformed/old and config reload, callbacks; checks="+checks);
+ }
+}
