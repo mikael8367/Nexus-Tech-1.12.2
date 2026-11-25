@@ -1,0 +1,180 @@
+uidStack(FluidRegistry.WATER,water()+1000);
+     if(removing || !usable())return;
+     // No world callbacks in the three assignments under the mapped Forge version.
+     tank.setFluid(nextWater);
+     recoveryInventory.setWithoutNotification(1,nextIn);
+     recoveryInventory.setWithoutNotification(2,nextOut);
+     // Mutation is committed even if a synchronous world callback throws.
+     try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear bucket conversion notification failed after mutation; chunk may not be marked dirty",ex);}
+   } finally {bucketTransfer=false;}
+ }
+ private boolean startSafe(){
+   return !startInterrupted && !autoThermal.invalid() && temperature>=0 && temperature<SCRAM
+       && energy>=0 && energy<=CAPACITY && fuelTicks>=0 && (!scrammed || temperature<=RESET)
+       && (!(coolantGuard || autoThermal.enabled()) || water()>0) && hasFuel();
+ }
+ private void abortUnsafeStart(boolean latch){
+   if(enabled && (temperature>=SCRAM || ((coolantGuard || autoThermal.enabled()) && water()==0))){tripCoolantGuard();return;}
+   enabled=false;production=0;if(latch)scrammed=true;
+ }
+ public void setEnabled(boolean value){
+   // A nested attempt, including a nested stop, invalidates the outer start.
+   if(starting){startInterrupted=true;enabled=false;scrammed=true;production=0;return;}
+   if(stopping)return;
+   if(!usable())return;
+   if(!value){
+     stopping=true;enabled=false;production=0;
+     try{setIndicator(false);markDirty();}
+     finally{enabled=false;production=0;stopping=false;}
+     return;
+   }
+   if(updating || reserved || filling || bucketTransfer || automationExtracting || activeOperations>0)return;
+   starting=true;startInterrupted=false;
+   try{
+     if(!startSafe()){abortUnsafeStart(false);return;}
+     int structure=validateStructure();
+     if(structure!=1){stopForStructureLoss();return;}
+     formed=true;
+     if(!startSafe()){abortUnsafeStart(true);return;}
+     bindStructure();
+     if(!usable() || !allPartsBound()){stopForStructureLoss();return;}
+     if(!startSafe()){abortUnsafeStart(false);return;}
+     enabled=true;scrammed=false;markDirty();
+     // markDirty is a callback boundary too.
+     if(!usable() || !allPartsBound() || !startSafe()){abortUnsafeStart(true);}
+   } catch(RuntimeException | Error ex){enabled=false;scrammed=true;production=0;throw ex;}
+   finally{starting=false;}
+ }
+ /** A structural interruption is latched; restoring chunks/blocks alone cannot restart. */
+ private void stopForStructureLoss(){
+   if(enabled)scrammed=true;
+   enabled=false; formed=false; production=0; setVisualFormed(false);syncPartVisuals(false);setIndicator(false); markDirty();
+ }
+ @Override public void update(){
+   // Guard the whole tick, including operation setup and teardown, against callbacks.
+   // A nested tick during Forge's fill callback can change its return value or
+   // empty the tank before fillInternal finishes reading it.
+   if(starting || stopping || updating || reserved || filling || automationExtracting)return;
+   updating=true;
+   try {
+   if(!beginTickOperation())return;
+   try {
+   boolean drainInterrupted=false;
+   resetOutputForWorldTick();
+   int structure=validateStructure(); formed=structure==1;
+   if(structure==1){
+     bindStructure();
+     structure=validateStructure();formed=structure==1;
+     if(structure==1){setVisualFormed(true);syncPartVisuals(true);structure=validateStructure();}
+     if(structure==1 && !allPartsBound())structure=validateStructure()==-1?-1:0;
+   }
+   if(structure!=1){stopForStructureLoss();if(structure==0)releaseStructure();}
+   // A missing chunk pauses everything, including coolant, heat and output.
+   if(structure<0){production=0;setIndicator(false);return;}
+   if(removing)return;
+   acceptBucket(); if(removing)return; production=0;
+   if(autoThermal.invalid()){enabled=false;scrammed=true;}
+   if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0)tripCoolantGuard();
+   if(enabled && !hasFuel())enabled=false;
+   // Never generate at/above the critical threshold, in any mode.
+   if(temperature>=SCRAM){enabled=false;scrammed=true;}
+   if(enabled && formed && energy<=CAPACITY-FE_PER_TICK){
+     if(fuelTicks==0 && isFuel(inventory.getStackInSlot(0))) {
+       ItemStack consumed=inventory.extractItem(0,1,false);
+       // A reentrant removal defers draining until endOperation: preserve the item there.
+       if(removing){if(!consumed.isEmpty())recoveryOverflow.add(consumed);return;}
+       if(isFuel(consumed) && consumed.getCount()==1)fuelTicks=FUEL_TICKS;
+     }
+     if(removing)return;
+     // Inventory callbacks may have invalidated the multiblock during extraction.
+     if(enabled && !allPartsBound()){
+       int loss=validateStructure();stopForStructureLoss();
+       if(loss<0)return; // Preserve the normal unloaded-chunk heat/coolant pause.
+     }
+     if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0)tripCoolantGuard();
+     // A fuel-extraction callback may have changed temperature after the first check.
+     if(autoThermal.invalid() || temperature>=SCRAM){enabled=false;scrammed=true;}
+     if(enabled && usable() && fuelTicks>0 && energy>=0 && energy<=CAPACITY-FE_PER_TICK && temperature<SCRAM){
+       boolean applyWater=autoThermal.applyWater(temperature);
+       boolean cooled=water()>0 && applyWater;
+       int beforeWater=water();
+       // Drain can notify foreign code. Do not commit fuel/FE before it returns.
+       if(cooled)tank.drainInternal(1,true);
+       if(cooled && (temperature>=SCRAM || !enabled || autoThermal.invalid() || !usable()
+           || !allPartsBound() || temperature>=SCRAM || !enabled || autoThermal.invalid() || water()!=beforeWater-1 || energy<0 || energy>CAPACITY-FE_PER_TICK || fuelTicks<=0)){
+         enabled=false;scrammed=true;production=0;drainInterrupted=true;
+       } else {
+         temperature+=3;
+         if(temperature>=SCRAM){enabled=false;scrammed=true;production=0;}
+         else {
+           fuelTicks--; energy+=FE_PER_TICK; production=FE_PER_TICK;
+           if(cooled)temperature=Math.max(0,temperature-4);
+           if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0){tripCoolantGuard();if(autoThermal.enabled())production=FE_PER_TICK;}
+         }
+       }
+     }
+   }
+   if(enabled && !hasFuel())enabled=false;
+   temperature=Math.max(0,temperature-1);
+   // SCRAM remains latched; water assists cooling only above the manual reset
+   // threshold, never below it. Passive cooling still has its original floor 0.
+   if(!drainInterrupted && scrammed && !enabled && temperature>RESET && water()>0){
+     tank.drainInternal(1,true);
+     // Never mask a critical value introduced by a drain callback.
+     if(temperature>=SCRAM){enabled=false;scrammed=true;}
+     else temperature=Math.max(RESET,temperature-4);
+   }
+   if(temperature>=SCRAM){enabled=false;scrammed=true;}
+   setIndicator(enabled && production>0);
+   if(formed)pushOutput(); markDirty();
+   } finally {endOperation();}
+   } catch(RuntimeException | Error ex){enabled=false;scrammed=true;production=0;throw ex;}
+   finally {if(temperature>=SCRAM || autoThermal.invalid()){enabled=false;scrammed=true;}updating=false;}
+ }
+ private void setIndicator(boolean active){
+   if(world==null || !world.isBlockLoaded(pos))return;
+   IBlockState s=world.getBlockState(pos);
+   if(s.getBlock()==NuclearRegistry.CONTROLLER && s.getValue(NuclearBlock.ACTIVE)!=active)world.setBlockState(pos,s.withProperty(NuclearBlock.ACTIVE,active),3);
+ }
+ private void pushOutput(){
+   if(validateStructure()!=1)return;
+   EnumFacing front=world.getBlockState(pos).getValue(BlockHorizontal.FACING);
+   List<BlockPos> sources=new ArrayList<>();sources.add(pos);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++)
+     if(!(x==0&&y==0&&d==0))sources.add(at(pos,front,x,y,d));
+   for(BlockPos source:sources)for(EnumFacing side:EnumFacing.VALUES){
+     if(!usable() || validateStructure()!=1)return;
+     int offer=Math.min(energy,OUTPUT-outputThisTick);if(offer<=0)return;
+     BlockPos target=source.offset(side);if(!world.isBlockLoaded(target))continue;
+     TileEntity other=world.getTileEntity(target);
+     if(other==null || other.isInvalid() || other instanceof NuclearPart || other instanceof NuclearController)continue;
+     try {
+       IEnergyStorage receiver=other.getCapability(CapabilityEnergy.ENERGY,side.getOpposite());
+       if(receiver==null || !receiver.canReceive())continue;
+       // Capability resolution and canReceive are foreign callbacks: recheck everything.
+       if(!usable() || validateStructure()!=1)return;
+       if(!world.isBlockLoaded(target) || world.getTileEntity(target)!=other || other.isInvalid())continue;
+       resetOutputForWorldTick();offer=Math.min(energy,OUTPUT-outputThisTick);if(offer<=0)return;
+       energy-=offer;outputThisTick+=offer;reserved=true;
+       int got=clamp(receiver.receiveEnergy(offer,false),offer);
+       energy+=offer-got;outputThisTick-=offer-got;
+     } catch(RuntimeException ex) {
+       // A receiver may have accepted the reservation before throwing. Never refund it.
+     } finally {reserved=false;}
+   }
+ }
+ @Override public boolean hasCapability(Capability<?> cap,@Nullable EnumFacing face){
+   if(cap==CapabilityEnergy.ENERGY)return world!=null && (world.isRemote?visualFormed:usable() && validateStructure()==1);
+   return cap==CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY || cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(cap,face);
+ }
+ @Override public <T>T getCapability(Capability<T> cap,@Nullable EnumFacing face){
+   if(cap==CapabilityEnergy.ENERGY)return hasCapability(cap,face)?CapabilityEnergy.ENERGY.cast(storage):null;
+   if(cap==CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY)return CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY.cast(fluidInput);
+   if(cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(automation);
+   return super.getCapability(cap,face);
+ }
+ @Override public NBTTagCompound writeToNBT(NBTTagCompound n){super.writeToNBT(n);n.setLong("OutputTick",outputTick);n.setInteger("OutputThisTick",outputThisTick);n.setInteger("Energy",energy);n.setInteger("Temperature",temperature);n.setInteger("FuelTicks",fuelTicks);n.setBoolean("Enabled",enabled);n.setBoolean("Scrammed",scrammed);n.setBoolean("CoolantGuard",coolantGuard);autoThermal.write(n);n.setTag("Inventory",inventory.serializeNBT());NBTTagList overflow=new NBTTagList();for(ItemStack stack:recoveryOverflow)overflow.appendTag(stack.writeToNBT(new NBTTagCompound()));n.setTag("RecoveryOverflow",overflow);n.setTag("Tank",tank.writeToNBT(new NBTTagCompound()));return n;}
+ @Override public void readFromNBT(NBTTagCompound n){
+   if(starting||stopping||updating||reserved||filling||bucketTransfer||automationExtracting||activeOperations>0||removing)return;
+   // If a read throws, the reactor remains stopped and latched.
+   enabled=false;scramme
