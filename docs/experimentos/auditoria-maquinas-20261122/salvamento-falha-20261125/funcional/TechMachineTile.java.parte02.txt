@@ -1,0 +1,86 @@
+ergyStored() { return energy; }
+        public int getMaxEnergyStored() { return CAPACITY; }
+        public boolean canExtract() { return false; }
+        public boolean canReceive() { return true; }
+    };
+    protected TechMachineTile(int kind) { this.kind = kind; }
+    public static final class Sawmill extends TechMachineTile { public Sawmill() { super(0); } }
+    public static final class Composter extends TechMachineTile { public Composter() { super(1); } }
+    public static final class WaterBottler extends TechMachineTile { public WaterBottler() { super(2); } }
+    int getEnergy() { return energy; }
+    private boolean live() { return world != null && !world.isRemote && !isInvalid() && world.isBlockLoaded(pos) && world.getTileEntity(pos) == this; }
+    private boolean validInput(ItemStack s) {
+        if (s.isEmpty() || s.hasTagCompound() || s.getItem().hasContainerItem(s)) return false;
+        Item item = s.getItem(); int meta = s.getMetadata();
+        if (kind == 0) return (item == Item.getItemFromBlock(Blocks.LOG) && meta >= 0 && meta <= 15) || (item == Item.getItemFromBlock(Blocks.LOG2) && meta >= 0 && meta <= 15 && (meta & 3) <= 1);
+        if (kind == 1) return (meta == 0 && (item == Items.WHEAT_SEEDS || item == Items.BEETROOT_SEEDS || item == Items.MELON_SEEDS || item == Items.PUMPKIN_SEEDS)) || (item == Item.getItemFromBlock(Blocks.SAPLING) && meta >= 0 && meta <= 5);
+        return item == Items.GLASS_BOTTLE && meta == 0;
+    }
+    private int inputCount() { return kind == 1 ? 8 : 1; }
+    private boolean adjacentWater() {
+        for (EnumFacing face : EnumFacing.VALUES) {
+            BlockPos next = pos.offset(face);
+            if (!world.isBlockLoaded(next)) continue;
+            net.minecraft.block.state.IBlockState state = world.getBlockState(next);
+            Block block = state.getBlock();
+            if ((block == Blocks.WATER || block == Blocks.FLOWING_WATER) && state.getValue(net.minecraft.block.BlockLiquid.LEVEL) == 0) return true;
+        }
+        return false;
+    }
+    private ItemStack result() {
+        ItemStack in = inventory.getStackInSlot(0);
+        if (!validInput(in) || in.getCount() < inputCount()) return ItemStack.EMPTY;
+        if (kind == 0) {
+            int wood = (in.getMetadata() & 3) + (in.getItem() == Item.getItemFromBlock(Blocks.LOG2) ? 4 : 0);
+            return new ItemStack(Blocks.PLANKS, 6, wood);
+        }
+        if (kind == 1) return new ItemStack(Items.DYE, 1, 15);
+        if (!adjacentWater()) return ItemStack.EMPTY;
+        return PotionUtils.addPotionToItemStack(new ItemStack(Items.POTIONITEM), PotionTypes.WATER);
+    }
+    private boolean fits(ItemStack result) {
+        if (result.isEmpty()) return false;
+        ItemStack out = inventory.getStackInSlot(1);
+        int limit = Math.min(inventory.getSlotLimit(1), result.getMaxStackSize());
+        return out.isEmpty() ? result.getCount() <= limit : ItemStack.areItemsEqual(out, result)
+                && ItemStack.areItemStackTagsEqual(out, result) && out.getCount() <= limit - result.getCount();
+    }
+    private void pullEnergy() {
+        if (!live()) return;
+        World expected = world; BlockPos origin = pos.toImmutable();
+        for (EnumFacing side : EnumFacing.VALUES) {
+                if (world != expected || !origin.equals(pos) || !live() || energy >= COST) break;
+                BlockPos next = origin.offset(side);
+                if (!expected.isBlockLoaded(next)) continue;
+                try {
+                    TileEntity source = expected.getTileEntity(next);
+                    if (source == null || source.isInvalid()) continue;
+                    IEnergyStorage handler = source.getCapability(CapabilityEnergy.ENERGY, side.getOpposite());
+                    if (handler == null || !handler.canExtract()) continue;
+                    if (world != expected || !origin.equals(pos) || !live() || !expected.isBlockLoaded(next) || expected.getTileEntity(next) != source || source.isInvalid() || source.getCapability(CapabilityEnergy.ENERGY, side.getOpposite()) != handler) continue;
+                    // The second foreign capability lookup may itself invalidate either endpoint.
+                    if (world != expected || !origin.equals(pos) || !live() || !expected.isBlockLoaded(next) || expected.getTileEntity(next) != source || source.isInvalid()) continue;
+                    int request = Math.min(RATE, CAPACITY - energy);
+                    int extracted = handler.extractEnergy(request, false);
+                    if (world != expected || !origin.equals(pos) || !live()) break;
+                    if (extracted > 0 && extracted <= request) { energy += extracted; markDirty(); }
+                } catch (RuntimeException ignored) { /* Unknown foreign mutation must not credit FE. */ }
+        }
+    }
+    @Override public void update() {
+        if (busy) return;
+        busy = true;
+        try {
+            if (!live()) return;
+            ItemStack product = result();
+            if (!live()) return;
+            if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+            if (energy < COST) {
+                pullEnergy();
+                if (!live()) return;
+                product = result();
+                if (!live()) return;
+                if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+            }
+            if (energy < COST) return;
+            // A live/world/water callback can drain input af
