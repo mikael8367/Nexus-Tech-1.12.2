@@ -1,0 +1,100 @@
+--- /home/daytona/workspace/nexus-reactor-safety-experimental-20261125/src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:07:38.742753004 +0000
++++ src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:11:46.367816842 +0000
+@@ -80,7 +80,7 @@
+  private void tripCoolantGuard(){
+    enabled=false;scrammed=true;production=0;setIndicator(false);markDirty();
+  }
+- private boolean reserved, updating, starting, startInterrupted, removing, removalDrained, removalFinalizing, removalUncertain, bucketTransfer, filling, automationExtracting; private int activeOperations;
++ private boolean reserved, updating, starting, startInterrupted, stopping, removing, removalDrained, removalFinalizing, removalUncertain, bucketTransfer, filling, automationExtracting; private int activeOperations;
+  private boolean visualFormed;
+  boolean visualFormed(){return visualFormed;}
+  private void setVisualFormed(boolean value){
+@@ -395,25 +395,35 @@
+        && energy>=0 && energy<=CAPACITY && fuelTicks>=0 && (!scrammed || temperature<=RESET)
+        && (!(coolantGuard || autoThermal.enabled()) || water()>0) && hasFuel();
+  }
++ private void abortUnsafeStart(boolean latch){
++   if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0){tripCoolantGuard();return;}
++   enabled=false;production=0;if(latch)scrammed=true;
++ }
+  public void setEnabled(boolean value){
+    // A nested attempt, including a nested stop, invalidates the outer start.
+    if(starting){startInterrupted=true;enabled=false;scrammed=true;production=0;return;}
++   if(stopping)return;
+    if(!usable())return;
+-   if(!value){enabled=false;production=0;setIndicator(false);markDirty();return;}
++   if(!value){
++     stopping=true;enabled=false;production=0;
++     try{setIndicator(false);markDirty();}
++     finally{enabled=false;production=0;stopping=false;}
++     return;
++   }
+    if(updating || reserved || filling || bucketTransfer || automationExtracting || activeOperations>0)return;
+    starting=true;startInterrupted=false;
+    try{
+-     if(!startSafe()){enabled=false;production=0;return;}
++     if(!startSafe()){abortUnsafeStart(false);return;}
+      int structure=validateStructure();
+      if(structure!=1){stopForStructureLoss();return;}
+      formed=true;
+-     if(!startSafe()){enabled=false;scrammed=true;production=0;return;}
++     if(!startSafe()){abortUnsafeStart(true);return;}
+      bindStructure();
+      if(!usable() || !allPartsBound()){stopForStructureLoss();return;}
+-     if(!startSafe()){enabled=false;production=0;return;}
++     if(!startSafe()){abortUnsafeStart(false);return;}
+      enabled=true;scrammed=false;markDirty();
+      // markDirty is a callback boundary too.
+-     if(!usable() || !allPartsBound() || !startSafe()){enabled=false;scrammed=true;production=0;}
++     if(!usable() || !allPartsBound() || !startSafe()){abortUnsafeStart(true);}
+    } catch(RuntimeException | Error ex){enabled=false;scrammed=true;production=0;throw ex;}
+    finally{starting=false;}
+  }
+@@ -426,7 +436,7 @@
+    // Guard the whole tick, including operation setup and teardown, against callbacks.
+    // A nested tick during Forge's fill callback can change its return value or
+    // empty the tank before fillInternal finishes reading it.
+-   if(starting || updating || reserved || filling || automationExtracting)return;
++   if(starting || stopping || updating || reserved || filling || automationExtracting)return;
+    updating=true;
+    try {
+    if(!beginTickOperation())return;
+@@ -448,8 +458,8 @@
+    if(autoThermal.invalid()){enabled=false;scrammed=true;}
+    if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0)tripCoolantGuard();
+    if(enabled && !hasFuel())enabled=false;
+-   // In automatic mode, never generate at/above the critical threshold.
+-   if(autoThermal.enabled() && temperature>=SCRAM){enabled=false;scrammed=true;}
++   // Never generate at/above the critical threshold, in any mode.
++   if(temperature>=SCRAM){enabled=false;scrammed=true;}
+    if(enabled && formed && energy<=CAPACITY-FE_PER_TICK){
+      if(fuelTicks==0 && isFuel(inventory.getStackInSlot(0))) {
+        ItemStack consumed=inventory.extractItem(0,1,false);
+@@ -465,8 +475,8 @@
+      }
+      if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0)tripCoolantGuard();
+      // A fuel-extraction callback may have changed temperature after the first check.
+-     if(autoThermal.invalid() || (autoThermal.enabled() && temperature>=SCRAM)){enabled=false;scrammed=true;}
+-     if(enabled && usable() && fuelTicks>0 && (!autoThermal.enabled() || energy<=CAPACITY-FE_PER_TICK) && (!autoThermal.enabled() || temperature<SCRAM)){
++     if(autoThermal.invalid() || temperature>=SCRAM){enabled=false;scrammed=true;}
++     if(enabled && usable() && fuelTicks>0 && (!autoThermal.enabled() || energy<=CAPACITY-FE_PER_TICK) && temperature<SCRAM){
+        boolean applyWater=autoThermal.applyWater(temperature);
+        boolean cooled=water()>0 && applyWater;
+        int beforeWater=water();
+@@ -476,9 +486,13 @@
+            || !allPartsBound() || temperature>=SCRAM || !enabled || autoThermal.invalid() || water()!=beforeWater-1 || energy<0 || energy>CAPACITY-FE_PER_TICK || fuelTicks<=0)){
+          enabled=false;scrammed=true;production=0;drainInterrupted=true;
+        } else {
+-         fuelTicks--; energy+=FE_PER_TICK; production=FE_PER_TICK; temperature+=3;
+-         if(cooled)temperature=Math.max(0,temperature-4);
+-         if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0){tripCoolantGuard();if(autoThermal.enabled())production=FE_PER_TICK;}
++         temperature+=3;
++         if(temperature>=SCRAM){enabled=false;scrammed=true;production=0;}
++         else {
++           fuelTicks--; energy+=FE_PER_TICK; production=FE_PER_TICK;
++           if(cooled)temperature=Math.max(0,temperature-4);
++           if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0){tripCoolantGuard();if(autoThermal.enabled())production=FE_PER_TICK;}
++         }
+        }
+      }
+    }
