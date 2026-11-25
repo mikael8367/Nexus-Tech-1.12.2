@@ -1,0 +1,22 @@
+
+VARIANT baseline PATH /home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java SHA256 70b9152d913515215bc5e956573b1a11c5a1c697aef9c8b101599129a578fe3f
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+RISK reproduced baseline: accepted item missing from old persisted snapshot
+PASS model assertions=14 variant=baseline
+
+VARIANT anterior PATH /home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/salvamento-20261125/TechMachineTile.java SHA256 24d657ca5f4fc53f002d1ba5d224a959fea53327475da00892011659e5952a05
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+RISK reproduced anterior: accepted item missing from old persisted snapshot
+PASS model assertions=14 variant=anterior
+
+VARIANT novo PATH /home/daytona/workspace/nexus-save-candidato2-20261125/TechMachineTile.java SHA256 8f17e608226e7bb9b82310e2799b33dd8b1b34ecdfb552252272d1b63c50bf5c
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+IMPROVEMENT conditional: old save during query, non-reentrant mark
+RISK reproduced: in-flight save clears dirty after commit; accepted 3, persisted 0
+RISK reproduced: virtual chunk mark invalidates tile before commit
+RISK reproduced: virtual chunk mark saves old state and clears dirty
+PASS model assertions=30 variant=novo
+ALL MODEL TESTS COMPLETED; RISK reproductions are NOT safety passes
