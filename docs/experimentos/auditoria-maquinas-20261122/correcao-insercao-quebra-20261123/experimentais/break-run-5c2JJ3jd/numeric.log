@@ -1,0 +1,23 @@
+[13:34:13] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:34:13] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_stone_cutter`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_moss_assembler`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_glass_shaper`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_fiber_spinner`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_paper_press`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_sugar_mill`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_bread_baker`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_seed_extractor`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_dye_mixer`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_bone_mill`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_stone_cutter`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_moss_assembler`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_glass_shaper`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_fiber_spinner`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_paper_press`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_sugar_mill`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_bread_baker`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_seed_extractor`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_dye_mixer`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+[13:34:13] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `nexus_bone_mill`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+PASS BreakGuardRegression numeric assertions=40

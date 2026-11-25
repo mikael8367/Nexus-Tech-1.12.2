@@ -1,0 +1,84 @@
+--- /home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/salvamento-20261125/TechMachineTile.java	2026-11-25 13:43:22.856653155 +0000
++++ /home/daytona/workspace/nexus-save-candidato2-20261125/TechMachineTile.java	2026-11-25 19:15:04.295810572 +0000
+@@ -14,6 +14,7 @@
+ import net.minecraft.util.ITickable;
+ import net.minecraft.util.math.BlockPos;
+ import net.minecraft.world.World;
++import net.minecraft.world.chunk.Chunk;
+ import net.minecraftforge.common.capabilities.Capability;
+ import net.minecraftforge.energy.CapabilityEnergy;
+ import net.minecraftforge.energy.IEnergyStorage;
+@@ -27,22 +28,7 @@
+     private final int kind;
+     private int energy, progress;
+     private boolean busy;
+-    // Volatile retry intent, not a durable transaction record. Experimental only.
+-    private boolean insertionDirtyRetry;
+     private final MachineInventory inventory = new MachineInventory();
+-
+-    private void retryInsertionDirty() {
+-        if (!insertionDirtyRetry) return;
+-        try {
+-            markDirty();
+-            insertionDirtyRetry = false;
+-        } catch (RuntimeException failure) {
+-            // Ownership has already changed. Never signal insertion failure to the
+-            // caller, which could otherwise retain/retry the already accepted items.
+-            java.util.logging.Logger.getLogger(TechMachineTile.class.getName())
+-                .log(java.util.logging.Level.WARNING, "Insertion dirty notification failed; retry is pending", failure);
+-        }
+-    }
+     private final class MachineInventory extends ItemStackHandler {
+         MachineInventory() { super(2); }
+         @Override protected void onContentsChanged(int slot) {
+@@ -67,27 +53,31 @@
+             try {
+                 if (!live() || !validInput(stack)) return stack;
+                 if (simulate) return inventory.insertItem(0, stack, true);
+-                // Preflight on copies, then notify BEFORE ownership is transferred. An
+-                // exception or break during notification cannot expose a new item twice.
++                // Experimental: no save coordination or crash safety is implied.
+                 ItemStack offered = stack.copy();
+                 ItemStack before = inventory.getStackInSlot(0).copy();
+                 int oldProgress = progress;
++                World expected = world;
++                BlockPos origin = pos.toImmutable();
+                 ItemStack remainder = inventory.insertItem(0, offered, true).copy();
+                 int accepted = offered.getCount() - remainder.getCount();
+                 if (accepted <= 0) return stack;
+                 ItemStack after = before.isEmpty() ? offered.copy() : before.copy();
+                 if (before.isEmpty()) after.setCount(accepted); else after.grow(accepted);
+-                markDirty();
+-                // Notification may drain, replace/unload the tile or mutate the offer.
+-                if (!live() || !validInput(stack) || progress != oldProgress
++                Chunk chunk = expected.getChunkProvider().getLoadedChunk(origin.getX() >> 4, origin.getZ() >> 4);
++                if (chunk == null || world != expected || !origin.equals(pos) || !live()
++                        || !validInput(stack)
++                        || expected.getChunkProvider().getLoadedChunk(origin.getX() >> 4, origin.getZ() >> 4) != chunk
++                        || progress != oldProgress
+                         || !ItemStack.areItemStacksEqual(offered, stack)
+-                        || !ItemStack.areItemStacksEqual(before, inventory.getStackInSlot(0))) return stack;
++                        || !ItemStack.areItemStacksEqual(before, inventory.getStackInSlot(0))
++                        || world != expected || !origin.equals(pos) || isInvalid()) return stack;
++                // Virtual overrides may reenter or invalidate these checks. A save in
++                // flight can clear dirty after commit. Neither risk is solved here.
++                try { chunk.markDirty(); } catch (RuntimeException failure) { return stack; }
++                // No callback after ownership transfer; assignments only.
+                 inventory.commitInput(after);
+                 progress = 0;
+-                // The pre-notification may have synchronously saved the OLD
+-                // state and cleared dirty. Notify again only after commit.
+-                insertionDirtyRetry = true;
+-                retryInsertionDirty();
+                 return remainder;
+             } finally { busy = false; }
+         }
+@@ -184,8 +174,6 @@
+         busy = true;
+         try {
+             if (!live()) return;
+-            retryInsertionDirty();
+-            if (!live()) return;
+             ItemStack product = result();
+             if (!live()) return;
+             if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }

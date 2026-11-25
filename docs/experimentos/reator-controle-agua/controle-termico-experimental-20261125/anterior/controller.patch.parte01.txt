@@ -1,0 +1,68 @@
+--- baseline/NuclearController.java
++++ experimental/NuclearController.java
+@@ -36,6 +36,33 @@
+ public final class NuclearController extends TileEntity implements ITickable {
+  public static final int CAPACITY=1000000, FE_PER_TICK=200, FUEL_TICKS=2400, WATER_CAPACITY=8000, SCRAM=1000, RESET=400, OUTPUT=400;
+  public int energy,temperature,fuelTicks,production; public boolean enabled, scrammed, formed;
++ private final AutoThermalControl autoThermal=new AutoThermalControl();
++ public boolean autoTemperatureEnabled(){return autoThermal.enabled();}
++ public boolean autoTemperatureInvalid(){return autoThermal.invalid();}
++ public int autoTemperatureTarget(){return autoThermal.target();}
++ // Server-side API only; no network handler/GUI is added by this experiment.
++ public boolean setAutoTemperatureTarget(int target){
++   if(world==null || world.isRemote || updating || reserved || filling || activeOperations>0 || removing)return false;
++   if(!autoThermal.setTarget(target))return false;markDirty();return true;
++ }
++ public boolean setAutoTemperatureEnabled(boolean value){
++   if(world==null || world.isRemote || updating || reserved || filling || activeOperations>0 || removing)return false;
++   if(value && autoThermal.invalid())return false;
++   autoThermal.setEnabled(value);markDirty();return true;
++ }
++ /** Diagnostic is instantaneous, not a guarantee of future stability. */
++ public String autoTemperatureStatus(){
++   if(autoThermal.invalid())return "INVALID_CONFIG";
++   if(!autoThermal.enabled())return "OFF";
++   if(scrammed || temperature>=SCRAM)return "PROTECTION";
++   if(!enabled)return "REACTOR_OFF";
++   if(!formed)return "STRUCTURE";
++   if(coolantGuard && water()==0)return "NO_COOLANT_PROTECTION";
++   if(!hasFuel())return "NO_FUEL";
++   if(energy>CAPACITY-FE_PER_TICK)return "ENERGY_SATURATED";
++   if(water()>0 && autoThermal.target()>0)return "COOLING_EXCEEDS_HEAT";
++   return temperature==autoThermal.target()?"AT_TARGET":"ADJUSTING";
++ }
+  // Opt-in for old worlds: empty coolant trips a latched manual reset.
+  private boolean coolantGuard;
+  public boolean coolantGuard(){return coolantGuard;}
+@@ -407,7 +434,9 @@
+    acceptBucket(); if(removing)return; production=0;
+    if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+    if(enabled && !hasFuel())enabled=false;
+-   if(enabled && formed && energy<=CAPACITY-FE_PER_TICK){
++   // In automatic mode, never generate at/above the critical threshold.
++   if(autoThermal.enabled() && temperature>=SCRAM){enabled=false;scrammed=true;}
++   if(enabled && formed && energy<=CAPACITY-FE_PER_TICK && autoThermal.requestedHeat(temperature,water())>0){
+      if(fuelTicks==0 && isFuel(inventory.getStackInSlot(0))) {
+        ItemStack consumed=inventory.extractItem(0,1,false);
+        // A reentrant removal defers draining until endOperation: preserve the item there.
+@@ -421,8 +450,12 @@
+        if(loss<0)return; // Preserve the normal unloaded-chunk heat/coolant pause.
+      }
+      if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+-     if(enabled && usable() && fuelTicks>0){
+-       fuelTicks--; energy+=FE_PER_TICK; production=FE_PER_TICK; temperature+=3;
++     // A fuel-extraction callback may have changed temperature after the first check.
++     if(autoThermal.enabled() && temperature>=SCRAM){enabled=false;scrammed=true;}
++     int requestedHeat=autoThermal.requestedHeat(temperature,water());
++     if(enabled && usable() && fuelTicks>0 && requestedHeat>0 && (!autoThermal.enabled() || energy<=CAPACITY-FE_PER_TICK) && (!autoThermal.enabled() || temperature<SCRAM)){
++       int generated=autoThermal.enabled() ? FE_PER_TICK*requestedHeat/3 : FE_PER_TICK;
++       fuelTicks--; energy+=generated; production=generated; temperature+=requestedHeat;
+        if(water()>0){tank.drainInternal(1,true);temperature=Math.max(0,temperature-4);}
+        if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+      }
+@@ -482,8 +515,8 @@
+    if(cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(automation);
+    return super.getCapability(cap,face);
+  }
+- @Override public NBTTagCompound writeToNBT(NBTTagCompound n){super.writeToNBT(n);n.setLong("OutputTick",outputTick);n.setInteger("OutputThisTick",outputThisTick);n.setInteger("Energy",energy);n.setInteger("Temperature",temperature);n.setInteger("FuelTicks",fuelTicks);n.setBoolean("Enabled",enabled);n.setBoolean("Scrammed",scrammed);n.setBoolean("CoolantGuard",coolantGuard);n.setTag("Inventory",inventory.serializeNBT());NBTTagList overflow=new NBTTagList();for(ItemStack stack:recoveryOverflow)overflow.appendTag(stack.writeToNBT(new NBTTagCompound()));n.setTag("RecoveryOverflow",overflow);n.setTag("Tank",tank.writeToNBT(new NBTTagCompound()));return n;}
+- @Override public void readFromNBT(NBTTagCompound n){if(updating||reserved||filling||bucketTransfer||activeOperations>0||removing)return;super.readFromNBT(n);energy=clamp(n.getInteger("Energy"),CAPACITY);temperature=clamp(n.getInteger("Temperature"),SCRAM);fuelTicks=clamp(n.getInteger("FuelTicks"),FUEL_TICKS);enabled=false;scrammed=n.getBoolean("Scrammed") || n.getBoolean("Enabled") || temperature>=SCRAM;coolantGuard=n.getBoolean("CoolantGuard");readInventory(n);tank.readFromNBT(n.getCompoundTag("Tank"));FluidStack loaded=tank.getFluid();if(loaded==null || loaded.getFluid()!=FluidRegistry.WATER || loaded.amount<=0)tank.setFluid(null);else tank.setFluid(new FluidStack(FluidRegistry.WATER,Math.min(loade

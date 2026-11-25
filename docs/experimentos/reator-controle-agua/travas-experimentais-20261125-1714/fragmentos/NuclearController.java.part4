@@ -1,0 +1,35 @@
+d=true;production=0;
+   try{
+     super.readFromNBT(n);energy=clamp(n.getInteger("Energy"),CAPACITY);temperature=clamp(n.getInteger("Temperature"),SCRAM);fuelTicks=clamp(n.getInteger("FuelTicks"),FUEL_TICKS);
+     coolantGuard=n.getBoolean("CoolantGuard");autoThermal.read(n);readInventory(n);tank.readFromNBT(n.getCompoundTag("Tank"));
+     FluidStack loaded=tank.getFluid();if(loaded==null || loaded.getFluid()!=FluidRegistry.WATER || loaded.amount<=0)tank.setFluid(null);else tank.setFluid(new FluidStack(FluidRegistry.WATER,Math.min(loaded.amount,WATER_CAPACITY)));
+     formed=false;outputTick=n.hasKey("OutputTick")?n.getLong("OutputTick"):Long.MIN_VALUE;outputThisTick=clamp(n.getInteger("OutputThisTick"),OUTPUT);
+     enabled=false;scrammed=n.getBoolean("Scrammed") || n.getBoolean("Enabled") || temperature>=SCRAM || autoThermal.invalid();
+   }catch(RuntimeException | Error ex){enabled=false;scrammed=true;production=0;autoThermal.invalidate();throw ex;}
+ }
+ private void readInventory(NBTTagCompound n){
+   recoveryOverflow.clear();
+   NBTTagList savedOverflow=n.getTagList("RecoveryOverflow",10);
+   for(int i=0;i<savedOverflow.tagCount();i++){
+     ItemStack stack=new ItemStack(savedOverflow.getCompoundTagAt(i));
+     if(!stack.isEmpty())recoveryOverflow.add(stack);
+   }
+   NBTTagCompound source=n.getCompoundTag("Inventory"),fixed=new NBTTagCompound();
+   NBTTagList items=source.getTagList("Items",10),normal=new NBTTagList();
+   boolean[] occupied=new boolean[3];
+   for(int i=0;i<items.tagCount();i++){
+     NBTTagCompound tag=items.getCompoundTagAt(i);int slot=tag.getInteger("Slot");
+     ItemStack stack=new ItemStack(tag);
+     if(stack.isEmpty())continue;
+     if(slot>=0 && slot<3 && !occupied[slot]){occupied[slot]=true;normal.appendTag(tag.copy());}
+     else recoveryOverflow.add(stack);
+   }
+   fixed.setInteger("Size",3);fixed.setTag("Items",normal);inventory.deserializeNBT(fixed);
+ }
+ @Override public boolean shouldRefresh(World w,BlockPos p,IBlockState a,IBlockState b){return a.getBlock()!=b.getBlock();}
+ public int field(int i){switch(i){case 0:return energy;case 1:return production;case 2:return temperature;case 3:return fuelTicks;case 4:return water();case 5:return (enabled?1:0)|(scrammed?2:0)|(formed?4:0)|(coolantGuard?8:0);default:return 0;}}
+ // Client display only; server state never accepts these values from a packet.
+ void setClientField(int i,int v){switch(i){case 0:energy=v;break;case 1:production=v;break;case 2:temperature=v;break;case 3:fuelTicks=v;break;case 4:clientWater=v;break;case 5:enabled=(v&1)!=0;scrammed=(v&2)!=0;formed=(v&4)!=0;coolantGuard=(v&8)!=0;break;}}
+ private int clientWater;
+ int displayField(int i){return i==4 && world!=null && world.isRemote?clientWater:field(i);}
+}

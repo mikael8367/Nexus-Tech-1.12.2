@@ -1,0 +1,121 @@
+            net.minecraft.block.state.IBlockState state = world.getBlockState(next);
+            Block block = state.getBlock();
+            if ((block == Blocks.WATER || block == Blocks.FLOWING_WATER) && state.getValue(net.minecraft.block.BlockLiquid.LEVEL) == 0) return true;
+        }
+        return false;
+    }
+    private ItemStack result() {
+        ItemStack in = inventory.getStackInSlot(0);
+        if (!validInput(in) || in.getCount() < inputCount()) return ItemStack.EMPTY;
+        if (kind == 0) {
+            int wood = (in.getMetadata() & 3) + (in.getItem() == Item.getItemFromBlock(Blocks.LOG2) ? 4 : 0);
+            return new ItemStack(Blocks.PLANKS, 6, wood);
+        }
+        if (kind == 1) return new ItemStack(Items.DYE, 1, 15);
+        if (!adjacentWater()) return ItemStack.EMPTY;
+        return PotionUtils.addPotionToItemStack(new ItemStack(Items.POTIONITEM), PotionTypes.WATER);
+    }
+    private boolean fits(ItemStack result) {
+        if (result.isEmpty()) return false;
+        ItemStack out = inventory.getStackInSlot(1);
+        int limit = Math.min(inventory.getSlotLimit(1), result.getMaxStackSize());
+        return out.isEmpty() ? result.getCount() <= limit : ItemStack.areItemsEqual(out, result)
+                && ItemStack.areItemStackTagsEqual(out, result) && out.getCount() <= limit - result.getCount();
+    }
+    private void pullEnergy() {
+        if (!live()) return;
+        World expected = world; BlockPos origin = pos.toImmutable();
+        for (EnumFacing side : EnumFacing.VALUES) {
+                if (world != expected || !origin.equals(pos) || !live() || energy >= COST) break;
+                BlockPos next = origin.offset(side);
+                if (!expected.isBlockLoaded(next)) continue;
+                try {
+                    TileEntity source = expected.getTileEntity(next);
+                    if (source == null || source.isInvalid()) continue;
+                    IEnergyStorage handler = source.getCapability(CapabilityEnergy.ENERGY, side.getOpposite());
+                    if (handler == null || !handler.canExtract()) continue;
+                    if (world != expected || !origin.equals(pos) || !live() || !expected.isBlockLoaded(next) || expected.getTileEntity(next) != source || source.isInvalid() || source.getCapability(CapabilityEnergy.ENERGY, side.getOpposite()) != handler) continue;
+                    // The second foreign capability lookup may itself invalidate either endpoint.
+                    if (world != expected || !origin.equals(pos) || !live() || !expected.isBlockLoaded(next) || expected.getTileEntity(next) != source || source.isInvalid()) continue;
+                    int request = Math.min(RATE, CAPACITY - energy);
+                    int extracted = handler.extractEnergy(request, false);
+                    if (world != expected || !origin.equals(pos) || !live()) break;
+                    if (extracted > 0 && extracted <= request) { energy += extracted; markDirty(); }
+                } catch (RuntimeException ignored) { /* Unknown foreign mutation must not credit FE. */ }
+        }
+    }
+    @Override public void update() {
+        if (busy) return;
+        busy = true;
+        try {
+            if (!live()) return;
+            retryInsertionDirty();
+            if (!live()) return;
+            ItemStack product = result();
+            if (!live()) return;
+            if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+            if (energy < COST) {
+                pullEnergy();
+                if (!live()) return;
+                product = result();
+                if (!live()) return;
+                if (!fits(product)) { if (progress != 0) { progress = 0; markDirty(); } return; }
+            }
+            if (energy < COST) return;
+            // A live/world/water callback can drain input after result(). Verify a
+            // fresh recipe and snapshots *after* the last world callback on every tick.
+            ItemStack tickInput = inventory.getStackInSlot(0).copy();
+            ItemStack tickOutput = inventory.getStackInSlot(1).copy();
+            int tickEnergy = energy, tickProgress = progress;
+            ItemStack checked = result();
+            if (!ItemStack.areItemStacksEqual(product, checked) || !fits(checked) || !live()
+                    || energy != tickEnergy || progress != tickProgress || energy < COST
+                    || !ItemStack.areItemStacksEqual(tickInput, inventory.getStackInSlot(0))
+                    || !ItemStack.areItemStacksEqual(tickOutput, inventory.getStackInSlot(1))) return;
+            product = checked;
+            if (progress + 1 < TIME) {
+                energy -= COST;
+                progress++;
+            } else {
+                // Prepare off-inventory; no mutation or notification until all copies succeed.
+                ItemStack beforeInput = inventory.getStackInSlot(0).copy();
+                ItemStack beforeOutput = inventory.getStackInSlot(1).copy();
+                ItemStack input = beforeInput.copy(); input.shrink(inputCount());
+                ItemStack output = beforeOutput.isEmpty() ? product.copy() : beforeOutput.copy();
+                if (!beforeOutput.isEmpty()) output.grow(product.getCount());
+                // Recheck result, endpoint and snapshots after any world/item callbacks.
+                if (!ItemStack.areItemStacksEqual(product, result()) || !fits(product) || !live()
+                        || progress + 1 < TIME || energy < COST
+                        || !ItemStack.areItemStacksEqual(beforeInput, inventory.getStackInSlot(0))
+                        || !ItemStack.areItemStacksEqual(beforeOutput, inventory.getStackInSlot(1))) return;
+                // No callbacks between these assignments and accounting. markDirty follows the commit.
+                inventory.commit(input.isEmpty() ? ItemStack.EMPTY : input, output);
+                energy -= COST;
+                progress = 0;
+            }
+            markDirty();
+        } finally { busy = false; }
+    }
+    ItemStack drain(int slot) { return inventory.extractItem(slot, Integer.MAX_VALUE, false); }
+    @Override public boolean hasCapability(Capability<?> cap, @Nullable EnumFacing side) {
+        return cap == CapabilityEnergy.ENERGY || cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(cap, side);
+    }
+    @Override public <T> T getCapability(Capability<T> cap, @Nullable EnumFacing side) {
+        if (cap == CapabilityEnergy.ENERGY) return CapabilityEnergy.ENERGY.cast(power);
+        if (cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(access);
+        return super.getCapability(cap, side);
+    }
+    @Override public NBTTagCompound writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag); tag.setInteger("Energy", energy); tag.setInteger("Progress", progress); tag.setTag("Inventory", inventory.serializeNBT()); return tag;
+    }
+    @Override public void readFromNBT(NBTTagCompound tag) {
+        if (busy) return;
+        busy = true;
+        try {
+            super.readFromNBT(tag);
+            energy = Math.max(0, Math.min(CAPACITY, tag.getInteger("Energy")));
+            if (tag.hasKey("Inventory", 10)) { NBTTagCompound saved = tag.getCompoundTag("Inventory").copy(); saved.setInteger("Size", 2); inventory.deserializeNBT(saved); }
+            progress = Math.max(0, Math.min(TIME - 1, tag.getInteger("Progress")));
+        } finally { busy = false; }
+    }
+}

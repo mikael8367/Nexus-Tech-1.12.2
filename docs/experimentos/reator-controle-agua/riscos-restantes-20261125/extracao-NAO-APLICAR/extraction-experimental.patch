@@ -1,0 +1,100 @@
+--- scram-1721/NuclearController.java
++++ extraction-2046/NuclearController.java
+@@ -91,7 +91,7 @@
+  private void tripCoolantGuard(){
+    enabled=false;scrammed=true;production=0;setIndicator(false);markDirty();
+  }
+- private boolean reserved, updating, starting, startInterrupted, stopping, removing, removalDrained, removalFinalizing, removalUncertain, bucketTransfer, filling, automationExtracting; private int activeOperations;
++ private boolean reserved, updating, starting, startInterrupted, stopping, removing, removalDrained, removalFinalizing, removalUncertain, bucketTransfer, filling, automationExtracting, energyExtracting; private int activeOperations;
+  private boolean visualFormed;
+  boolean visualFormed(){return visualFormed;}
+  private void setVisualFormed(boolean value){
+@@ -226,18 +226,34 @@
+    public boolean canExtract(){return usable() && validateStructure()==1;} public boolean canReceive(){return false;}
+  };
+  private int extractEnergyChecked(int n,boolean sim,NuclearPart part,Object lease){
+-     if(part!=null && !part.validLease(this,lease))return 0;
+-     if(!usable() || reserved || n<=0 || validateStructure()!=1)return 0;
+-     if(part!=null && !part.validLease(this,lease))return 0;
+-     resetOutputForWorldTick();
+-     int out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+-     if(!sim && out>0){
+-       bindStructure();
+-       if(!usable() || reserved || validateStructure()!=1)return 0;
+-       if(part!=null && !part.validLease(this,lease))return 0;
+-       resetOutputForWorldTick();out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+-       energy-=out;outputThisTick+=out;markDirty();
+-     }return out;
++    if(energyExtracting || n<=0)return 0;
++    energyExtracting=true;activeOperations++;
++    boolean committed=false;
++    try {
++      if(part!=null && !part.validLease(this,lease))return 0;
++      if(!usable() || reserved || validateStructure()!=1)return 0;
++      if(part!=null && !part.validLease(this,lease))return 0;
++      resetOutputForWorldTick();
++      int out=Math.min(Math.min(n,Math.max(0,energy)),Math.max(0,OUTPUT-outputThisTick));
++      if(sim || out==0)return out;
++      bindStructure();
++      if(!usable() || reserved || validateStructure()!=1)return 0;
++      if(part!=null && !part.validLease(this,lease))return 0;
++      resetOutputForWorldTick();
++      if(!usable() || reserved)return 0;
++      if(part!=null && !part.validLease(this,lease))return 0;
++      out=Math.min(Math.min(n,Math.max(0,energy)),Math.max(0,OUTPUT-outputThisTick));
++      if(out<=0)return 0;
++      // Debit and output budget commit before a callback can observe either.
++      energy-=out;outputThisTick+=out;committed=true;
++      try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear energy extraction committed but dirty notification failed; persistence is uncertain",ex);}
++      return out;
++    } finally {
++      try{endOperation();}catch(RuntimeException ex){
++        if(!committed)throw ex;
++        org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear removal finalization failed after energy extraction; inspect recovery",ex);
++      } finally {energyExtracting=false;}
++    }
+  }
+  private boolean usable(){
+    if(removing || world==null || world.isRemote || isInvalid())return false;
+@@ -401,6 +417,18 @@
+      try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear bucket conversion notification failed after mutation; chunk may not be marked dirty",ex);}
+    } finally {bucketTransfer=false;}
+  }
++ // Commit item removal and fuel credit before notifying foreign code.
++ private boolean consumeOneFuel(){
++   if(fuelTicks!=0 || removing || !usable() || fuelTicks!=0 || removing)return false;
++   ItemStack stack=inventory.getStackInSlot(0);
++   if(!isFuel(stack) || stack.getCount()<=0)return false;
++   // Vanilla ItemStack.shrink/setCount and NonNullList.set have no callbacks.
++   if(stack.getCount()==1)recoveryInventory.setWithoutNotification(0,ItemStack.EMPTY);
++   else stack.shrink(1);
++   fuelTicks=FUEL_TICKS;
++   try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear fuel conversion committed but dirty notification failed; persistence is uncertain",ex);}
++   return true;
++ }
+  private boolean startSafe(){
+    return !startInterrupted && !autoThermal.invalid() && temperature>=0 && temperature<SCRAM
+        && energy>=0 && energy<=CAPACITY && fuelTicks>=0 && (!scrammed || temperature<=RESET)
+@@ -449,7 +477,7 @@
+    // Guard the whole tick, including operation setup and teardown, against callbacks.
+    // A nested tick during Forge's fill callback can change its return value or
+    // empty the tank before fillInternal finishes reading it.
+-   if(starting || stopping || updating || reserved || filling || automationExtracting)return;
++   if(starting || stopping || updating || reserved || filling || automationExtracting || energyExtracting)return;
+    updating=true;
+    try {
+    if(!beginTickOperation())return;
+@@ -474,12 +502,7 @@
+    // Never generate at/above the critical threshold, in any mode.
+    if(temperature>=SCRAM){enabled=false;scrammed=true;}
+    if(enabled && formed && energy<=CAPACITY-FE_PER_TICK){
+-     if(fuelTicks==0 && isFuel(inventory.getStackInSlot(0))) {
+-       ItemStack consumed=inventory.extractItem(0,1,false);
+-       // A reentrant removal defers draining until endOperation: preserve the item there.
+-       if(removing){if(!consumed.isEmpty())recoveryOverflow.add(consumed);return;}
+-       if(isFuel(consumed) && consumed.getCount()==1)fuelTicks=FUEL_TICKS;
+-     }
++     if(fuelTicks==0)consumeOneFuel();
+      if(removing)return;
+      // Inventory callbacks may have invalidated the multiblock during extraction.
+      if(enabled && !allPartsBound()){

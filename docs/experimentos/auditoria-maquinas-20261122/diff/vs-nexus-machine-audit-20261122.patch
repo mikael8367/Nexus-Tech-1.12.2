@@ -1,0 +1,41 @@
+--- nexus-machine-audit-20261122/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/ProcessingTile.java
++++ combined/src/main/java/com/mikael8367/nexustech/experiment/tenmachines/ProcessingTile.java
+@@ -61,6 +61,17 @@
+    } finally {finish(changed);}
+   }
+  };
++ // All physical faces share the same stable view: automation may feed inputs,
++ // but can extract only completed output. A null-side internal view retains
++ // input recovery for a future UI; callers must not treat it as a security boundary.
++ private final IItemHandler sidedAccess=new IItemHandler(){
++  public int getSlots(){return itemAccess.getSlots();}
++  public int getSlotLimit(int slot){return itemAccess.getSlotLimit(slot);}
++  public ItemStack getStackInSlot(int slot){return itemAccess.getStackInSlot(slot);}
++  public boolean isItemValid(int slot,ItemStack stack){return itemAccess.isItemValid(slot,stack);}
++  public ItemStack insertItem(int slot,ItemStack stack,boolean simulate){return itemAccess.insertItem(slot,stack,simulate);}
++  public ItemStack extractItem(int slot,int amount,boolean simulate){return slot==2?itemAccess.extractItem(slot,amount,simulate):ItemStack.EMPTY;}
++ };
+  private final IEnergyStorage energyAccess=new IEnergyStorage(){
+   public int receiveEnergy(int amount,boolean simulate){
+    if(busy || !live() || amount<=0)return 0;
+@@ -112,7 +123,7 @@
+  @Override public boolean hasCapability(Capability<?> cap,@Nullable EnumFacing side){return cap==CapabilityEnergy.ENERGY || cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(cap,side);}
+  @Override public <T>T getCapability(Capability<T> cap,@Nullable EnumFacing side){
+   if(cap==CapabilityEnergy.ENERGY)return CapabilityEnergy.ENERGY.cast(energyAccess);
+-  if(cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(itemAccess);
++  if(cap==CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(side==null?itemAccess:sidedAccess);
+   return super.getCapability(cap,side);
+  }
+  @Override public NBTTagCompound writeToNBT(NBTTagCompound tag){
+--- nexus-machine-audit-20261122/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java
++++ combined/src/test/java/com/mikael8367/nexustech/experiment/tenmachines/TenMachinesTest.java
+@@ -52,7 +52,8 @@
+   CapabilityEnergy.ENERGY=(Capability<IEnergyStorage>)c.newInstance("test:energy",null,(Callable<IEnergyStorage>)()->null);
+   CapabilityItemHandler.ITEM_HANDLER_CAPABILITY=(Capability<IItemHandler>)c.newInstance("test:items",null,(Callable<IItemHandler>)()->null);
+  }
+- static IItemHandler inv(ProcessingTile t){return t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY,EnumFacing.UP);}
++ // Baseline exercises the internal recovery view, including input extraction.
++ static IItemHandler inv(ProcessingTile t){return t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY,null);}
+  static IEnergyStorage energy(ProcessingTile t){return t.getCapability(CapabilityEnergy.ENERGY,EnumFacing.DOWN);}
+  static void charge(ProcessingTile t,int n){while(n>0){int got=energy(t).receiveEnergy(n,false);ok(got>0,"charge");n-=got;}}
+  static void tick(ProcessingTile t,int n){while(n-->0)t.update();}

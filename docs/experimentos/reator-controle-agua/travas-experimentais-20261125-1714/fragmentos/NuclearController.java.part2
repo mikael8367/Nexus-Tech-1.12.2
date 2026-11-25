@@ -1,0 +1,196 @@
+ // Mutation already happened: a failed notification must not turn success into zero.
+     try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear water notification failed after mutation",ex);}
+   }
+ };
+ // Cached capabilities must not accept contents after the controller is removed.
+ private final IFluidHandler fluidInput=new IFluidHandler(){
+   public IFluidTankProperties[] getTankProperties(){return tank.getTankProperties().clone();}
+   public int fill(FluidStack fluid,boolean doFill){
+     if(bucketTransfer || filling || automationExtracting || !usable() || fluid==null || fluid.getFluid()!=FluidRegistry.WATER || fluid.amount<=0)return 0;
+     // Bound before calling Forge's tank to avoid integer overflow on hostile offers.
+     int amount=Math.min(fluid.amount,Math.max(0,WATER_CAPACITY-water()));
+     if(amount==0)return 0;
+     // Store plain water so tagged water cannot block normal pipes or buckets.
+     FluidStack bounded=new FluidStack(FluidRegistry.WATER,amount);
+     filling=true;activeOperations++;
+     try{return tank.fill(bounded,doFill);}finally{
+       filling=false;
+       try{endOperation();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear removal finalization failed after fill; inspect recovery and inventory",ex);}
+     }
+   }
+   public FluidStack drain(FluidStack fluid,boolean doDrain){return null;}
+   public FluidStack drain(int amount,boolean doDrain){return null;}
+ };
+ private final IEnergyStorage storage=new IEnergyStorage(){
+   public int receiveEnergy(int n,boolean sim){return 0;}
+   public int extractEnergy(int n,boolean sim){return extractEnergyChecked(n,sim,null,null);}
+   public int getEnergyStored(){return usable() && validateStructure()==1?energy:0;} public int getMaxEnergyStored(){return CAPACITY;}
+   public boolean canExtract(){return usable() && validateStructure()==1;} public boolean canReceive(){return false;}
+ };
+ private int extractEnergyChecked(int n,boolean sim,NuclearPart part,Object lease){
+     if(part!=null && !part.validLease(this,lease))return 0;
+     if(!usable() || reserved || n<=0 || validateStructure()!=1)return 0;
+     if(part!=null && !part.validLease(this,lease))return 0;
+     resetOutputForWorldTick();
+     int out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+     if(!sim && out>0){
+       bindStructure();
+       if(!usable() || reserved || validateStructure()!=1)return 0;
+       if(part!=null && !part.validLease(this,lease))return 0;
+       resetOutputForWorldTick();out=Math.min(Math.min(n,energy),Math.max(0,OUTPUT-outputThisTick));
+       energy-=out;outputThisTick+=out;markDirty();
+     }return out;
+ }
+ private boolean usable(){
+   if(removing || world==null || world.isRemote || isInvalid())return false;
+   // Forge capabilities are synchronous: refuse calls off the real server thread
+   // before reading world state. Lightweight test worlds are not WorldServer.
+   if(world instanceof net.minecraft.world.WorldServer && (world.getMinecraftServer()==null || !world.getMinecraftServer().isCallingFromMinecraftThread()))return false;
+   return world.isBlockLoaded(pos)&&world.getTileEntity(pos)==this;
+ }
+ // Preserve crafted fuel and partially burned saves; ingots may also be used directly.
+ static boolean isFuel(ItemStack s){return !s.isEmpty() && (s.getItem()==NuclearRegistry.FUEL || s.getItem()==OreRegistry.INGOTS.get(OreType.URANIUM));}
+ boolean hasFuel(){return fuelTicks>0 || isFuel(inventory.getStackInSlot(0));}
+ private static int clamp(int v,int max){return Math.max(0,Math.min(max,v));}
+ public int water(){return tank.getFluidAmount();}
+ /** Reclaim exact water from this position after replacing the controller. */
+ void reclaimWater(){
+   if(filling || bucketTransfer || activeOperations>0 || !usable())return;
+   int room=WATER_CAPACITY-water();if(room<=0 || world.getPerWorldStorage()==null)return;
+   NuclearRecovery recovery=NuclearRecovery.get(world);
+   int amount=recovery.takeWater(pos,room);if(amount==0)return;
+   // No external callbacks between debit and the plain tank assignment.
+   tank.setFluid(new FluidStack(FluidRegistry.WATER,water()+amount));
+   try{markDirty();}catch(RuntimeException ex){org.apache.logging.log4j.LogManager.getLogger("NexusTech").error("Nuclear reclaimed water notification failed",ex);}
+ }
+ /** Geometry uses controller as middle of front bottom row, front is its facing. */
+ public static BlockPos at(BlockPos origin,EnumFacing front,int dx,int y,int depth){return origin.offset(front.rotateY(),dx).offset(front.getOpposite(),depth).up(y);}
+ /** Synchronize the shared output budget to world time, not tile update order. */
+ private void resetOutputForWorldTick(){
+   long tick=world.getTotalWorldTime();
+   if(outputTick!=tick){outputTick=tick;outputThisTick=0;}
+ }
+ /** Geometry only; deliberately ignores ownership so old owners can be checked without recursion. */
+ private int validateGeometry(){
+   if(!usable())return -1;
+   IBlockState controller=world.getBlockState(pos);
+   if(controller.getBlock()!=NuclearRegistry.CONTROLLER)return 0;
+   EnumFacing front=controller.getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++)
+     if(!world.isBlockLoaded(at(pos,front,x,y,d)))return -1;
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     BlockPos q=at(pos,front,x,y,d);
+     if(x==0&&y==0&&d==0)continue;
+     if(world.getBlockState(q).getBlock()!=(x==0&&y==2&&d==1?NuclearRegistry.CORE:NuclearRegistry.CASING)
+         || !(world.getTileEntity(q) instanceof NuclearPart))return 0;
+   }
+   return 1;
+ }
+ private boolean containsPart(BlockPos part){
+   IBlockState state=world.getBlockState(pos);
+   if(state.getBlock()!=NuclearRegistry.CONTROLLER)return false;
+   EnumFacing front=state.getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++)
+     if(!(x==0&&y==0&&d==0) && at(pos,front,x,y,d).equals(part))return true;
+   return false;
+ }
+ boolean ownsLivePart(BlockPos q,NuclearPart part){
+   return usable() && world.isBlockLoaded(q) && world.getTileEntity(q)==part && !part.isInvalid()
+       && pos.equals(part.owner) && containsPart(q) && validateStructure()==1;
+ }
+ int extractForPart(NuclearPart part,Object lease,int amount,boolean simulate){
+   return extractEnergyChecked(amount,simulate,part,lease);
+ }
+ /** Pure check: -1 unloaded, 0 invalid or owned, 1 claimable. No bind or dirtying. */
+ public int validateStructure(){
+   int geometry=validateGeometry(); if(geometry!=1)return geometry;
+   EnumFacing front=world.getBlockState(pos).getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     if(x==0&&y==0&&d==0)continue;
+     BlockPos q=at(pos,front,x,y,d);
+     BlockPos owner=((NuclearPart)world.getTileEntity(q)).owner;
+     if(owner!=null&&!owner.equals(pos)){
+       if(!world.isBlockLoaded(owner))return -1;
+       TileEntity old=world.getTileEntity(owner);
+       if(old instanceof NuclearController){
+         NuclearController c=(NuclearController)old;
+         // Damaged but hot/armed owners keep their bindings until safe.
+         if(c.enabled || c.temperature>RESET)return 0;
+         int oldGeometry=c.validateGeometry();
+         if(oldGeometry<0)return -1;
+         if(oldGeometry==1 && c.containsPart(q))return 0;
+       }
+     }
+   }
+   return 1;
+ }
+ /** Called only after a successful pure validation, on an actual server operation. */
+ private void bindStructure(){
+   if(validateStructure()!=1)return;
+   EnumFacing front=world.getBlockState(pos).getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     if(x==0&&y==0&&d==0)continue;
+     BlockPos q=at(pos,front,x,y,d);
+     if(!usable() || !world.isBlockLoaded(q))return;
+     TileEntity t=world.getTileEntity(q);if(!(t instanceof NuclearPart))return;
+     ((NuclearPart)t).bind(pos);
+   }
+ }
+ /** Claim and publish a valid structure before opening from any of its parts. */
+ boolean prepareForGui(){
+   if(validateStructure()!=1)return false;
+   bindStructure();
+   if(!allPartsBound()){stopForStructureLoss();return false;}
+   formed=true;
+   setVisualFormed(true);
+   syncPartVisuals(true);
+   if(!allPartsBound()){stopForStructureLoss();return false;}
+   return true;
+ }
+ private boolean allPartsBound(){
+   if(validateStructure()!=1)return false;
+   EnumFacing front=world.getBlockState(pos).getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     if(x==0&&y==0&&d==0)continue;
+     BlockPos q=at(pos,front,x,y,d);
+     if(!world.isBlockLoaded(q))return false;
+     TileEntity t=world.getTileEntity(q);
+     if(!(t instanceof NuclearPart) || t.isInvalid() || !pos.equals(((NuclearPart)t).owner))return false;
+   }
+   return true;
+ }
+ private void syncPartVisuals(boolean value){
+   if(world==null || world.isRemote || !world.isBlockLoaded(pos))return;
+   IBlockState s=world.getBlockState(pos);if(s.getBlock()!=NuclearRegistry.CONTROLLER)return;
+   EnumFacing front=s.getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     if(x==0&&y==0&&d==0)continue;
+     BlockPos q=at(pos,front,x,y,d);if(!world.isBlockLoaded(q))continue;
+     TileEntity t=world.getTileEntity(q);
+     if(t instanceof NuclearPart && pos.equals(((NuclearPart)t).owner))((NuclearPart)t).setVisualFormed(value);
+   }
+ }
+ /** Release only loaded parts still owned by this controller; never touches inventories. */
+ void releaseStructure(){
+   if(world==null || world.isRemote || !world.isBlockLoaded(pos))return;
+   if(enabled || temperature>RESET)return;
+   IBlockState state=world.getBlockState(pos); if(state.getBlock()!=NuclearRegistry.CONTROLLER)return;
+   EnumFacing front=state.getValue(BlockHorizontal.FACING);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++){
+     if(x==0&&y==0&&d==0)continue;
+     BlockPos q=at(pos,front,x,y,d); if(!world.isBlockLoaded(q))continue;
+     TileEntity t=world.getTileEntity(q);
+     if(t instanceof NuclearPart)((NuclearPart)t).unbind(pos);
+   }
+ }
+ private void acceptBucket(){
+   ItemStack in=inventory.getStackInSlot(1),out=inventory.getStackInSlot(2);
+   ItemStack empty=new ItemStack(Items.BUCKET);
+   if(in.isEmpty() || in.getItem()!=Items.WATER_BUCKET || tank.getCapacity()-water()<1000 || (!out.isEmpty() && (!ItemStack.areItemsEqual(out,empty) || !ItemStack.areItemStackTagsEqual(out,empty) || out.getCount()>=out.getMaxStackSize())))return;
+   // Tick operation defers removal. Copies may consult modded item capabilities,
+   // so lock before preparing them and abandon the transfer if removal intervenes.
+   bucketTransfer=true;
+   try {
+     ItemStack nextIn=in.copy();nextIn.shrink(1);if(nextIn.isEmpty())nextIn=ItemStack.EMPTY;
+     ItemStack nextOut=out.isEmpty()?empty:out.copy();if(!out.isEmpty())nextOut.grow(1);
+     FluidStack nextWater=new Fl

@@ -1,0 +1,41 @@
+diff --git a/home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java b/home/daytona/workspace/nexus-save-fail-closed-20261125/TechMachineTile.java
+index 37f8707..b2706db 100644
+--- a/home/daytona/workspace/nexus-save-20261125/docs/experimentos/auditoria-maquinas-20261122/correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java
++++ b/home/daytona/workspace/nexus-save-fail-closed-20261125/TechMachineTile.java
+@@ -45,32 +45,11 @@ public abstract class TechMachineTile extends TileEntity implements ITickable {
+         public int getSlots() { return 2; }
+         public ItemStack getStackInSlot(int slot) { return slot < 0 || slot > 1 ? ItemStack.EMPTY : inventory.getStackInSlot(slot).copy(); }
+         public int getSlotLimit(int slot) { return slot < 0 || slot > 1 ? 0 : inventory.getSlotLimit(slot); }
+-        public boolean isItemValid(int slot, ItemStack stack) { return slot == 0 && validInput(stack); }
++        // Experimental quarantine: no transfer until a coordinated ownership and
++        // persistence contract exists. Simulation must agree with real insertion.
++        public boolean isItemValid(int slot, ItemStack stack) { return false; }
+         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+-            if (busy || slot != 0) return stack;
+-            busy = true;
+-            try {
+-                if (!live() || !validInput(stack)) return stack;
+-                if (simulate) return inventory.insertItem(0, stack, true);
+-                // Preflight on copies, then notify BEFORE ownership is transferred. An
+-                // exception or break during notification cannot expose a new item twice.
+-                ItemStack offered = stack.copy();
+-                ItemStack before = inventory.getStackInSlot(0).copy();
+-                int oldProgress = progress;
+-                ItemStack remainder = inventory.insertItem(0, offered, true).copy();
+-                int accepted = offered.getCount() - remainder.getCount();
+-                if (accepted <= 0) return stack;
+-                ItemStack after = before.isEmpty() ? offered.copy() : before.copy();
+-                if (before.isEmpty()) after.setCount(accepted); else after.grow(accepted);
+-                markDirty();
+-                // Notification may drain, replace/unload the tile or mutate the offer.
+-                if (!live() || !validInput(stack) || progress != oldProgress
+-                        || !ItemStack.areItemStacksEqual(offered, stack)
+-                        || !ItemStack.areItemStacksEqual(before, inventory.getStackInSlot(0))) return stack;
+-                inventory.commitInput(after);
+-                progress = 0;
+-                return remainder;
+-            } finally { busy = false; }
++            return stack; // reject all, without callbacks or inventory mutation
+         }
+         public ItemStack extractItem(int slot, int amount, boolean simulate) {
+             if (busy || slot < 0 || slot > 1 || amount <= 0) return ItemStack.EMPTY;

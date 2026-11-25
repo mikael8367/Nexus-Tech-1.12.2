@@ -1,0 +1,7 @@
+[13:32:59] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:32:59] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+Exception in thread "main" java.lang.AssertionError: unload/replacement returns full remainder got=0 want=3
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.ok(FocusedRegressionTests.java:12)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.eq(FocusedRegressionTests.java:13)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.interruptions(FocusedRegressionTests.java:58)
+	at com.mikael8367.nexustech.techmachines.FocusedRegressionTests.main(FocusedRegressionTests.java:89)

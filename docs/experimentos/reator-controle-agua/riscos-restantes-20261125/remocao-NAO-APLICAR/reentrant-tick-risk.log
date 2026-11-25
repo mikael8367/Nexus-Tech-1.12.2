@@ -1,0 +1,1 @@
+FAIL actual extracted update: later dirty callback removes controller; remaining slot=false fuelTicks=2399 energy=200 notifications=2. Removal/finish modeled, not real Forge.

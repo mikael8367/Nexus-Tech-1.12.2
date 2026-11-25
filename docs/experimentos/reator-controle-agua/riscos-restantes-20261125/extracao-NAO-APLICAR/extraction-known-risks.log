@@ -1,0 +1,4 @@
+FAIL fuel conversion survives synchronous controller removal :: java.lang.AssertionError: one unburnt fuel item is now only fuelTicks on a removed controller
+FAIL direct public inventory extract survives dirty runtime exception :: java.lang.AssertionError: public inventory path debited without return
+FAIL energy markDirty Error still returns debit :: java.lang.AssertionError: Error propagated after debit
+KNOWN-RISK RESULTS failed=3

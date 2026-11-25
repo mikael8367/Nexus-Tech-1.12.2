@@ -1,0 +1,48 @@
+--- ../nexus-reactor-safety-review-fixes-20261125-1709/src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:11:46.367816842 +0000
++++ src/com/mikael8367/nexustech/nuclear/NuclearController.java	2026-11-25 20:14:58.639820171 +0000
+@@ -72,10 +72,14 @@
+  private boolean coolantGuard;
+  public boolean coolantGuard(){return coolantGuard;}
+  void setCoolantGuard(boolean value){
+-   if(!usable() || starting || updating || reserved || filling || bucketTransfer || automationExtracting || activeOperations>0)return;
+-   coolantGuard=value;
+-   if(value && enabled && water()==0)tripCoolantGuard();
+-   markDirty();
++   if(!usable() || starting || stopping || updating || reserved || filling || bucketTransfer || automationExtracting || activeOperations>0)return;
++   // Protect the whole configuration and trip transaction, including callbacks.
++   stopping=true;
++   try{
++     coolantGuard=value;
++     if(value && enabled && water()==0)tripCoolantGuard();
++     markDirty();
++   } finally {stopping=false;}
+  }
+  private void tripCoolantGuard(){
+    enabled=false;scrammed=true;production=0;setIndicator(false);markDirty();
+@@ -396,7 +400,7 @@
+        && (!(coolantGuard || autoThermal.enabled()) || water()>0) && hasFuel();
+  }
+  private void abortUnsafeStart(boolean latch){
+-   if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0){tripCoolantGuard();return;}
++   if(enabled && (temperature>=SCRAM || ((coolantGuard || autoThermal.enabled()) && water()==0))){tripCoolantGuard();return;}
+    enabled=false;production=0;if(latch)scrammed=true;
+  }
+  public void setEnabled(boolean value){
+@@ -476,7 +480,7 @@
+      if(enabled && (coolantGuard || autoThermal.enabled()) && water()==0)tripCoolantGuard();
+      // A fuel-extraction callback may have changed temperature after the first check.
+      if(autoThermal.invalid() || temperature>=SCRAM){enabled=false;scrammed=true;}
+-     if(enabled && usable() && fuelTicks>0 && (!autoThermal.enabled() || energy<=CAPACITY-FE_PER_TICK) && temperature<SCRAM){
++     if(enabled && usable() && fuelTicks>0 && energy>=0 && energy<=CAPACITY-FE_PER_TICK && temperature<SCRAM){
+        boolean applyWater=autoThermal.applyWater(temperature);
+        boolean cooled=water()>0 && applyWater;
+        int beforeWater=water();
+@@ -557,7 +561,7 @@
+  }
+  @Override public NBTTagCompound writeToNBT(NBTTagCompound n){super.writeToNBT(n);n.setLong("OutputTick",outputTick);n.setInteger("OutputThisTick",outputThisTick);n.setInteger("Energy",energy);n.setInteger("Temperature",temperature);n.setInteger("FuelTicks",fuelTicks);n.setBoolean("Enabled",enabled);n.setBoolean("Scrammed",scrammed);n.setBoolean("CoolantGuard",coolantGuard);autoThermal.write(n);n.setTag("Inventory",inventory.serializeNBT());NBTTagList overflow=new NBTTagList();for(ItemStack stack:recoveryOverflow)overflow.appendTag(stack.writeToNBT(new NBTTagCompound()));n.setTag("RecoveryOverflow",overflow);n.setTag("Tank",tank.writeToNBT(new NBTTagCompound()));return n;}
+  @Override public void readFromNBT(NBTTagCompound n){
+-   if(starting||updating||reserved||filling||bucketTransfer||automationExtracting||activeOperations>0||removing)return;
++   if(starting||stopping||updating||reserved||filling||bucketTransfer||automationExtracting||activeOperations>0||removing)return;
+    // If a read throws, the reactor remains stopped and latched.
+    enabled=false;scrammed=true;production=0;
+    try{

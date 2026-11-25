@@ -1,0 +1,8 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+Generated FakeTile from actual experimental API and update method; external world/inventory/tank/NBT are stubs.
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS cold/overheat, target boundaries 0..900, 24000 ticks
+PASS critical SCRAM, last mB telemetry and trip, no water regardless of guard setting, no fuel, full FE, structure
+PASS legacy, setters thread/tile, invalid targets, stub NBT malformed/old and config reload, callbacks; checks=45110

@@ -1,0 +1,7 @@
+[13:33:40] [main/ERROR] [minecraft/CraftingManager]: Couldn't find .mcassetsroot
+[13:33:41] [main/ERROR] [minecraft/Bootstrap]: Errors with built-in recipes!
+[13:33:41] [main/WARN] [FML]: Potentially Dangerous alternative prefix `nexustech` for name `test_machine`, expected `minecraft`. This could be a intended override, but in most cases indicates a broken mod.
+Exception in thread "main" java.lang.AssertionError: committed item also drained on exception got=0 want=1
+	at com.mikael8367.nexustech.techmachines.RealBlockFakeWorldTests.ok(RealBlockFakeWorldTests.java:21)
+	at com.mikael8367.nexustech.techmachines.RealBlockFakeWorldTests.eq(RealBlockFakeWorldTests.java:22)
+	at com.mikael8367.nexustech.techmachines.RealBlockFakeWorldTests.main(RealBlockFakeWorldTests.java:53)

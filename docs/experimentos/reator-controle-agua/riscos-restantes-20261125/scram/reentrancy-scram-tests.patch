@@ -1,0 +1,61 @@
+diff --git a/tests/generate_reentrancy_tests.py b/tests/generate_reentrancy_tests.py
+new file mode 100644
+index 0000000..708497a
+--- /dev/null
++++ b/tests/generate_reentrancy_tests.py
+@@ -0,0 +1,14 @@
++from pathlib import Path
++import ast, os
++root=Path(__file__).resolve().parents[1]
++source=Path(os.environ.get('REACTOR_SOURCE', str(root/'src/com/mikael8367/nexustech/nuclear/NuclearController.java')))
++s=source.read_text()
++tree=ast.parse((root/'tests/generate.py').read_text())
++scaffold=next(ast.literal_eval(x.value) for x in tree.body if isinstance(x,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='scaffold' for t in x.targets))
++scaffold=scaffold.replace('void tripCoolantGuard(){enabled=false;scrammed=true;production=0;setIndicator(false);markDirty();}','')
++api=s[s.index(' public boolean autoTemperatureEnabled()'):s.index(' // Opt-in for old worlds')]
++trip=s[s.index(' void setCoolantGuard(boolean value)'):s.index(' private boolean reserved, updating')]
++start=s[s.index(' private boolean startSafe(){'):s.index(' /** A structural interruption')]
++tick=s[s.index(' @Override public void update(){'):s.index(' private void setIndicator(boolean active)')].replace('@Override public void update()', 'public void update()')
++out=Path(os.environ.get('REACTOR_OUTPUT', str(root/'tests/reentrancy-generated/FakeTile.java')));out.parent.mkdir(parents=True,exist_ok=True);out.write_text(scaffold+api+trip+start+tick+'\n}\n')
++print('Extracted actual API, coolant setter, SCRAM notifications, start, update; world/inventory/tank/indicator are stubs.')
+diff --git a/tests/ReentrancyScramTest.java b/tests/ReentrancyScramTest.java
+new file mode 100644
+index 0000000..bc86d84
+--- /dev/null
++++ b/tests/ReentrancyScramTest.java
+@@ -0,0 +1,35 @@
++package com.mikael8367.nexustech.nuclear;
++public class ReentrancyScramTest {
++ static int pass,fail; interface Case{void run();}
++ static void ck(boolean x,String m){if(!x)throw new AssertionError(m);}
++ static void run(String n,Case c){try{c.run();pass++;System.out.println("PASS "+n);}catch(Throwable e){fail++;System.out.println("FAIL "+n+": "+e);}}
++ static FakeTile base(){FakeTile t=new FakeTile();t.enabled=true;t.fuelTicks=10;t.tank.amount=10;t.indicator=true;t.production=200;return t;}
++ static void trip(FakeTile t){t.tank.amount=0;t.setAutoTemperatureEnabled(true);}
++ static void invalid(FakeTile t){net.minecraft.nbt.NBTTagCompound n=new net.minecraft.nbt.NBTTagCompound();n.setInteger("AutoTarget",1001);n.setBoolean("AutoThermal",true);t.autoThermal.read(n);t.enabled=false;}
++ public static void main(String[] a){
++  run("target recursive dirty bounded and blocked",()->{FakeTile t=base();int[] count={0};boolean[] nested={true};t.onDirty=()->{if(++count[0]>8)throw new AssertionError("recursive callback");nested[0]=t.setAutoTemperatureTarget(501);};ck(t.setAutoTemperatureTarget(500),"outer");ck(count[0]==1&&!nested[0]&&t.autoTemperatureTarget()==500,"nested changed target");});
++  run("target callback may emergency stop",()->{FakeTile t=base();t.onDirty=()->t.setEnabled(false);ck(t.setAutoTemperatureTarget(500),"target");ck(!t.enabled&&t.production==0&&!t.indicator,"stop ignored");});
++  run("enable callback may emergency stop",()->{FakeTile t=base();t.onDirty=()->t.setEnabled(false);ck(t.setAutoTemperatureEnabled(true),"enable auto");ck(!t.enabled&&t.production==0&&!t.indicator,"stop ignored");});
++  run("repair callback blocks cross setters",()->{FakeTile t=base();invalid(t);boolean[] r={true,true,true};t.onDirty=()->{r[0]=t.setAutoTemperatureTarget(700);r[1]=t.setAutoTemperatureEnabled(true);r[2]=t.repairAutoTemperatureConfig(600);};ck(t.repairAutoTemperatureConfig(300),"repair");ck(!r[0]&&!r[1]&&!r[2]&&t.autoTemperatureTarget()==300&&!t.autoTemperatureEnabled(),"reentry changed repaired config");});
++  run("indicator exception still attempts dirty",()->{FakeTile t=base();int[] d={0};t.onIndicator=()->{throw new IllegalStateException("indicator-original");};t.onDirty=()->d[0]++;try{trip(t);throw new AssertionError("no exception");}catch(IllegalStateException e){ck(e.getMessage().equals("indicator-original"),"lost original");}ck(d[0]>0&&!t.enabled&&t.scrammed&&t.production==0,"no dirty or unsafe");});
++  run("both exceptions retain original and suppressed",()->{FakeTile t=base();t.onIndicator=()->{throw new IllegalStateException("indicator-original");};t.onDirty=()->{throw new IllegalArgumentException("dirty-original");};try{trip(t);throw new AssertionError("no exception");}catch(IllegalStateException e){ck(e.getMessage().equals("indicator-original")&&e.getSuppressed().length==1&&e.getSuppressed()[0].getMessage().equals("dirty-original"),"exceptions not preserved");}ck(!t.enabled&&t.scrammed&&t.production==0,"not latched");});
++  run("failed dirty blocks restart until tick retry",()->{FakeTile t=base();int[] d={0};t.onDirty=()->{if(++d[0]==1)throw new IllegalStateException("dirty");};try{trip(t);throw new AssertionError("no failure");}catch(IllegalStateException expected){}t.tank.amount=10;t.setEnabled(true);ck(!t.enabled&&t.scrammed,"unsafe restart before retry");t.update();ck(d[0]>=2,"retry missing");t.setEnabled(true);ck(t.enabled&&!t.scrammed,"restart after successful retry");});
++  run("success and validation",()->{FakeTile t=base();int[] d={0};t.onDirty=()->d[0]++;ck(!t.setAutoTemperatureTarget(901)&&d[0]==0,"invalid target");ck(t.setAutoTemperatureTarget(500)&&t.autoTemperatureTarget()==500&&d[0]==1,"valid target");});
++  run("each legacy operation guard still blocks setters",()->{for(int i=0;i<10;i++){FakeTile t=base();switch(i){case 0:t.starting=true;break;case 1:t.stopping=true;break;case 2:t.updating=true;break;case 3:t.reserved=true;break;case 4:t.filling=true;break;case 5:t.bucketTransfer=true;break;case 6:t.automationExtracting=true;break;case 7:t.activeOperations=1;break;case 8:t.tileUsable=false;break;case 9:t.world.isRemote=true;break;}ck(!t.setAutoTemperatureTarget(500)&&!t.setAutoTemperatureEnabled(true),"guard "+i);}});
++  run("callbacks reject nested start and tick",()->{FakeTile t=base();t.enabled=false;int[] d={0};t.onDirty=()->{d[0]++;t.setEnabled(true);t.update();};ck(t.setAutoTemperatureTarget(300),"outer failed");ck(!t.enabled&&d[0]==1,"start or tick reentered");});
++  run("recursive automatic enable blocked",()->{FakeTile t=base();boolean[] nested={true};int[] d={0};t.onDirty=()->{d[0]++;nested[0]=t.setAutoTemperatureEnabled(false);};ck(t.setAutoTemperatureEnabled(true)&&!nested[0]&&t.autoTemperatureEnabled()&&d[0]==1,"recursive enable");});
++  run("config dirty failure latches and retries",()->{FakeTile t=base();int[] d={0};t.onDirty=()->{if(++d[0]==1)throw new IllegalStateException("config-original");};try{t.setAutoTemperatureTarget(500);throw new AssertionError("no failure");}catch(IllegalStateException e){ck(e.getMessage().equals("config-original"),"wrong exception");}ck(!t.enabled&&t.scrammed&&t.production==0&&d[0]>=2,"fail closed");});
++  run("already scrammed config dirty failure still notifies",()->{FakeTile t=base();t.enabled=false;t.scrammed=true;int[] d={0};t.onDirty=()->{if(++d[0]==1)throw new IllegalStateException("original");};try{t.setAutoTemperatureEnabled(true);throw new AssertionError("no failure");}catch(IllegalStateException e){}ck(d[0]>=2&&t.scrammed&&!t.enabled,"missing failure notification");});
++  run("indicator retry blocks restart until healthy",()->{FakeTile t=base();int[] i={0};t.onIndicator=()->{i[0]++;t.indicator=true;throw new IllegalStateException("broken indicator");};try{trip(t);}catch(IllegalStateException e){}t.tank.amount=10;t.setEnabled(true);ck(!t.enabled&&t.scrammed,"restart with pending indicator");t.onIndicator=null;t.update();t.setEnabled(true);ck(t.enabled&&!t.scrammed&&i[0]>0,"no retry recovery");});
++  run("persistent dirty failure stays latched",()->{FakeTile t=base();int[] d={0};t.onDirty=()->{d[0]++;throw new IllegalStateException("dirty persistent");};try{trip(t);}catch(IllegalStateException e){}t.tank.amount=10;for(int i=0;i<3;i++){try{t.update();}catch(IllegalStateException e){}t.setEnabled(true);ck(!t.enabled&&t.scrammed,"restart on failure "+i);}ck(d[0]>=4,"no repeated attempts");t.onDirty=null;t.update();t.setEnabled(true);ck(t.enabled&&!t.scrammed,"recovery failed");});
++  run("Error propagated with dirty attempted",()->{FakeTile t=base();int[] d={0};t.onIndicator=()->{throw new AssertionError("indicator error");};t.onDirty=()->d[0]++;try{trip(t);throw new IllegalStateException("no Error");}catch(AssertionError e){ck(e.getMessage().equals("indicator error"),"wrong error");}ck(d[0]>0&&!t.enabled&&t.scrammed,"no dirty");});
++  run("manual stop indicator failure latches and notifies",()->{FakeTile t=base();int[] d={0};t.onIndicator=()->{throw new IllegalStateException("stop indicator");};t.onDirty=()->d[0]++;try{t.setEnabled(false);throw new AssertionError("no exception");}catch(IllegalStateException e){}ck(!t.enabled&&t.scrammed&&d[0]>0,"stop failure lost");});
++  run("tick indicator failure latches and notifies",()->{FakeTile t=base();t.temperature=1000;int[] d={0};t.onIndicator=()->{throw new IllegalStateException("tick indicator");};t.onDirty=()->d[0]++;try{t.update();throw new AssertionError("no exception");}catch(IllegalStateException e){}ck(!t.enabled&&t.scrammed&&d[0]>0,"tick notification lost");});
++  run("coolant configuration callback may stop",()->{FakeTile t=base();t.onDirty=()->t.setEnabled(false);t.setCoolantGuard(true);ck(!t.enabled&&t.production==0&&!t.indicator,"stop ignored");});
++  run("nested setter matrix 3x3x4",()->{int checks=0;for(int outer=0;outer<3;outer++)for(int inner=0;inner<3;inner++)for(int target:new int[]{0,1,400,900}){FakeTile t=base();if(outer==2)invalid(t);final int nestedKind=inner;boolean[] result={true};int[] d={0};t.onDirty=()->{if(++d[0]>1)throw new AssertionError("recursion");switch(nestedKind){case 0:result[0]=t.setAutoTemperatureTarget(200);break;case 1:result[0]=t.setAutoTemperatureEnabled(true);break;default:result[0]=t.repairAutoTemperatureConfig(200);}};boolean ok=outer==0?t.setAutoTemperatureTarget(target):outer==1?t.setAutoTemperatureEnabled(true):t.repairAutoTemperatureConfig(target);ck(ok&&!result[0]&&d[0]==1,"matrix "+outer+" "+inner+" "+target);checks++;}ck(checks==36,"matrix count");});
++  run("invalid automatic config cannot repair in enable callback",()->{FakeTile t=base();invalid(t);boolean[] inner={true};t.onDirty=()->inner[0]=t.repairAutoTemperatureConfig(300);ck(t.setAutoTemperatureEnabled(false)&&!inner[0]&&t.autoTemperatureInvalid(),"repair reentered");});
++  run("stop during startup bind notifies latched SCRAM",()->{FakeTile t=base();t.enabled=false;t.indicator=false;int[] d={0};t.onDirty=()->d[0]++;t.onBind=()->t.setEnabled(false);t.setEnabled(true);ck(!t.enabled&&t.scrammed&&d[0]>0,"nested stop missed notification");});
++  run("reentrant SCRAM during dirty remains pending",()->{FakeTile t=base();t.enabled=false;t.indicator=false;int[] d={0};t.onDirty=()->{d[0]++;t.setEnabled(false);};t.setEnabled(true);t.onDirty=null;t.setEnabled(true);ck(!t.enabled&&t.scrammed&&d[0]>=2,"reentrant pending cleared");t.update();t.setEnabled(true);ck(t.enabled&&!t.scrammed,"pending never cleared");});
++  System.out.println("RESULT passed="+pass+" failed="+fail);if(fail>0)System.exit(1);
++ }
++}

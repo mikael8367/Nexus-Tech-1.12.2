@@ -1,0 +1,47 @@
+diff --git a/../correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java b/TechMachineTile.java
+index 37f8707..acee64e 100644
+--- a/../correcao-insercao-quebra-20261123/ativa/src/TechMachineTile.java
++++ b/TechMachineTile.java
+@@ -27,7 +27,22 @@ public abstract class TechMachineTile extends TileEntity implements ITickable {
+     private final int kind;
+     private int energy, progress;
+     private boolean busy;
++    // Volatile retry intent, not a durable transaction record. Experimental only.
++    private boolean insertionDirtyRetry;
+     private final MachineInventory inventory = new MachineInventory();
++
++    private void retryInsertionDirty() {
++        if (!insertionDirtyRetry) return;
++        try {
++            markDirty();
++            insertionDirtyRetry = false;
++        } catch (RuntimeException failure) {
++            // Ownership has already changed. Never signal insertion failure to the
++            // caller, which could otherwise retain/retry the already accepted items.
++            java.util.logging.Logger.getLogger(TechMachineTile.class.getName())
++                .log(java.util.logging.Level.WARNING, "Insertion dirty notification failed; retry is pending", failure);
++        }
++    }
+     private final class MachineInventory extends ItemStackHandler {
+         MachineInventory() { super(2); }
+         @Override protected void onContentsChanged(int slot) {
+@@ -69,6 +84,10 @@ public abstract class TechMachineTile extends TileEntity implements ITickable {
+                         || !ItemStack.areItemStacksEqual(before, inventory.getStackInSlot(0))) return stack;
+                 inventory.commitInput(after);
+                 progress = 0;
++                // The pre-notification may have synchronously saved the OLD
++                // state and cleared dirty. Notify again only after commit.
++                insertionDirtyRetry = true;
++                retryInsertionDirty();
+                 return remainder;
+             } finally { busy = false; }
+         }
+@@ -164,6 +183,8 @@ public abstract class TechMachineTile extends TileEntity implements ITickable {
+         if (busy) return;
+         busy = true;
+         try {
++            if (!live()) return;
++            retryInsertionDirty();
+             if (!live()) return;
+             ItemStack product = result();
+             if (!live()) return;

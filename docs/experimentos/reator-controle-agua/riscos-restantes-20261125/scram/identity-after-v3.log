@@ -1,0 +1,9 @@
+PASS replaced after failing callback: never change replacement or dirty stale tile
+PASS unloaded after failure retains both notifications until loaded
+PASS replacement during indicator callback keeps dirty pending
+PASS healthy trip clears notifications
+PASS latched abort while stopped notifies
+PASS structure visual exception still notifies SCRAM
+PASS failed block write stays pending
+PASS structure failure with replacement protects new controller
+RESULT passed=8 failed=0

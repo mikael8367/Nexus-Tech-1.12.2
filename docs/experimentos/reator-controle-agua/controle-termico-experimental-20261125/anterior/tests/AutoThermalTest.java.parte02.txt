@@ -1,0 +1,14 @@
+invalid()&&!c.enabled(),"invalid persistent");
+  malformed.setInteger("AutoTarget",400);malformed.setByte("AutoThermal",(byte)2);b.read(malformed);check(b.invalid()&&!b.enabled(),"invalid boolean");
+  malformed.setString("AutoThermal","true");b.read(malformed);check(b.invalid()&&!b.enabled(),"wrong type");
+  NBTTagCompound partial=new NBTTagCompound();partial.setInteger("AutoTarget",400);b.read(partial);check(b.invalid(),"partial NBT");
+  check(b.setTarget(100),"repair target");check(!b.invalid()&&!b.enabled(),"repair does not enable");
+  int[] targets={0,1,2,3,399,400,899,900}; int[] starts={0,999};
+  for(int goal:targets)for(int start:starts){FakeTile x=tile(start,goal,0,false);for(int i=0;i<2000;i++){step(x,200);check(!x.scrammed,"target boundary scram");}check(x.temperature==goal,"boundary "+goal+" from "+start);}
+  final FakeTile satCallback=tile(0,400,0,false);satCallback.fuelTicks=0;satCallback.fuelAvailable=true;satCallback.onExtract=new Runnable(){public void run(){satCallback.energy=FakeTile.CAPACITY;}};satCallback.update();check(satCallback.energy==FakeTile.CAPACITY&&satCallback.fuelTicks==FakeTile.FUEL_TICKS&&satCallback.production==0,"callback saturation rechecked");
+  final FakeTile waterCallback=tile(0,400,0,false);waterCallback.fuelTicks=0;waterCallback.fuelAvailable=true;waterCallback.onExtract=new Runnable(){public void run(){waterCallback.tank.amount=100;}};waterCallback.update();check(waterCallback.production==0&&waterCallback.fuelTicks==FakeTile.FUEL_TICKS&&waterCallback.tank.amount==100,"callback coolant rechecked");
+  final FakeTile critCallback=tile(0,400,0,false);critCallback.fuelTicks=0;critCallback.fuelAvailable=true;critCallback.onExtract=new Runnable(){public void run(){critCallback.temperature=1000;}};critCallback.update();check(critCallback.scrammed&&!critCallback.enabled&&critCallback.production==0,"callback critical protection");
+  System.out.println("PASS boundaries 0..900, 32,000 ticks; callback saturation, coolant, critical protection");
+  System.out.println("PASS legacy dry/wet; API invalid/client/reentry; stub-NBT legacy, round trip and malformed/persistent invalid; checks="+checks);
+ }
+}

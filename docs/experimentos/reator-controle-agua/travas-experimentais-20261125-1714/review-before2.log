@@ -1,0 +1,13 @@
+FAIL 999 manual: java.lang.AssertionError: must latch before cooling and generation at 999
+FAIL 998 manual: java.lang.AssertionError: must latch before cooling and generation at 998
+FAIL 999 auto: java.lang.AssertionError: must latch before cooling and generation at 999
+FAIL 998 auto: java.lang.AssertionError: must latch before cooling and generation at 998
+PASS 996 below threshold
+FAIL critical manual preexisting: java.lang.AssertionError: manual hot generation
+FAIL dry already running: java.lang.AssertionError: dry trip, indicator, dirty
+FAIL stop indicator reentry: java.lang.AssertionError: reactivated in stop callback
+PASS stop inside start
+FAIL fuel callback critical auto=false: java.lang.AssertionError: fuel callback generated
+PASS fuel callback critical auto=true
+PASS tank markDirty exception swallowed
+RESULT passed=4 failed=8

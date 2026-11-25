@@ -1,0 +1,57 @@
+ter result(). Verify a
+            // fresh recipe and snapshots *after* the last world callback on every tick.
+            ItemStack tickInput = inventory.getStackInSlot(0).copy();
+            ItemStack tickOutput = inventory.getStackInSlot(1).copy();
+            int tickEnergy = energy, tickProgress = progress;
+            ItemStack checked = result();
+            if (!ItemStack.areItemStacksEqual(product, checked) || !fits(checked) || !live()
+                    || energy != tickEnergy || progress != tickProgress || energy < COST
+                    || !ItemStack.areItemStacksEqual(tickInput, inventory.getStackInSlot(0))
+                    || !ItemStack.areItemStacksEqual(tickOutput, inventory.getStackInSlot(1))) return;
+            product = checked;
+            if (progress + 1 < TIME) {
+                energy -= COST;
+                progress++;
+            } else {
+                // Prepare off-inventory; no mutation or notification until all copies succeed.
+                ItemStack beforeInput = inventory.getStackInSlot(0).copy();
+                ItemStack beforeOutput = inventory.getStackInSlot(1).copy();
+                ItemStack input = beforeInput.copy(); input.shrink(inputCount());
+                ItemStack output = beforeOutput.isEmpty() ? product.copy() : beforeOutput.copy();
+                if (!beforeOutput.isEmpty()) output.grow(product.getCount());
+                // Recheck result, endpoint and snapshots after any world/item callbacks.
+                if (!ItemStack.areItemStacksEqual(product, result()) || !fits(product) || !live()
+                        || progress + 1 < TIME || energy < COST
+                        || !ItemStack.areItemStacksEqual(beforeInput, inventory.getStackInSlot(0))
+                        || !ItemStack.areItemStacksEqual(beforeOutput, inventory.getStackInSlot(1))) return;
+                // No callbacks between these assignments and accounting. markDirty follows the commit.
+                inventory.commit(input.isEmpty() ? ItemStack.EMPTY : input, output);
+                energy -= COST;
+                progress = 0;
+            }
+            markDirty();
+        } finally { busy = false; }
+    }
+    ItemStack drain(int slot) { return inventory.extractItem(slot, Integer.MAX_VALUE, false); }
+    @Override public boolean hasCapability(Capability<?> cap, @Nullable EnumFacing side) {
+        return cap == CapabilityEnergy.ENERGY || cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(cap, side);
+    }
+    @Override public <T> T getCapability(Capability<T> cap, @Nullable EnumFacing side) {
+        if (cap == CapabilityEnergy.ENERGY) return CapabilityEnergy.ENERGY.cast(power);
+        if (cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(access);
+        return super.getCapability(cap, side);
+    }
+    @Override public NBTTagCompound writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag); tag.setInteger("Energy", energy); tag.setInteger("Progress", progress); tag.setTag("Inventory", inventory.serializeNBT()); return tag;
+    }
+    @Override public void readFromNBT(NBTTagCompound tag) {
+        if (busy) return;
+        busy = true;
+        try {
+            super.readFromNBT(tag);
+            energy = Math.max(0, Math.min(CAPACITY, tag.getInteger("Energy")));
+            if (tag.hasKey("Inventory", 10)) { NBTTagCompound saved = tag.getCompoundTag("Inventory").copy(); saved.setInteger("Size", 2); inventory.deserializeNBT(saved); }
+            progress = Math.max(0, Math.min(TIME - 1, tag.getInteger("Progress")));
+        } finally { busy = false; }
+    }
+}

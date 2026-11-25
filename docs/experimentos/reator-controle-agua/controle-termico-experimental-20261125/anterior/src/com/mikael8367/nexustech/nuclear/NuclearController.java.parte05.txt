@@ -1,0 +1,101 @@
+(!usable())return;
+   if(value){
+     int structure=validateStructure();
+     if(structure!=1){stopForStructureLoss();return;}
+     formed=true;
+     if(temperature>RESET && scrammed){markDirty();return;}
+     if(coolantGuard && water()==0){if(enabled)tripCoolantGuard();return;}
+     if(!hasFuel()){enabled=false;production=0;setIndicator(false);markDirty();return;}
+     bindStructure();
+     // Binding notifies the world and can invoke callbacks that remove a part or fuel.
+     if(!usable())return;
+     if(!allPartsBound()){stopForStructureLoss();return;}
+     if(!hasFuel()){enabled=false;production=0;setIndicator(false);markDirty();return;}
+     if(temperature>RESET && scrammed){markDirty();return;}
+     if(coolantGuard && water()==0){if(enabled)tripCoolantGuard();return;}
+     enabled=true; scrammed=false;
+   } else {enabled=false;production=0;setIndicator(false);}
+   markDirty();
+ }
+ /** A structural interruption is latched; restoring chunks/blocks alone cannot restart. */
+ private void stopForStructureLoss(){
+   if(enabled)scrammed=true;
+   enabled=false; formed=false; production=0; setVisualFormed(false);syncPartVisuals(false);setIndicator(false); markDirty();
+ }
+ @Override public void update(){
+   // Guard the whole tick, including operation setup and teardown, against callbacks.
+   // A nested tick during Forge's fill callback can change its return value or
+   // empty the tank before fillInternal finishes reading it.
+   if(updating || reserved || filling || automationExtracting)return;
+   updating=true;
+   try {
+   if(!beginTickOperation())return;
+   try {
+   resetOutputForWorldTick();
+   int structure=validateStructure(); formed=structure==1;
+   if(structure==1){
+     bindStructure();
+     structure=validateStructure();formed=structure==1;
+     if(structure==1){setVisualFormed(true);syncPartVisuals(true);structure=validateStructure();}
+     if(structure==1 && !allPartsBound())structure=validateStructure()==-1?-1:0;
+   }
+   if(structure!=1){stopForStructureLoss();if(structure==0)releaseStructure();}
+   // A missing chunk pauses everything, including coolant, heat and output.
+   if(structure<0){production=0;setIndicator(false);return;}
+   if(removing)return;
+   acceptBucket(); if(removing)return; production=0;
+   if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+   if(enabled && !hasFuel())enabled=false;
+   // In automatic mode, never generate at/above the critical threshold.
+   if(autoThermal.enabled() && temperature>=SCRAM){enabled=false;scrammed=true;}
+   if(enabled && formed && energy<=CAPACITY-FE_PER_TICK && autoThermal.requestedHeat(temperature,water())>0){
+     if(fuelTicks==0 && isFuel(inventory.getStackInSlot(0))) {
+       ItemStack consumed=inventory.extractItem(0,1,false);
+       // A reentrant removal defers draining until endOperation: preserve the item there.
+       if(removing){if(!consumed.isEmpty())recoveryOverflow.add(consumed);return;}
+       if(isFuel(consumed) && consumed.getCount()==1)fuelTicks=FUEL_TICKS;
+     }
+     if(removing)return;
+     // Inventory callbacks may have invalidated the multiblock during extraction.
+     if(enabled && !allPartsBound()){
+       int loss=validateStructure();stopForStructureLoss();
+       if(loss<0)return; // Preserve the normal unloaded-chunk heat/coolant pause.
+     }
+     if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+     // A fuel-extraction callback may have changed temperature after the first check.
+     if(autoThermal.enabled() && temperature>=SCRAM){enabled=false;scrammed=true;}
+     int requestedHeat=autoThermal.requestedHeat(temperature,water());
+     if(enabled && usable() && fuelTicks>0 && requestedHeat>0 && (!autoThermal.enabled() || energy<=CAPACITY-FE_PER_TICK) && (!autoThermal.enabled() || temperature<SCRAM)){
+       int generated=autoThermal.enabled() ? FE_PER_TICK*requestedHeat/3 : FE_PER_TICK;
+       fuelTicks--; energy+=generated; production=generated; temperature+=requestedHeat;
+       if(water()>0){tank.drainInternal(1,true);temperature=Math.max(0,temperature-4);}
+       if(enabled && coolantGuard && water()==0)tripCoolantGuard();
+     }
+   }
+   if(enabled && !hasFuel())enabled=false;
+   temperature=Math.max(0,temperature-1);
+   // SCRAM remains latched; water assists cooling only above the manual reset
+   // threshold, never below it. Passive cooling still has its original floor 0.
+   if(scrammed && !enabled && temperature>RESET && water()>0){
+     tank.drainInternal(1,true);temperature=Math.max(RESET,temperature-4);
+   }
+   if(temperature>=SCRAM){enabled=false;scrammed=true;}
+   setIndicator(enabled && production>0);
+   if(formed)pushOutput(); markDirty();
+   } finally {endOperation();}
+   } finally {updating=false;}
+ }
+ private void setIndicator(boolean active){
+   if(world==null || !world.isBlockLoaded(pos))return;
+   IBlockState s=world.getBlockState(pos);
+   if(s.getBlock()==NuclearRegistry.CONTROLLER && s.getValue(NuclearBlock.ACTIVE)!=active)world.setBlockState(pos,s.withProperty(NuclearBlock.ACTIVE,active),3);
+ }
+ private void pushOutput(){
+   if(validateStructure()!=1)return;
+   EnumFacing front=world.getBlockState(pos).getValue(BlockHorizontal.FACING);
+   List<BlockPos> sources=new ArrayList<>();sources.add(pos);
+   for(int x=-1;x<=1;x++)for(int y=0;y<5;y++)for(int d=0;d<3;d++)
+     if(!(x==0&&y==0&&d==0))sources.add(at(pos,front,x,y,d));
+   for(BlockPos source:sources)for(EnumFacing side:EnumFacing.VALUES){
+     if(!usable() || validateStructure()!=1)return;
+     int offer=Mat

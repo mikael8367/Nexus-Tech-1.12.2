@@ -1,0 +1,9 @@
+FAIL replaced after failing callback: never change replacement or dirty stale tile: java.lang.AssertionError: replacement indicator modified
+FAIL unloaded after failure retains both notifications until loaded: java.lang.AssertionError: unloaded notification counted as done
+FAIL replacement during indicator callback keeps dirty pending: java.lang.AssertionError: dirty ran after replacement
+PASS healthy trip clears notifications
+FAIL latched abort while stopped notifies: java.lang.AssertionError: missing abort notification
+FAIL structure visual exception still notifies SCRAM: java.lang.AssertionError: failure prevented notification
+FAIL failed block write stays pending: java.lang.AssertionError: rejected write counted as complete
+FAIL structure failure with replacement protects new controller: java.lang.AssertionError: replacement or pending damaged
+RESULT passed=1 failed=7

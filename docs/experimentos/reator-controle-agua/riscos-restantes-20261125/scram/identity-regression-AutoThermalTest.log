@@ -1,0 +1,5 @@
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+Exception in thread "main" java.lang.AssertionError: bounds
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.ok(AutoThermalTest.java:5)
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.main(AutoThermalTest.java:10)
