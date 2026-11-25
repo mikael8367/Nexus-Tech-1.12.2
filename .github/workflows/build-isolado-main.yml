@@ -1,0 +1,35 @@
+name: Build isolado Nexus Tech main
+on:
+  push:
+    branches: [build-jar-main-20261125-2123]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Compilar e testar
+        run: sh ./gradlew --no-daemon --max-workers=2 build
+      - name: Verificar artefato
+        run: |
+          set -eu
+          python3 .github/workflows/validate_jar.py --jar build/libs/nexustech-1.0.jar --source . --version 1.0
+          python3 .github/workflows/check_preservation.py . build/libs/nexustech-1.0.jar
+          if unzip -Z1 build/libs/nexustech-1.0.jar | grep -Ei '(^|/)(nuclear|reactor|reator)(/|[^/]*)'; then echo 'Classe ou recurso nuclear nao esperado' >&2; exit 1; fi
+          sha256sum build/libs/nexustech-1.0.jar > build/libs/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nexus-tech-main-jar
+          path: |
+            build/libs/nexustech-1.0.jar
+            build/libs/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
