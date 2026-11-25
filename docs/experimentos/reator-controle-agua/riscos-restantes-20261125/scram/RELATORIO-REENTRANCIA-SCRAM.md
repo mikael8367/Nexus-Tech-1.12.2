@@ -1,0 +1,24 @@
+# Experimento independente: reentrância e notificações SCRAM
+
+## Status: NÃO INTEGRAR AINDA
+Cópia de `nexus-reactor-experimental-scram-20261125-1721`. Não foi alterada a variante original nem o projeto principal; nenhum GitHub, mundo, build Forge/JAR ou publicação foi tocado. Antes da cópia e das compilações isoladas, `df -h /` mostrou 2,5 GB livres (87% ocupado). O Java de produção alterado foi somente `src/com/mikael8367/nexustech/nuclear/NuclearController.java`. `reentrancy-scram-java.patch` é o diff contra a origem indicada; `reentrancy-scram-tests.patch` adiciona gerador e testes novos. Os demais logs, testes e arquivos da cópia foram preservados.
+
+## Solução experimental
+- `configuring` bloqueia recursão e mudanças cruzadas nos setters de alvo, reparo, ativação automática e guard de água; bloqueia partida, tick e leitura NBT reentrantes, mas permite a parada de emergência `setEnabled(false)` em seus callbacks. As guardas anteriores permanecem verificadas.
+- Trip coloca o estado de segurança em memória antes de tentar indicador e `markDirty` independentemente. Se ambos falham, a primeira exceção é relançada com a segunda como suppressed. Falha de configuração/partida/tick/parada também tenta notificar SCRAM; indicador ou dirty malsucedido permanecem pendentes e inibem partida, com nova tentativa no tick. Exceções originais continuam propagadas. A guarda é liberada com finally.
+- Na interrupção reentrante durante partida, agendam-se ambas notificações e é possível tentá-las antes de retornar de um abort; uma nova interrupção no callback volta a marcar pendência, sem que a tentativa anterior a apague.
+- Essas pendências são somente em memória, e `markDirty` bem-sucedido não equivale a flush. Retentativas dependem de o mundo executar novos ticks. Exceções propagadas podem interromper o tick/servidor antes de nova tentativa.
+
+## Antes e depois
+O mesmo `tests/ReentrancyScramTest.java` e o mesmo gerador extrator foram usados no original e no experimento. Antes: `reentrancy-baseline-v3.log`, 6/23 aprovados e 17 falhas, incluindo StackOverflow em reparo, recursão no alvo, parada bloqueada em callback, indicador impedindo dirty, reinício antes de notificação pendente, e falta de dirty após parada reentrante na partida. Log anterior `reentrancy-before.log` é mantido sem alteração. Depois: `reentrancy-v3-ReentrancyScramTest.log`, 23/23, incluindo matriz limitada de 36 combinações de setter/callback/alvo, guardas anteriores, stop em callback, falhas isoladas e simultâneas do indicador/dirty, retry e recuperação, Error, exceções originais e suppressed e interrupção da partida. Não é prova formal nem busca exaustiva de todos os estados.
+
+Regressões com o mesmo FakeTile extraído e Java 8: `IndependentReviewTest` 10/10; `TransactionRegressionTest` 10/10; `ReviewFixTest` 16/16; `SafetyTest` 24 verificações; `AutoThermalBelowCriticalTest` 45.110 verificações. Logs `reentrancy-v3-<nome>.log`. `AutoThermalTest` original segue falhando em `bounds`, linha 10, como já documentado; log preservado, exit 1, NÃO contado como sucesso. Todos os outros logs v3 têm exit 0.
+
+O gerador `tests/generate_reentrancy_tests.py` extrai da fonte real a API, coolant guard, trip, helpers, partida e update, substituindo mundo, indicador, inventário, tanque e NBT por stubs. Os métodos completos de Forge, `readFromNBT`, remoção real, estrutura, armazenamento e chamadas nativas não foram exercitados. Os artefatos baseline/v3 permitem reprodução com `REACTOR_SOURCE` e `REACTOR_OUTPUT`.
+
+## Riscos NÃO resolvidos
+- Crash, descarregamento ou falha de disco podem restaurar snapshot anterior sem SCRAM. Uma notificação bem-sucedida não prova durabilidade, confirmação de gravação, nem permite reconstruir uma pendência perdida no restart. Não existe garantia de SCRAM após crash.
+- Esta abordagem não cobre todas as origens de SCRAM: por exemplo `abortUnsafeStart(true)` com `wasEnabled=false` pode definir o latch sem notificação; `stopForStructureLoss` chamado de `prepareForGui` fica fora dos catches de tick/partida e uma exceção de visual/indicador ainda pode impedir dirty. A estrutura/remoção real durante callbacks não foi testada; helper de erro chamado após teardown de uma operação requer revisão para evitar atuar sobre tile removido/substituído. O uso de campos públicos também permite mutação alheia que os bloqueios não impedem.
+- Anterior risco de extração/consumo e alterações concorrentes do outro experimento não estão cobertos aqui. O patch deve ser revisado e combinado manualmente, sem sobrescrever o trabalho do outro agente. Não há teste Forge real, salvamento real, nem verificação do readFromNBT inteiro.
+
+SHA-256 original: `8ff0965c0a32cc65382fd5b205b433553cdf18133a4bd3008fd4d8d083e91b4c`; fonte experimental: `77c10e16069a01dca56457df6426d7b1b9bb4f5f6313accace874893d6db209b`. Não substituir arquivos existentes sem revisão.
