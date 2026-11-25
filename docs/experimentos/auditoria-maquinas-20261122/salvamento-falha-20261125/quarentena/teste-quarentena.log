@@ -1,0 +1,7 @@
+candidate sha256 2fa05c6bbafd47951479a05768a541159faed500576c8fb3da8435f339c89d95
+generated /home/daytona/workspace/nexus-save-fail-closed-20261125/run-cbnrai2z/QuarantineHarness.java
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+javac exit 0  
+test exit 0 PASS checks=401; simulated callbacks, snapshots and crash; insertion always rejected
+ 
