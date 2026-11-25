@@ -1,0 +1,10 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+Generated FakeTile from actual experimental API and update method; external world/inventory/tank/NBT are stubs.
+PASS dry: 50,000 ticks, target 400, post-convergence exactly 400, peak=400, 66 FE/t, full fuel tick
+PASS variable load: 60,000 ticks, alternating 0/132 FE extraction, exactly 400
+PASS overshoot 470->400 in 70 ticks; cold 0->900 without overshoot
+PASS coolant: wet positive target impossible; last mB and no-water protection SCRAM
+PASS fuel exhaustion, saturation, critical SCRAM, invalid/unloaded structure
+PASS boundaries 0..900, 32,000 ticks; callback saturation, coolant, critical protection
+PASS legacy dry/wet; API invalid/client/reentry; stub-NBT legacy, round trip and malformed/persistent invalid; checks=141983
