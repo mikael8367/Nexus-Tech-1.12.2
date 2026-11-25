@@ -1,0 +1,11 @@
+PASS running no fuel shuts down notifies
+PASS automatic enabled dry running immediately trips
+PASS auto changes blocked in stop indicator callback
+PASS auto changes blocked in stop dirty callback
+PASS auto SCRAM callback cannot restart or reconfigure
+PASS automatic safe running stays running
+PASS automatic dry offline does not trip
+PASS manual restart after automatic trip and refill
+PASS repair blocked during stopping
+PASS trip indicator exception leaves stopped guard released
+RESULT passed=10 failed=0
