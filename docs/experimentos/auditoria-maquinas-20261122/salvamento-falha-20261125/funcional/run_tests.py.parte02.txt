@@ -1,0 +1,42 @@
+re dirty");};
+  ItemStack r=t.insertItem(0,offer,false);ck(r.n==0&&t.inventory.amount==3&&t.snap==0,"accepted after old save");
+  if(v.equals("novo")){ck(t.world.chunk.dirty,"new state remains dirty with non-reentrant chunk mark");t.snap=t.inventory.amount;t.world.chunk.dirty=false;ck(t.snap==3,"dirty-driven later save");System.out.println("IMPROVEMENT conditional: old save during query, non-reentrant mark");}
+  else {ck(!t.world.chunk.dirty&&t.snap==0,"old snapshot exposed");System.out.println("RISK reproduced "+v+": accepted item missing from old persisted snapshot");}
+ }
+ static void chunkThrows(){TechMachineTile t=new TechMachineTile();ItemStack o=new ItemStack(3);t.world.chunk.callback=()->{throw new IllegalStateException("after dirty set");};
+  ck(t.insertItem(0,o,false)==o&&t.inventory.amount==0&&t.world.chunk.dirty&&!t.busy,"dirty throws after setting, offer rejected");
+  t.world.chunk.callback=null;ck(t.insertItem(0,o,false).n==0&&t.inventory.amount==3,"continued after mark throw");}
+ static void beforeMarkThrows(){TechMachineTile t=new TechMachineTile();t.world.chunk=new Chunk(){@Override void markDirty(){throw new IllegalStateException("before dirty");}};ItemStack o=new ItemStack(3);ck(t.insertItem(0,o,false)==o&&t.inventory.amount==0&&!t.world.chunk.dirty&&!t.busy,"mark fails before dirty");}
+ static void mutationAndReentry(){TechMachineTile t=new TechMachineTile();ItemStack o=new ItemStack(3);int[] nested={-1,-1,0};
+  t.world.chunk.callback=()->{nested[0]=t.insertItem(0,new ItemStack(2),false).n;nested[1]=t.extractItem(0,1,false).n;nested[2]++;};
+  ck(t.insertItem(0,o,false).n==0&&nested[0]==2&&nested[1]==0&&nested[2]==1&&t.inventory.amount==3,"dirty reentry blocked; only one mark");
+  TechMachineTile u=new TechMachineTile();ItemStack changed=new ItemStack(3);u.inventory.callback=()->{changed.n=2;};
+  ck(u.insertItem(0,changed,false)==changed&&u.inventory.amount==0&&changed.n==2,"mutated offer rejected without additional mutation");
+  TechMachineTile z=new TechMachineTile();ck(z.insertItem(0,new ItemStack(0),false).n==0&&!z.world.chunk.dirty,"invalid input false");}
+ static void identity(){TechMachineTile t=new TechMachineTile();int[] calls={0};t.world.provider.callback=()->{calls[0]++;if(calls[0]==2)t.world.chunk=new Chunk();};ItemStack o=new ItemStack(3);
+  ck(t.insertItem(0,o,false)==o&&t.inventory.amount==0,"chunk replacement rejected");
+  t.world.provider.callback=null;t.world.invalid=true;ck(t.insertItem(0,o,false)==o&&t.inventory.amount==0,"tile invalid");
+  t.world.invalid=false;t.world.present=false;ck(t.insertItem(0,o,false)==o,"unloaded chunk");
+  t.world.present=true;ck(t.insertItem(0,o,false).n==0&&t.inventory.amount==3,"resume after restoration");
+  TechMachineTile u=new TechMachineTile();int[] count={0};u.world.provider.callback=()->{if(++count[0]==2)u.world.invalid=true;};
+  ck(u.insertItem(0,o,false)==o&&u.inventory.amount==0,"invalidation during second chunk query rejected");}
+ static void inFlight(){TechMachineTile t=new TechMachineTile();t.snap=t.inventory.amount; // save captured old NBT, not yet cleared
+  ItemStack r=t.insertItem(0,new ItemStack(3),false);ck(r.n==0&&t.inventory.amount==3&&t.world.chunk.dirty,"accepted and marked");
+  t.world.chunk.dirty=false; // in-flight old save completion clears dirty after commit
+  ck(t.snap==0&&!t.world.chunk.dirty,"old data persists and no follow-up save");System.out.println("RISK reproduced: in-flight save clears dirty after commit; accepted 3, persisted 0");}
+ static void virtualDirty(){TechMachineTile t=new TechMachineTile();t.world.chunk=new Chunk(){@Override void markDirty(){super.markDirty();t.world.invalid=true;}};
+  ItemStack r=t.insertItem(0,new ItemStack(3),false);ck(r.n==0&&t.inventory.amount==3&&t.world.invalid,"virtual mark invalidates tile before commit");System.out.println("RISK reproduced: virtual chunk mark invalidates tile before commit");
+  TechMachineTile u=new TechMachineTile();u.world.chunk=new Chunk(){@Override void markDirty(){super.markDirty();u.snap=u.inventory.amount;dirty=false;}};
+  ck(u.insertItem(0,new ItemStack(3),false).n==0&&u.inventory.amount==3&&u.snap==0&&!u.world.chunk.dirty,"virtual mark saves and clears old state");System.out.println("RISK reproduced: virtual chunk mark saves old state and clears dirty");}
+ public static void main(String[] args){Logger.getLogger(TechMachineTile.class.getName()).setLevel(Level.OFF);String v=args[0];ordinary();recursion();queryChanges();throwing();oldSaveWindow(v);if(v.equals("novo")){chunkThrows();beforeMarkThrows();mutationAndReentry();identity();inFlight();virtualDirty();}System.out.println("PASS model assertions="+n+" variant="+v);}
+}
+'''
+for label,path in paths.items():
+ text=path.read_text(); out=root/('fragment-'+label);out.mkdir(exist_ok=True)
+ src=template.replace('INSERT_METHOD',method(text,'public ItemStack insertItem(')).replace('EXTRACT_METHOD',method(text,'public ItemStack extractItem(')).replace('RETRY_METHOD',method(text,'private void retryInsertionDirty()') if label=='anterior' else 'private void retryInsertionDirty() {}')
+ (out/'TechMachineTile.java').write_text(src)
+ print('\nVARIANT',label,'PATH',path,'SHA256',hashlib.sha256(text.encode()).hexdigest(),flush=True)
+ subprocess.run(['df','-h','/'],check=True)
+ subprocess.run([str(jdk/'javac'),'-source','8','-target','8','-d',str(out),str(out/'TechMachineTile.java')],check=True)
+ subprocess.run([str(jdk/'java'),'-cp',str(out),'TechMachineTile',label],check=True)
+print('ALL MODEL TESTS C
