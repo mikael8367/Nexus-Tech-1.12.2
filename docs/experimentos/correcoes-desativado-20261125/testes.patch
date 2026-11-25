@@ -1,0 +1,85 @@
+--- a/build.gradle
++++ b/build.gradle
+@@ -213,7 +213,21 @@
+ }
+ 
+ // The project's regression suites are executable main methods, not JUnit tests.
++// Keep active-reactor regression tests available, but never run them as evidence
++// for the intentionally disabled distribution. Unknown nuclear suites fail
++// configuration until classified explicitly.
++def activeReactorClasses = [
++    'NuclearGuiAccessTest', 'NuclearPartIntegrationTest', 'NuclearReactorTest',
++    'NuclearRecoveryTest', 'NuclearRegressionTest', 'NuclearSafetyTest',
++    'NuclearStartSafetyTest', 'NuclearStructureGeometryTest',
++    'NuclearUpdateReentryTest', 'NuclearUraniumTest', 'NuclearWaterSafetyTest'
++] as Set
++def seenActiveReactorClasses = [] as Set
++def seenDisabledReactorClasses = [] as Set
+ def standaloneSuites = []
++def activeReactorSuites = []
++def disabledCoreSuites = []
++def disabledMysticalSuites = []
+ fileTree('src/test/java').matching { include '**/*Test.java' }.files.sort().each { source ->
+     if (source.getText('UTF-8') =~ /public\s+static\s+void\s+main\s*\(/) {
+         def rel = file('src/test/java').toPath().relativize(source.toPath()).toString()
+@@ -233,10 +247,40 @@
+             doLast { println "PASS SUITE ${className}" }
+         }
+         standaloneSuites << suite
+-    }
+-}
+-task allStandaloneSuites(group: 'verification', dependsOn: standaloneSuites)
+-check.dependsOn allStandaloneSuites
++        if (className.startsWith('com.mikael8367.nexustech.nuclear.')) {
++            def shortName = className.substring(className.lastIndexOf('.') + 1)
++            if (activeReactorClasses.contains(shortName)) {
++                seenActiveReactorClasses.add(shortName)
++                activeReactorSuites << suite
++            } else if (shortName == 'NuclearDisabledTest') {
++                seenDisabledReactorClasses.add(shortName)
++                disabledCoreSuites << suite
++            } else {
++                throw new GradleException("Unclassified nuclear suite: ${className}")
++            }
++        } else if (className == 'com.mikael8367.nexustech.plantharvester.PlantHarvesterMysticalRegressionTest') {
++            disabledMysticalSuites << suite
++        } else {
++            disabledCoreSuites << suite
++        }
++    }
++}
++if (seenActiveReactorClasses != activeReactorClasses || seenDisabledReactorClasses != (['NuclearDisabledTest'] as Set) || disabledMysticalSuites.size() != 1) {
++    throw new GradleException("Missing classified reactor or Mystical suite")
++}
++task activeReactorStandaloneSuites(group: 'verification', dependsOn: activeReactorSuites,
++    description: 'Active reactor tests; incompatible with the disabled distribution')
++task disabledCoreStandaloneSuites(group: 'verification', dependsOn: disabledCoreSuites,
++    description: 'Partial disabled-distribution tests; excludes real Mystical integration')
++task disabledStaticCheck(type: Exec, group: 'verification') {
++    description = 'Disabled-reactor structural Python checks'
++    commandLine 'python3', 'src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py'
++}
++task disabledStandaloneSuites(group: 'verification', dependsOn: disabledCoreSuites + disabledMysticalSuites + [disabledStaticCheck],
++    description: 'Disabled-distribution standalone suites including real Mystical integration and reactor static checks')
++task allStandaloneSuites(group: 'verification', dependsOn: standaloneSuites,
++    description: 'All suites including active reactor; intentionally incompatible with disabled distribution')
++check.dependsOn disabledStandaloneSuites
+ 
+ // Example for how to get properties into the manifest for reading by the runtime..
+ jar {
+--- a/src/test/java/com/mikael8367/nexustech/GuideStructureGuiTest.java
++++ b/src/test/java/com/mikael8367/nexustech/GuideStructureGuiTest.java
+@@ -25,8 +25,11 @@
+                 Object controller=k==0 ? build.invoke(null,w,origin,front) : build.invoke(null,w,front);
+                 if (k==0 && !((com.mikael8367.nexustech.digitalmine.DigitalMineTile)controller).structureValid())
+                     throw new AssertionError("Mine fixture failed validator");
+-                if (k==1 && ((com.mikael8367.nexustech.nuclear.NuclearController)controller).validateStructure()!=1)
+-                    throw new AssertionError("Reactor fixture failed validator");
++                // This distribution deliberately disables reactor validation. Keep
++                // comparing every real fixture block to the guide below, but do
++                // not claim that the disabled validator accepts the structure.
++                if (k==1 && ((com.mikael8367.nexustech.nuclear.NuclearController)controller).validateStructure()!=-1)
++                    throw new AssertionError("Disabled reactor unexpectedly validated fixture");
+                 kind.setInt(gui,k);
+                 for (int y=0; y<(k==0?2:5); y++) {
+                     layer.setInt(gui,y);
