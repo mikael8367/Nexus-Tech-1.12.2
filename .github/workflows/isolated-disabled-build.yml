@@ -1,0 +1,103 @@
+name: Isolated disabled reactor full build
+on:
+  push:
+    branches: ['isolated/disabled-full-build-20261125-1914']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile-and-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Extract verified original and apply exact patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p evidence project
+          echo '4ebdefded13fa8bb3668e08e16b7658fd5b06998092a502daa2f68cb7eb9f9b8  NexusTech-projeto-montagens-livro-experimental.zip' | sha256sum -c | tee evidence/original-sha256.log
+          unzip -q NexusTech-projeto-montagens-livro-experimental.zip -d project
+          base64 -d .github/isolated-disabled-build/disabled.patch.gz.b64 | gzip -dc > evidence/disabled.patch
+          (cd project && patch --batch --forward -p1 < ../evidence/disabled.patch) | tee evidence/patch.log
+          find project/src/test -type f \( -name '*Test.java' -o -name 'test_*.py' \) | sort > evidence/test-inventory.txt
+          java -version 2> evidence/java-version.log
+      - name: Structural checks
+        id: static
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          cd project
+          python3 src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py 2>&1 | tee ../evidence/static-test.log
+      - name: Build reobfuscated Forge JAR
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          cd project
+          bash ./gradlew --no-daemon --stacktrace assemble 2>&1 | tee ../evidence/build.log
+      - name: Targeted disabled reactor Java tests
+        id: disabled_java
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          cd project
+          bash ./gradlew --no-daemon --stacktrace -I src/test/java/com/mikael8367/nexustech/nuclear/nuclear-disabled-check.init.gradle nuclearDisabledCheck 2>&1 | tee ../evidence/disabled-java-test.log
+      - name: Run standalone Java suites including legacy reactor suites
+        id: suites
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          cd project
+          bash ./gradlew --no-daemon --continue --stacktrace allStandaloneSuites 2>&1 | tee ../evidence/standalone-suites.log
+      - name: Verify JAR if built and document coverage
+        id: verify
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'static=%s\nbuild=%s\ndisabled_java=%s\nstandalone=%s\n' '${{ steps.static.outcome }}' '${{ steps.build.outcome }}' '${{ steps.disabled_java.outcome }}' '${{ steps.suites.outcome }}' | tee evidence/outcomes.txt
+          echo 'Python tests other than test_disabled_static.py are not executed; see test-inventory.txt. Minecraft/Forge runtime, multiplayer, world save roundtrip and external mod interactions are not tested. Legacy active-reactor suites may fail by design and are not evidence of this variant being safe.' > evidence/coverage-limitations.txt
+          if [ '${{ steps.build.outcome }}' = success ]; then
+            shopt -s nullglob
+            jars=(project/build/libs/*.jar)
+            [ "${#jars[@]}" -eq 1 ] || { echo "Expected exactly one JAR, got ${#jars[@]}"; exit 1; }
+            sha256sum "${jars[0]}" | tee evidence/jar-sha256.txt
+            jar tf "${jars[0]}" > evidence/jar-contents.txt
+            grep -Fx 'com/mikael8367/nexustech/nuclear/NuclearDisabled.class' evidence/jar-contents.txt
+            grep -Fx 'mcmod.info' evidence/jar-contents.txt
+          else
+            echo 'JAR compilation did not succeed; no success is claimed.'
+          fi
+      - name: Upload logs regardless of result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: disabled-build-evidence
+          path: |
+            evidence/
+            project/build/reports/
+            project/build/test-results/
+          if-no-files-found: warn
+      - name: Upload unvalidated JAR only after build and verification
+        if: steps.build.outcome == 'success' && steps.verify.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: disabled-reactor-UNVALIDATED-JAR
+          path: project/build/libs/*.jar
+          if-no-files-found: error
+      - name: Report failures without masking
+        if: always()
+        shell: bash
+        run: |
+          [ '${{ steps.static.outcome }}' = success ] && [ '${{ steps.build.outcome }}' = success ] && [ '${{ steps.disabled_java.outcome }}' = success ] && [ '${{ steps.suites.outcome }}' = success ] && [ '${{ steps.verify.outcome }}' = success ]
