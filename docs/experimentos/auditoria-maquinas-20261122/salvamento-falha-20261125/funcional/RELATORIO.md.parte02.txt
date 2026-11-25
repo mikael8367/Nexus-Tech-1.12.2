@@ -1,0 +1,4 @@
+; o código completo não foi compilado.
+- `/home/daytona/workspace/nexus-save-candidato2-20261125/teste-modelo.log` conserva a primeira falha do harness: modelo inicialmente limpava dirty antes de a marcação setá-lo. Corrigida ordem da simulação, sem apagar o log. `/home/daytona/workspace/nexus-save-candidato2-20261125/teste-modelo-revisado.log` e `/home/daytona/workspace/nexus-save-candidato2-20261125/teste-modelo-final.log` registram versões intermediárias, anteriores à última revisão. Usar somente o log final v2 para a versão atual.
+
+Próximo passo é investigação arquitetural de durabilidade e coordenação de saves/ownership, seguida por testes e revisão com Forge/Minecraft reais. Não alterar projeto ativo, main ou GitHub a partir deste experimento.
