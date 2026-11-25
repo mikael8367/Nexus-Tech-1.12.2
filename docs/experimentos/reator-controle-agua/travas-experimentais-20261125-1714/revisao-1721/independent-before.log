@@ -1,0 +1,11 @@
+FAIL running no fuel shuts down notifies: java.lang.AssertionError: off indicator and dirty required
+FAIL automatic enabled dry running immediately trips: java.lang.AssertionError: immediate SCRAM required
+FAIL auto changes blocked in stop indicator callback: java.lang.AssertionError: reentrant auto modification
+FAIL auto changes blocked in stop dirty callback: java.lang.StackOverflowError
+FAIL auto SCRAM callback cannot restart or reconfigure: java.lang.AssertionError: reentrant auto trip
+PASS automatic safe running stays running
+PASS automatic dry offline does not trip
+PASS manual restart after automatic trip and refill
+FAIL repair blocked during stopping: java.lang.AssertionError: repair ran during stop
+FAIL trip indicator exception leaves stopped guard released: java.lang.AssertionError: missing exception
+RESULT passed=3 failed=7
