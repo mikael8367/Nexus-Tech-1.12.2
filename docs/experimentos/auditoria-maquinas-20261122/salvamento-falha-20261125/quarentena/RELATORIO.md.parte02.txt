@@ -1,0 +1,4 @@
+mpotente e garantias efetivas de persistência de ambos os lados; consumidores Forge genéricos não prometem isso. O modelo assume consumidor que respeita o resto da capability; consumidor que já extraiu itens e falha ao reinseri-los ou ignora o resto pode perdê-los por conta própria.
+
+## Pendências
+Reconstruir ambiente Forge/Minecraft e testar mundo/chunks, integração real, origem independente, callbacks e quebra; revisar outras rotas de inserção, extração, energia, spawn e races; projetar protocolo cooperativo se a transferência precisar permanecer funcional. Sem evidência dessas garantias, não declarar o problema resolvido. Nenhum arquivo anterior foi apagado; main, GitHub, PR #5 e distribuição não foram alterados. Sandbox é temporário.
