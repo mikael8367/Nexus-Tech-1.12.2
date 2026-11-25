@@ -1,0 +1,36 @@
+
+--- ReviewFixTest ---
+PASS 999 manual
+PASS 998 manual
+PASS 997 manual
+PASS 999 auto
+PASS 998 auto
+PASS 997 auto
+PASS 996 below threshold
+PASS critical manual preexisting
+PASS dry already running
+PASS stop indicator reentry
+PASS stop inside start
+PASS stop dirty reentry
+PASS dry during start
+PASS fuel callback critical auto=false
+PASS fuel callback critical auto=true
+PASS tank markDirty exception swallowed
+RESULT passed=16 failed=0
+
+--- SafetyTest ---
+PASS safety cases checks=24; real extracted start/update; NBT class stub, world/tank/inventory stub
+
+--- AutoThermalTest ---
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+Exception in thread "main" java.lang.AssertionError: bounds
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.ok(AutoThermalTest.java:5)
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.main(AutoThermalTest.java:10)
+
+--- AutoThermalBelowCriticalTest ---
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS cold/overheat, target boundaries 0..900, 24000 ticks
+PASS critical SCRAM, last mB telemetry and trip, no water regardless of guard setting, no fuel, full FE, structure
+PASS legacy, setters thread/tile, invalid targets, stub NBT malformed/old and config reload, callbacks; checks=45110
