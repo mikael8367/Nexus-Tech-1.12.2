@@ -1,0 +1,1 @@
+Juntar partes por ordem sem inserir caracteres. SHA-256: 2c5b244af5c18ebb9c9d638495dc9fd5043f71ae4d33f3d56917678f721078b2. Variante experimental: NAO INTEGRAR.
