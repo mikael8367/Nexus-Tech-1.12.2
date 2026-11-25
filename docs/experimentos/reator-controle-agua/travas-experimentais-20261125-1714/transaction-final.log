@@ -1,0 +1,52 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda         19G   17G  2.5G  87% /
+Extracted actual API, coolant setter and trip, start, update; world/inventory/tank/indicator are stubs.
+--- TransactionRegressionTest ---
+PASS critical already running: latch, indicator, dirty
+PASS coolant trip indicator reentry cannot restart
+PASS coolant trip dirty reentry cannot restart or disable guard
+PASS legacy no water capacity after fuel callback
+PASS legacy no water negative energy callback
+PASS legacy no water still generates when capacity fits
+PASS nested stop during start still latches
+PASS manual restart only after trip finishes
+PASS trip callback exception keeps latch and releases guard
+PASS automatic no-drain capacity after extraction
+RESULT passed=10 failed=0
+EXIT=0
+--- ReviewFixTest ---
+PASS 999 manual
+PASS 998 manual
+PASS 997 manual
+PASS 999 auto
+PASS 998 auto
+PASS 997 auto
+PASS 996 below threshold
+PASS critical manual preexisting
+PASS dry already running
+PASS stop indicator reentry
+PASS stop inside start
+PASS stop dirty reentry
+PASS dry during start
+PASS fuel callback critical auto=false
+PASS fuel callback critical auto=true
+PASS tank markDirty exception swallowed
+RESULT passed=16 failed=0
+EXIT=0
+--- SafetyTest ---
+PASS safety cases checks=24; real extracted start/update; NBT class stub, world/tank/inventory stub
+EXIT=0
+--- AutoThermalTest ---
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+Exception in thread "main" java.lang.AssertionError: bounds
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.ok(AutoThermalTest.java:5)
+	at com.mikael8367.nexustech.nuclear.AutoThermalTest.main(AutoThermalTest.java:10)
+EXIT=1
+--- AutoThermalBelowCriticalTest ---
+PASS target 400 from 0: 10000 ticks, post-settle range 398..400, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS target 400 from 1: 10000 ticks, post-settle range 399..401, generated 200 FE/t, water used=4900 mB; externally replenished stub
+PASS cold/overheat, target boundaries 0..900, 24000 ticks
+PASS critical SCRAM, last mB telemetry and trip, no water regardless of guard setting, no fuel, full FE, structure
+PASS legacy, setters thread/tile, invalid targets, stub NBT malformed/old and config reload, callbacks; checks=45110
+EXIT=0

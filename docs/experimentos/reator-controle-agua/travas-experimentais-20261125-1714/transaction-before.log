@@ -1,0 +1,8 @@
+FAIL critical already running: latch, indicator, dirty: java.lang.AssertionError: critical shutdown incomplete
+FAIL coolant trip indicator reentry cannot restart: java.lang.AssertionError: restart during indicator callback
+FAIL coolant trip dirty reentry cannot restart or disable guard: java.lang.AssertionError: restart or guard change during dirty callback
+FAIL legacy no water capacity after fuel callback: java.lang.AssertionError: generated over capacity or consumed fuel tick
+FAIL legacy no water negative energy callback: java.lang.AssertionError: generated on invalid energy
+PASS legacy no water still generates when capacity fits
+PASS nested stop during start still latches
+RESULT passed=2 failed=5
