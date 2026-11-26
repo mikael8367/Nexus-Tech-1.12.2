@@ -72,17 +72,31 @@ public final class NovaPlacement {
     public enum Result { APPLIED, ALREADY_PRESENT, REJECTED, PARTIAL_FAILURE }
     public static final class Outcome {
         public final Result result;
-        /** Number of write calls that returned normally, not a rollback guarantee. */
+        /** Number of write calls that returned normally, not verified changes or a rollback guarantee. */
         public final int completedWrites;
         private Outcome(Result result,int writes) { this.result=result; this.completedWrites=writes; }
     }
     /** No rollback. A write can mutate before throwing; partial means unknown state.
-     * Exceptions in preflight return REJECTED with zero write calls. Do not use in game.
+     * Exceptions in preflight return REJECTED with zero write calls. Lock failure can
+     * leave lock ownership unknown; unlock failure prevents success and can leave it held.
+     * Post-write equality depends on a truthful backend and does not prove persistence.
+     * Do not use in game.
      */
     public static Outcome simulate(Plan plan, SimulationBackend backend) {
         if(plan==null || backend==null) throw new IllegalArgumentException("null argument");
+        try { backend.lock(); } catch(RuntimeException ex) { return new Outcome(Result.REJECTED,0); }
+        Outcome outcome;
+        boolean unlockFailed=false;
+        try { outcome=simulateLocked(plan,backend); }
+        finally { try { backend.unlock(); } catch(RuntimeException ex) { unlockFailed=true; } }
+        if(unlockFailed) return new Outcome(
+            outcome.result==Result.APPLIED || outcome.result==Result.PARTIAL_FAILURE
+                ? Result.PARTIAL_FAILURE : Result.REJECTED, outcome.completedWrites);
+        return outcome;
+    }
+
+    private static Outcome simulateLocked(Plan plan, SimulationBackend backend) {
         int writes=0; boolean writing=false;
-        backend.lock();
         try {
             if(!backend.authorisedChunkAvailable(plan.chunkX,plan.chunkZ)) return new Outcome(Result.REJECTED,0);
             boolean allEqual=true;
@@ -94,9 +108,11 @@ public final class NovaPlacement {
             for(Entry e:plan.entries) if(!backend.mayReplace(e)) return new Outcome(Result.REJECTED,0);
             writing=true;
             for(Entry e:plan.entries) { backend.write(e); writes++; }
+            // Verify the entire final state, including entries overwritten by later writes.
+            for(Entry e:plan.entries) if(!backend.equal(e)) return new Outcome(Result.PARTIAL_FAILURE,writes);
             return new Outcome(Result.APPLIED,writes);
         } catch(RuntimeException ex) {
             return new Outcome(writing?Result.PARTIAL_FAILURE:Result.REJECTED,writes);
-        } finally { backend.unlock(); }
+        }
     }
 }
