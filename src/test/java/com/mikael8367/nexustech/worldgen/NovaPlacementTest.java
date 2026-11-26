@@ -18,16 +18,17 @@ public final class NovaPlacementTest {
         final ReentrantLock lock=new ReentrantLock();
         final Map<String,Stored> cells=new HashMap<>();
         boolean available=true, compatible=true, replace=true, failRead=false, failAfter=false;
+        boolean pretendWrite=false, corruptEarlier=false, failPostRead=false, failLock=false, failUnlock=false;
         int failWrite=-1,calls=0, cx,cz;
         Sim(int cx,int cz) { this.cx=cx;this.cz=cz; }
-        public void lock() { lock.lock(); }
-        public void unlock() { lock.unlock(); }
+        public void lock() { if(failLock) throw new IllegalStateException(); lock.lock(); }
+        public void unlock() { lock.unlock(); if(failUnlock) throw new IllegalStateException(); }
         void confined(NovaPlacement.Entry e) { if((e.x>>4)!=cx || (e.z>>4)!=cz) throw new AssertionError("neighbor access"); }
         public boolean authorisedChunkAvailable(int x,int z) { if(x!=cx||z!=cz) throw new AssertionError("wrong chunk"); return available; }
         public boolean compatible(NovaPlacement.Entry e) { confined(e); if(failRead) throw new IllegalStateException(); return compatible; }
-        public boolean equal(NovaPlacement.Entry e) { confined(e); Stored s=cells.get(key(e)); return s!=null&&s.equal(e); }
+        public boolean equal(NovaPlacement.Entry e) { confined(e); if(failPostRead && calls==210) throw new IllegalStateException(); Stored s=cells.get(key(e)); return s!=null&&s.equal(e); }
         public boolean mayReplace(NovaPlacement.Entry e) { confined(e); return replace && !cells.containsKey(key(e)); }
-        public void write(NovaPlacement.Entry e) { confined(e); int i=calls++; if(i==failWrite&&!failAfter) throw new IllegalStateException(); cells.put(key(e),new Stored(e)); if(i==failWrite) throw new IllegalStateException(); }
+        public void write(NovaPlacement.Entry e) { confined(e); int i=calls++; if(i==failWrite&&!failAfter) throw new IllegalStateException(); if(!pretendWrite) cells.put(key(e),new Stored(e)); if(corruptEarlier && i==209) cells.clear(); if(i==failWrite) throw new IllegalStateException(); }
     }
     public static void main(String[] args) throws Exception {
         NovaSchematic schematic=NovaSchematic.loadResource();
@@ -53,6 +54,20 @@ public final class NovaPlacementTest {
         Sim s=new Sim(-1,-1); NovaPlacement.Outcome out=NovaPlacement.simulate(p,s);ok(out.result==NovaPlacement.Result.APPLIED&&out.completedWrites==210&&s.cells.size()==210);
         for(NovaPlacement.Entry e:p.entries()) ok(s.cells.get(key(e)).equal(e));
         out=NovaPlacement.simulate(p,s); ok(out.result==NovaPlacement.Result.ALREADY_PRESENT&&out.completedWrites==0&&s.calls==210);
+        Sim fake=new Sim(-1,-1); fake.pretendWrite=true; out=NovaPlacement.simulate(p,fake);
+        ok(out.result==NovaPlacement.Result.PARTIAL_FAILURE&&out.completedWrites==210&&fake.cells.isEmpty()&&fake.calls==210);
+        Sim corrupt=new Sim(-1,-1); corrupt.corruptEarlier=true; out=NovaPlacement.simulate(p,corrupt);
+        ok(out.result==NovaPlacement.Result.PARTIAL_FAILURE&&out.completedWrites==210&&corrupt.cells.isEmpty());
+        Sim badRead=new Sim(-1,-1); badRead.failPostRead=true; out=NovaPlacement.simulate(p,badRead);
+        ok(out.result==NovaPlacement.Result.PARTIAL_FAILURE&&out.completedWrites==210&&badRead.cells.size()==210);
+        Sim badLock=new Sim(-1,-1); badLock.failLock=true; out=NovaPlacement.simulate(p,badLock);
+        ok(out.result==NovaPlacement.Result.REJECTED&&out.completedWrites==0&&badLock.calls==0);
+        Sim badUnlock=new Sim(-1,-1); badUnlock.failUnlock=true; out=NovaPlacement.simulate(p,badUnlock);
+        ok(out.result==NovaPlacement.Result.PARTIAL_FAILURE&&out.completedWrites==210&&badUnlock.cells.size()==210);
+        badUnlock.failUnlock=false; out=NovaPlacement.simulate(p,badUnlock);
+        ok(out.result==NovaPlacement.Result.ALREADY_PRESENT&&out.completedWrites==0);
+        badUnlock.failUnlock=true; out=NovaPlacement.simulate(p,badUnlock);
+        ok(out.result==NovaPlacement.Result.REJECTED&&out.completedWrites==0);
         for(int mode=0;mode<4;mode++) { Sim t=new Sim(-1,-1); if(mode==0)t.available=false; if(mode==1)t.compatible=false; if(mode==2)t.replace=false; if(mode==3)t.failRead=true; out=NovaPlacement.simulate(p,t);ok(out.result==NovaPlacement.Result.REJECTED&&out.completedWrites==0&&t.cells.isEmpty()); }
         for(int index:new int[]{0,1,55,209}) for(boolean after:new boolean[]{false,true}) {
             Sim t=new Sim(-1,-1);t.failWrite=index;t.failAfter=after;out=NovaPlacement.simulate(p,t);
