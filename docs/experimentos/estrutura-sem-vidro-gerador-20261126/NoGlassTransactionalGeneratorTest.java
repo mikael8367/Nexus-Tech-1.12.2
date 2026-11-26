@@ -11,9 +11,9 @@ public class NoGlassTransactionalGeneratorTest {
   static final int N=16*16*256;
   static int idx(int x,int y,int z) { if(x<0||x>=16||z<0||z>=16||y<0||y>=256) throw new AssertionError("outside chunk"); return (y*16+z)*16+x; }
   static class Snap implements NoGlassTransactionalGenerator.Snapshot {
-    byte[] ids=new byte[N], metas=new byte[N]; boolean fresh=true,border=true,entities=false,tiles=false; byte[] marker;
-    Snap copy() { Snap s=new Snap();s.ids=ids.clone();s.metas=metas.clone();s.fresh=fresh;s.border=border;s.entities=entities;s.tiles=tiles;s.marker=marker==null?null:marker.clone();return s; }
-    public int id(int x,int y,int z){return ids[idx(x,y,z)]&255;}
+    byte[] ids=new byte[N], metas=new byte[N]; boolean fresh=true,border=true,entities=false,tiles=false,throwRead=false; byte[] marker;
+    Snap copy() { Snap s=new Snap();s.ids=ids.clone();s.metas=metas.clone();s.fresh=fresh;s.border=border;s.entities=entities;s.tiles=tiles;s.throwRead=throwRead;s.marker=marker==null?null:marker.clone();return s; }
+    public int id(int x,int y,int z){if(throwRead)throw new IllegalStateException("read");return ids[idx(x,y,z)]&255;}
     public int meta(int x,int y,int z){return metas[idx(x,y,z)]&255;}
     public boolean hasTile(int x,int y,int z){idx(x,y,z);return tiles;}
     public boolean freshUnmodified(){return fresh;}
@@ -24,11 +24,21 @@ public class NoGlassTransactionalGeneratorTest {
   }
   static Snap flat(int surface) { Snap s=new Snap(); for(int x=0;x<16;x++)for(int z=0;z<16;z++)for(int y=0;y<=surface;y++)s.set(x,y,z,y==surface?2:(y>=surface-3?3:1),0);return s; }
   static class Backend implements NoGlassTransactionalGenerator.Backend {
-    Snap live; boolean unavailable,conflict,throwAcquire,throwCommit,mutateBeforeCompare; int failAt=-1; int acquires,commits,writes;
+    Snap live; boolean unavailable,conflict,throwAcquire,throwCommit,mutateBeforeCompare,throwSnapshot,nullSnapshot,throwClose,throwError; int failAt=-1; int acquires,commits,writes,releases; boolean held;
+    final IllegalStateException acquireException=new IllegalStateException("acquire"), snapshotException=new IllegalStateException("snapshot"), commitException=new IllegalStateException("commit"), closeException=new IllegalStateException("close");
+    final AssertionError seriousException=new AssertionError("serious");
     Backend(Snap s){live=s;}
-    public NoGlassTransactionalGenerator.Snapshot acquireAlreadyLoadedFreshChunk(int x,int z){acquires++;if(throwAcquire)throw new IllegalStateException(); return unavailable?null:live.copy();}
+    public NoGlassTransactionalGenerator.Reservation acquireAlreadyLoadedFreshChunk(int x,int z){
+      acquires++;if(throwAcquire)throw acquireException;if(unavailable)return null;
+      if(held)throw new AssertionError("already held");held=true; final Snap detached=live.copy();
+      return new NoGlassTransactionalGenerator.Reservation(){
+        public NoGlassTransactionalGenerator.Snapshot snapshot(){if(throwError)throw seriousException;if(throwSnapshot)throw snapshotException;return nullSnapshot?null:detached;}
+        public void close(){if(!held)throw new AssertionError("double release");held=false;releases++;if(throwClose)throw closeException;}
+      };
+    }
     public boolean compareAndCommit(int x,int z,NoGlassTransactionalGenerator.Snapshot expected,List<NoGlassPlan.Cell> plan,byte[] marker){
-      commits++; if(throwCommit)throw new IllegalStateException(); Snap before=(Snap)expected;
+      if(!held)throw new AssertionError("commit without reservation");
+      commits++; if(throwCommit)throw commitException; Snap before=(Snap)expected;
       if(mutateBeforeCompare)live.set(0,10,0,5,0); // concurrent external edit, not ours
       if(conflict || !live.fresh || !live.border || live.entities || live.tiles || live.marker!=null || !Arrays.equals(before.ids,live.ids) || !Arrays.equals(before.metas,live.metas))return false;
       Snap after=live.copy(); int staged=0; for(NoGlassPlan.Cell c:plan){if(staged==failAt)throw new IllegalStateException("injected staging failure");after.set(c.x,c.y,c.z,c.id,c.meta);staged++;} if(staged==failAt)throw new IllegalStateException("injected marker failure"); after.marker=marker.clone();after.fresh=false; live=after;writes+=staged;return true;
@@ -71,9 +81,10 @@ public class NoGlassTransactionalGeneratorTest {
     Backend vegetation=new Backend(flat(64));vegetation.live.set(c.x+2,65,c.z+2,31,1);check(g.attempt(vegetation,seed,cx,cz)==NoGlassTransactionalGenerator.Result.REJECTED,"grass vegetation");
     Backend variant=new Backend(flat(64));variant.live.set(c.x-1,10,c.z,1,6);check(g.attempt(variant,seed,cx,cz)==NoGlassTransactionalGenerator.Result.COMMITTED,"natural stone variant");
     Backend conflict=new Backend(flat(64));conflict.conflict=true;byte[] saved=conflict.live.ids.clone();check(g.attempt(conflict,seed,cx,cz)==NoGlassTransactionalGenerator.Result.CONFLICT && Arrays.equals(saved,conflict.live.ids) && conflict.live.marker==null && conflict.writes==0,"conflict no writes");
-    Backend fault=new Backend(flat(64));fault.throwAcquire=true;check(g.attempt(fault,seed,cx,cz)==NoGlassTransactionalGenerator.Result.ERROR && fault.commits==0,"acquire fault");
-    fault=new Backend(flat(64));fault.throwCommit=true;check(g.attempt(fault,seed,cx,cz)==NoGlassTransactionalGenerator.Result.ERROR && fault.writes==0 && fault.live.marker==null,"atomic commit fault simulation");
-    for(int failure:new int[]{0,1,320,639,640}) { Backend f=new Backend(flat(64));f.failAt=failure;byte[] original=f.live.ids.clone();check(g.attempt(f,seed,cx,cz)==NoGlassTransactionalGenerator.Result.ERROR && Arrays.equals(original,f.live.ids) && f.live.marker==null && f.writes==0,"staging failure "+failure); }
+    Backend fault=new Backend(flat(64));fault.throwAcquire=true;try {g.attempt(fault,seed,cx,cz);throw new AssertionError("missing acquire exception");} catch(IllegalStateException e) {check(e==fault.acquireException && fault.commits==0 && fault.releases==0,"acquire fault");}
+    fault=new Backend(flat(64));fault.throwCommit=true;try {g.attempt(fault,seed,cx,cz);throw new AssertionError("missing commit exception");} catch(IllegalStateException e) {check(e==fault.commitException && fault.writes==0 && fault.live.marker==null && fault.releases==1 && !fault.held,"commit fault released");}
+    for(int failure:new int[]{0,1,320,639,640}) { Backend f=new Backend(flat(64));f.failAt=failure;byte[] original=f.live.ids.clone();try {g.attempt(f,seed,cx,cz);throw new AssertionError("missing staged exception");} catch(IllegalStateException e) {check(Arrays.equals(original,f.live.ids) && f.live.marker==null && f.writes==0 && f.releases==1 && !f.held,"staging failure "+failure);} }
+    NoGlassReservationTest.verify(g,seed,cx,cz,new Backend[]{old,border,ent,te,marked,construction,liquid,invalid,hillside,vegetation},absent,b,conflict);
     Backend race=new Backend(flat(64));race.mutateBeforeCompare=true;check(g.attempt(race,seed,cx,cz)==NoGlassTransactionalGenerator.Result.CONFLICT && race.writes==0 && race.live.id(0,10,0)==5,"concurrent edit survives");
     for(int height:new int[]{3,250,251}) { Backend h=new Backend(flat(height));NoGlassTransactionalGenerator.Result hr=g.attempt(h,seed,cx,cz);check((height==251?hr==NoGlassTransactionalGenerator.Result.REJECTED:hr==NoGlassTransactionalGenerator.Result.COMMITTED),"height "+height+" "+hr); }
     Backend extremes=new Backend(flat(64));check(g.attempt(extremes,seed,Integer.MIN_VALUE,Integer.MAX_VALUE)==NoGlassTransactionalGenerator.Result.REJECTED && extremes.acquires==0,"coordinate overflow");
