@@ -1,0 +1,13 @@
+--- a/src/main/java/com/mikael8367/nexustech/ores/OreWorldGenerator.java
++++ b/src/main/java/com/mikael8367/nexustech/ores/OreWorldGenerator.java
+@@ -17,7 +17,9 @@
+             BlockPos pos = new BlockPos(x, y, z);
+             if (!world.isBlockLoaded(pos)) return;
+             if (world.getBlockState(pos).getBlock() == Blocks.STONE)
+-                world.setBlockState(pos, OreRegistry.ORES.get(type).getDefaultState(), 2);
++                // Flag 16 suppresses observer updates, which otherwise read neighboring
++                // chunks at chunk borders during population (MC-123860). Keep flag 2.
++                world.setBlockState(pos, OreRegistry.ORES.get(type).getDefaultState(), 2 | 16);
+         });
+     }
+ }
