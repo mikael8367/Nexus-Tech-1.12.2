@@ -20,7 +20,7 @@ Com Java 8 e Python 3, a partir da raiz do reposit√≥rio; os arquivos `.class` s√
 df -h /
 mkdir -p /tmp/nexus-noglass-classes
 python3 docs/experimentos/estrutura-sem-vidro-20261126/test_no_glass.py
-javac -d /tmp/nexus-noglass-classes docs/experimentos/estrutura-sem-vidro-20261126/{NoGlassSchematic.java,NoGlassPlan.java,NoGlassPlanTest.java} docs/experimentos/estrutura-sem-vidro-gerador-20261126/{NoGlassTransactionalGenerator.java,NoGlassTransactionalGeneratorTest.java}
+javac -d /tmp/nexus-noglass-classes docs/experimentos/estrutura-sem-vidro-20261126/{NoGlassSchematic.java,NoGlassPlan.java,NoGlassPlanTest.java} docs/experimentos/estrutura-sem-vidro-gerador-20261126/{NoGlassTransactionalGenerator.java,NoGlassTransactionalGeneratorTest.java,NoGlassReservationTest.java}
 java -cp /tmp/nexus-noglass-classes com.mikael8367.nexustech.worldgen.NoGlassPlanTest docs/experimentos/estrutura-sem-vidro-20261126/sem_vidro.schematic.b64 docs/experimentos/estrutura-sem-vidro-20261126/reference.bin
 java -cp /tmp/nexus-noglass-classes com.mikael8367.nexustech.worldgen.NoGlassTransactionalGeneratorTest docs/experimentos/estrutura-sem-vidro-20261126/sem_vidro.schematic.b64
 ```
