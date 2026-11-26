@@ -64,6 +64,8 @@ def inspect(data):
     return r,o,b,d,(w,h,l)
 
 def main():
+    if not __debug__:
+        raise RuntimeError('Nao execute com -O: a auditoria exige assertions ativas')
     assert len(sys.argv)==4 and sys.argv[1] in ('make','check')
     action,src,dst=sys.argv[1:]
     raw,old=ungzip(src)
@@ -76,7 +78,10 @@ def main():
     assert len(where)==1 and counts[(20,0)]==1
     expected=bytearray(old); pos,n=r.offsets['Blocks']; assert n==len(b)
     for i in where: expected[pos+i]=0
-    if action=='make': Path(dst).write_bytes(gzip.compress(expected,mtime=0))
+    if action=='make':
+        # Nunca sobrescreve o original nem qualquer arquivo já existente.
+        with Path(dst).open('xb') as f:
+            f.write(gzip.compress(expected,mtime=0))
     out,new=ungzip(dst)
     # Comparação integral independente de valores: todo o fluxo NBT descompactado
     # deve ser idêntico ao original exceto os bytes de Blocks exatos do vidro.
