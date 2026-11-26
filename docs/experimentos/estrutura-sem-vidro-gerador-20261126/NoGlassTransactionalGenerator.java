@@ -16,13 +16,25 @@ public final class NoGlassTransactionalGenerator {
         boolean insideWorldBorder(); // entire chunk, now and at commit
         byte[] marker(); // null only when definitely absent
     }
-    /** Backend contract (not implemented for Forge): atomically compare ALL snapshot data,
-     * freshness, entity/TE state, loaded identity, border and marker then write ALL cells
-     * and marker as ONE durable unit. On false or exception, no effects anywhere; no chunk
-     * loads, callbacks, physics, lighting, neighbours or observable writes until commit.
-     * If this contract cannot be proven, never instantiate/register this generator. */
+    /** An exclusively owned reservation, released exactly once by attempt after acquisition.
+     * snapshot() is detached and immutable. close() must release all resources, including after
+     * successful commit, conflict or exception; it must not itself commit or undo a commit.
+     * A close failure is propagated, including after a potentially successful commit. */
+    public interface Reservation extends AutoCloseable {
+        Snapshot snapshot();
+        @Override void close();
+    }
+    /** REQUIRED contract only, NOT an implementation or proof of Forge atomicity:
+     * acquire must touch no other chunk; a null return means no reservation was retained;
+     * if acquire throws it must clean up any resources it acquired before throwing.
+     * compareAndCommit must atomically compare ALL snapshot data, freshness, entity/TE state,
+     * loaded identity, border and marker, then write ALL cells and marker as ONE durable unit.
+     * On false or exception, no effects anywhere; no chunk loads, callbacks, physics, lighting,
+     * neighbours or observable writes until commit. The reservation remains held through commit.
+     * A dishonest or broken backend can violate these requirements. If they cannot be proven,
+     * never instantiate/register this generator. */
     public interface Backend {
-        Snapshot acquireAlreadyLoadedFreshChunk(int cx,int cz);
+        Reservation acquireAlreadyLoadedFreshChunk(int cx,int cz);
         boolean compareAndCommit(int cx,int cz,Snapshot expected,List<NoGlassPlan.Cell> plan,byte[] marker);
     }
     private final NoGlassSchematic schematic;
@@ -37,8 +49,11 @@ public final class NoGlassTransactionalGenerator {
         if(bx < -29999984L || bx+15 > 29999984L || bz < -29999984L || bz+15 > 29999984L) return Result.REJECTED;
         NoGlassPlan.Candidate candidate=NoGlassPlan.select(seed,cx,cz);
         if(candidate==null) return Result.NOT_SELECTED;
-        try {
-            Snapshot s=backend.acquireAlreadyLoadedFreshChunk(cx,cz);
+        // Java try-with-resources uses finally and preserves a primary exception, adding a
+        // close exception as suppressed. Acquisition failures are the backend's responsibility.
+        try (Reservation reservation=backend.acquireAlreadyLoadedFreshChunk(cx,cz)) {
+            if(reservation==null) return Result.REJECTED;
+            Snapshot s=reservation.snapshot();
             if(s==null || !s.freshUnmodified() || !s.insideWorldBorder() || s.hasAnyEntityOrTile() || s.marker()!=null) return Result.REJECTED;
             // Check a margin on all sides, all y. No unknown blocks or metadata, TE, liquids,
             // vegetation, structures, rails etc. No assumption that natural blocks prove freshness.
@@ -50,7 +65,7 @@ public final class NoGlassTransactionalGenerator {
             if(plan.size()!=640 || !stableGravel(plan,s)) return Result.REJECTED;
             byte[] marker=Marker.encode(seed,cx,cz);
             return backend.compareAndCommit(cx,cz,s,plan,marker) ? Result.COMMITTED : Result.CONFLICT;
-        } catch(RuntimeException e) { return Result.ERROR; }
+        }
     }
     private static boolean natural(int id,int m) {
         return (id==0 && m==0) || (id==1 && m>=0 && m<=6) ||
