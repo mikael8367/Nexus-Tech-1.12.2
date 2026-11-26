@@ -9,10 +9,10 @@ import net.minecraftforge.event.terraingen.ChunkGeneratorEvent.ReplaceBiomeBlock
 /** UNREGISTERED experiment only. Do not call in a persistent world. */
 public final class NoGlassPrimerExperiment {
     private NoGlassPrimerExperiment() {}
-    public enum Status { INVALID, NOT_SELECTED, BAD_PALETTE, UNSAFE_TERRAIN, READY_WRITE_FAILED_PARTIAL, WRITTEN_TO_PRIMER, READ_FAILED }
+    public enum Status { INVALID, NOT_SELECTED, BAD_PALETTE, UNSAFE_TERRAIN, WRITTEN_TO_PRIMER, READ_FAILED }
     public static final class Report {
         public final Status status;
-        /** Successfully returned write calls; on exception a further write may have happened. */
+        /** Successfully returned write calls. No Report is returned on a write exception. */
         public final int completedWrites;
         private Report(Status status, int n) { this.status=status; this.completedWrites=n; }
     }
@@ -21,6 +21,8 @@ public final class NoGlassPrimerExperiment {
     /** Caller must run on the server generator thread, only in a disposable new world.
      * No proof of lifecycle, old-chunk protection, neighboring chunks or other mods.
      * No event result is changed. Nothing in this class registers a listener.
+     * Write exceptions propagate without rollback; the caller must let them escape
+     * and abort chunk creation rather than continuing with a potentially partial primer.
      */
     public static Report apply(ReplaceBiomeBlocks event, long seed, NoGlassSchematic schematic) {
         if(event==null || schematic==null) return r(Status.INVALID);
@@ -34,6 +36,7 @@ public final class NoGlassPrimerExperiment {
         if(c.x-2<0 || c.x+11>15 || c.z-2<0 || c.z+9>15) return r(Status.INVALID);
         final IBlockState[] states=new IBlockState[640];
         int surface=-1;
+        final int base;
         try {
             IBlockState air=Blocks.AIR.getDefaultState(), stone=Blocks.STONE.getDefaultState(), bedrock=Blocks.BEDROCK.getDefaultState();
             // Read entire one/two-block margin to reject water, trees, foreign blocks,
@@ -51,7 +54,7 @@ public final class NoGlassPrimerExperiment {
                     for(int y=top-3;y<=top;y++) if(primer.getBlockState(x,y,z)!=stone) return r(Status.UNSAFE_TERRAIN);
                 }
             }
-            int base=surface-2;
+            base=surface-2;
             if(base<1 || base+7>255) return r(Status.INVALID);
             int n=0,gravel=0;
             for(int y=0;y<8;y++) for(int z=0;z<8;z++) for(int x=0;x<10;x++) {
@@ -66,14 +69,14 @@ public final class NoGlassPrimerExperiment {
                 states[n++]=s;
             }
             if(n!=640 || gravel!=12) return r(Status.BAD_PALETTE);
-            int done=0;
-            try {
-                for(int y=0;y<8;y++) for(int z=0;z<8;z++) for(int x=0;x<10;x++) {
-                    primer.setBlockState(c.x+x,base+y,c.z+z,states[done]);
-                    done++;
-                }
-                return new Report(Status.WRITTEN_TO_PRIMER,done);
-            } catch(RuntimeException e) { return new Report(Status.READY_WRITE_FAILED_PARTIAL,done); }
         } catch(RuntimeException e) { return r(Status.READ_FAILED); }
+        // Intentionally outside the read/validation catch. A failed write may have
+        // already mutated the primer, so never turn it into a normal return value.
+        int done=0;
+        for(int y=0;y<8;y++) for(int z=0;z<8;z++) for(int x=0;x<10;x++) {
+            primer.setBlockState(c.x+x,base+y,c.z+z,states[done]);
+            done++;
+        }
+        return new Report(Status.WRITTEN_TO_PRIMER,done);
     }
 }
