@@ -78,6 +78,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 docs/experimentos/estrutura-normal-20261126/run_server_test.py
+      - name: Print diagnostic log excerpts without relaxing checks
+        if: always()
+        shell: bash
+        run: |
+          echo "MODE=$MODE"
+          for f in evidence/server-*.log; do
+            [ -f "$f" ] || continue
+            echo "==== $f markers and errors ==== "
+            grep -Ei 'ORE_DIAG|STRUCTURE_|cascad|loaded a new chunk|exception|error|watchdog|timed out|crash' "$f" | head -100 || true
+            echo "==== tail $f ==== "
+            tail -100 "$f"
+          done
       - name: Upload evidence only, never the test jar
         if: always()
         uses: actions/upload-artifact@v4
