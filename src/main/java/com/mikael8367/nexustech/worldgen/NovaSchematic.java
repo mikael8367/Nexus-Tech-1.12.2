@@ -42,7 +42,7 @@ public final class NovaSchematic {
         for(int i=0;i<volume;i++) {
             int id=rawId(i); int meta=data[i]&255;
             require(meta<=15,"metadata > 15");
-            require(id!=20 && id!=95 && id!=102 && id!=160 && id!=241,"glass numeric ID");
+            require(id!=20 && id!=95 && id!=102 && id!=160,"glass numeric ID");
         }
         require(n.hasKey("Entities",9),"entity list missing");
         NBTTagList entities=(NBTTagList)n.getTag("Entities");
@@ -70,7 +70,7 @@ public final class NovaSchematic {
     private static void require(boolean value,String message) { if(!value) throw new IllegalArgumentException(message); }
     private int rawId(int i) { int nibble=((add[i/2]&255) >>> ((i&1)*4))&15; return (blocks[i]&255)|(nibble<<8); }
     private int index(int x,int y,int z) { return (y*length+z)*width+x; }
-    /** Validation accepts untrusted IDs as numbers, not as a vanilla registry mapping. */
+    /** Limited checks on an already parsed compound; not a validator for hostile NBT, DataVersion, or registry mappings. */
     public static NovaSchematic inspect(NBTTagCompound n) { if(n==null) throw new IllegalArgumentException("null NBT"); return new NovaSchematic(n); }
     /** Decode only the exact trusted resource; no arbitrary compressed input is accepted. */
     public static NovaSchematic loadResource() throws IOException {
