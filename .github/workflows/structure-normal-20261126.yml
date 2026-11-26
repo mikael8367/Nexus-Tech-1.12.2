@@ -1,0 +1,83 @@
+name: Normal terrain structure experiment - TEST ONLY
+on:
+  push:
+    branches: ['isolated/structure-normal-experiment-20261126']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Verify original and apply explicit structure patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p evidence project
+          echo '4ebdefded13fa8bb3668e08e16b7658fd5b06998092a502daa2f68cb7eb9f9b8  NexusTech-projeto-montagens-livro-experimental.zip' | sha256sum -c
+          unzip -q NexusTech-projeto-montagens-livro-experimental.zip -d project
+          base64 -d .github/isolated-disabled-build/disabled.patch.gz.b64 | gzip -dc > evidence/disabled.patch
+          (cd project && patch --batch --forward -p1 < ../evidence/disabled.patch)
+          (cd project && patch --batch --forward -p1 < ../docs/experimentos/correcoes-desativado-20261125/testes.patch)
+          cat docs/experimentos/estrutura-forge-test/estrutura-experimental-freq16.patch.gz.b64.part* | base64 -d | gzip -dc > evidence/estrutura-experimental.patch
+          (cd project && git init -q && git apply --check ../evidence/estrutura-experimental.patch && git apply ../evidence/estrutura-experimental.patch)
+          cp docs/experimentos/estrutura-normal-20261126/StructurePlan.java project/src/main/java/com/mikael8367/nexustech/worldgen/StructurePlan.java
+          cp docs/experimentos/estrutura-normal-20261126/ExperimentalStructureGenerator.java project/src/main/java/com/mikael8367/nexustech/worldgen/ExperimentalStructureGenerator.java
+          cp docs/experimentos/estrutura-normal-20261126/StructurePlanTest.java project/src/test/java/com/mikael8367/nexustech/worldgen/StructurePlanTest.java
+          cp docs/experimentos/estrutura-normal-20261126/test_structure_forge_stub.py project/test-tools/test_structure_forge_stub.py
+          test -s project/src/main/java/com/mikael8367/nexustech/worldgen/ExperimentalStructureGenerator.java
+          echo '9fb27d644a84a462d820cd994485d51417b58a413b6588bfe17921720429b97b  project/src/main/resources/assets/nexustech/structures/original.schematic' | sha256sum -c
+          python3 project/src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py
+          mkdir -p evidence/model-classes
+          javac -source 8 -target 8 -d evidence/model-classes project/src/main/java/com/mikael8367/nexustech/worldgen/ExactSchematic.java project/src/main/java/com/mikael8367/nexustech/worldgen/StructurePlan.java project/src/test/java/com/mikael8367/nexustech/worldgen/StructurePlanTest.java
+          (cd project && java -cp ../evidence/model-classes com.mikael8367.nexustech.worldgen.StructurePlanTest) | tee evidence/model-tests.log
+          JAVA_HOME="$JAVA_HOME" python3 project/test-tools/test_structure_forge_stub.py | tee evidence/stub-tests.log
+          df -h /
+          python3 docs/experimentos/estrutura-normal-20261126/instrument_test.py
+      - name: Build instrumented test-only jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          cd project
+          bash ./gradlew --no-daemon --stacktrace assemble 2>&1 | tee ../evidence/build.log
+          shopt -s nullglob; jars=(build/libs/*.jar); [ "${#jars[@]}" -eq 1 ]
+          jar tf "${jars[0]}" | grep -Fx 'com/mikael8367/nexustech/nuclear/NuclearDisabled.class'
+          jar tf "${jars[0]}" | grep -Fx 'com/mikael8367/nexustech/worldgen/StructureForgeHarness.class'
+          sha256sum "${jars[0]}" | tee ../evidence/test-only-jar-sha256.txt
+      - name: Install Forge 1.12.2 dedicated server
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p server/mods
+          cp project/build/libs/*.jar server/mods/
+          curl -fL --retry 3 -o server/installer.jar https://maven.minecraftforge.net/net/minecraftforge/forge/1.12.2-14.23.5.2860/forge-1.12.2-14.23.5.2860-installer.jar
+          cd server
+          java -jar installer.jar --installServer 2>&1 | tee ../evidence/forge-install.log
+          test -f forge-1.12.2-14.23.5.2860.jar
+          printf 'eula=true\n' > eula.txt
+          printf 'online-mode=false\nserver-port=25575\nlevel-name=world\nlevel-seed=847219\nlevel-type=DEFAULT\ngenerate-structures=true\nview-distance=6\nmax-players=1\nenable-query=false\nenable-rcon=false\nspawn-protection=0\n' > server.properties
+      - name: Generate, verify all 180 states, save, restart and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docs/experimentos/estrutura-normal-20261126/run_server_test.py
+      - name: Upload evidence only, never the test jar
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structure-forge-test-evidence
+          path: |
+            evidence/
+            server/logs/
+            server/structure-harness-records.txt
+          if-no-files-found: warn
