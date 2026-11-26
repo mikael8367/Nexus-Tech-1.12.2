@@ -1,0 +1,106 @@
+name: JAR de teste limitado - estrutura desativada
+on:
+  push:
+    branches: ['isolated/jar-teste-desativado-20261126']
+permissions:
+  contents: read
+jobs:
+  teste:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Preparar projeto sem ativar estrutura ou reator
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p evidence project
+          echo '4ebdefded13fa8bb3668e08e16b7658fd5b06998092a502daa2f68cb7eb9f9b8  NexusTech-projeto-montagens-livro-experimental.zip' | sha256sum -c
+          unzip -q NexusTech-projeto-montagens-livro-experimental.zip -d project
+          base64 -d .github/isolated-disabled-build/disabled.patch.gz.b64 | gzip -dc > evidence/disabled.patch
+          (cd project && patch --batch --forward -p1 < ../evidence/disabled.patch)
+          (cd project && patch --batch --forward -p1 < ../docs/experimentos/correcoes-desativado-20261125/testes.patch)
+          base64 -d docs/experimentos/jar-teste-desativado-20261126/estrutura.patch.gz.b64 | gzip -dc > evidence/estrutura.patch
+          (cd project && git init -q && git apply --check ../evidence/estrutura.patch && git apply ../evidence/estrutura.patch)
+          df -h /
+          cp docs/experimentos/jar-teste-desativado-20261126/StructurePlan.java project/src/main/java/com/mikael8367/nexustech/worldgen/StructurePlan.java
+          cp docs/experimentos/jar-teste-desativado-20261126/ExperimentalStructureGenerator.java project/src/main/java/com/mikael8367/nexustech/worldgen/ExperimentalStructureGenerator.java
+          cp docs/experimentos/jar-teste-desativado-20261126/StructurePlanTest.java project/src/test/java/com/mikael8367/nexustech/worldgen/StructurePlanTest.java
+          cp docs/experimentos/jar-teste-desativado-20261126/test_structure_forge_stub.py project/test-tools/test_structure_forge_stub.py
+          (cd project && patch --batch --forward -p1 < ../docs/experimentos/jar-teste-desativado-20261126/minerio.patch)
+          echo '9fb27d644a84a462d820cd994485d51417b58a413b6588bfe17921720429b97b  project/src/main/resources/assets/nexustech/structures/original.schematic' | sha256sum -c
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('project/src/main/java')
+          for p in root.rglob('*.java'):
+              s=p.read_text()
+              if p.name!='ExperimentalStructureGenerator.java' and 'ExperimentalStructureGenerator' in s:
+                  raise SystemExit('Unexpected structure reference: '+str(p))
+              if 'StructureForgeHarness' in s:
+                  raise SystemExit('Unexpected instrumentation: '+str(p))
+          print('No registration of ExperimentalStructureGenerator in production sources')
+          PY
+          python3 project/src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py
+      - name: Testes isolados do prototipo e minerio
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p evidence/model-classes
+          javac -source 8 -target 8 -d evidence/model-classes project/src/main/java/com/mikael8367/nexustech/worldgen/ExactSchematic.java project/src/main/java/com/mikael8367/nexustech/worldgen/StructurePlan.java project/src/test/java/com/mikael8367/nexustech/worldgen/StructurePlanTest.java
+          (cd project && java -cp ../evidence/model-classes com.mikael8367.nexustech.worldgen.StructurePlanTest) | tee evidence/model-tests.log
+          JAVA_HOME="$JAVA_HOME" python3 project/test-tools/test_structure_forge_stub.py | tee evidence/structure-stub.log
+          cp docs/experimentos/jar-teste-desativado-20261126/test_worldgen_stub.py ./test_worldgen_stub.py
+          JAVA_HOME="$JAVA_HOME" python3 ./test_worldgen_stub.py | tee evidence/ore-stub.log
+      - name: Compilar e inspecionar JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          (cd project && bash ./gradlew --no-daemon --stacktrace disabledStandaloneSuites assemble 2>&1 | tee ../evidence/build.log)
+          shopt -s nullglob; jars=(project/build/libs/*.jar); [ "${#jars[@]}" -eq 1 ]; jar="${jars[0]}"
+          unzip -t "$jar" | tee evidence/zip-test.log
+          jar tf "$jar" | tee evidence/jar-contents.txt
+          javap -classpath "$jar" -c com.mikael8367.nexustech.nuclear.NuclearDisabled | tee evidence/nuclear-bytecode.txt
+          javap -classpath "$jar" -c -p com.mikael8367.nexustech.ores.OreWorldGenerator | tee evidence/ore-bytecode.txt
+          python3 docs/experimentos/jar-teste-desativado-20261126/inspect_jar.py "$jar" | tee evidence/inspection.txt
+          sha256sum "$jar" | tee evidence/sha256.txt
+          stat -c '%n %s bytes' "$jar" | tee evidence/size.txt
+      - name: Forge 1.12.2 dedicado em mundo descartavel
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p server/mods
+          cp project/build/libs/*.jar server/mods/
+          df -h /
+          curl -fL --retry 3 -o server/installer.jar https://maven.minecraftforge.net/net/minecraftforge/forge/1.12.2-14.23.5.2860/forge-1.12.2-14.23.5.2860-installer.jar
+          (cd server && java -jar installer.jar --installServer 2>&1 | tee ../evidence/forge-install.log)
+          test -f server/forge-1.12.2-14.23.5.2860.jar
+          printf 'eula=true\n' > server/eula.txt
+          printf 'online-mode=false\nserver-port=25575\nlevel-name=world\nlevel-seed=847219\nview-distance=6\nmax-players=1\nenable-query=false\nenable-rcon=false\nspawn-protection=0\n' > server/server.properties
+          python3 docs/experimentos/jar-teste-desativado-20261126/server_test.py
+      - name: Evidencias (mesmo em falha)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-jar-teste-desativado
+          path: |
+            evidence/
+            server/logs/
+          if-no-files-found: warn
+      - name: JAR limitado nao instrumentado (somente se testes passarem)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-tech-jar-teste-estrutura-desativada
+          path: project/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 90
