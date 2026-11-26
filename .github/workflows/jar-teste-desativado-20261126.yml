@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           df -h /
-          (cd project && bash ./gradlew --no-daemon --stacktrace disabledStandaloneSuites assemble 2>&1 | tee ../evidence/build.log)
+          (cd project && bash ./gradlew --no-daemon --stacktrace disabledCoreStandaloneSuites disabledStaticCheck assemble 2>&1 | tee ../evidence/build.log)
           shopt -s nullglob; jars=(project/build/libs/*.jar); [ "${#jars[@]}" -eq 1 ]; jar="${jars[0]}"
           unzip -t "$jar" | tee evidence/zip-test.log
           jar tf "$jar" | tee evidence/jar-contents.txt
