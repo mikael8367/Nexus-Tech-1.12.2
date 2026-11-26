@@ -28,7 +28,8 @@ jobs:
           (cd project && patch --batch --forward -p1 < ../evidence/disabled.patch)
           (cd project && patch --batch --forward -p1 < ../docs/experimentos/correcoes-desativado-20261125/testes.patch)
           cat docs/experimentos/estrutura-forge-test/estrutura-experimental.patch.gz.b64.part* | base64 -d | gzip -dc > evidence/estrutura-experimental.patch
-          (cd project && git apply --check ../evidence/estrutura-experimental.patch && git apply ../evidence/estrutura-experimental.patch)
+          (cd project && git init -q && git apply --check ../evidence/estrutura-experimental.patch && git apply ../evidence/estrutura-experimental.patch)
+          test -s project/src/main/java/com/mikael8367/nexustech/worldgen/ExperimentalStructureGenerator.java
           echo '9fb27d644a84a462d820cd994485d51417b58a413b6588bfe17921720429b97b  project/src/main/resources/assets/nexustech/structures/original.schematic' | sha256sum -c
           python3 project/src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py
           df -h /
