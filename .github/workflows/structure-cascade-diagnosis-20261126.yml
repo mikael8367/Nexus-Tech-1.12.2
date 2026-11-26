@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [baseline, fixed, noore]
+        mode: [fixed, noore]
     env:
       MODE: ${{ matrix.mode }}
     runs-on: ubuntu-22.04
@@ -49,6 +49,7 @@ jobs:
           df -h /
           python3 docs/experimentos/estrutura-normal-20261126/instrument_test.py
           python3 docs/experimentos/estrutura-cascade-diagnosis-20261126/configure.py
+          python3 docs/experimentos/estrutura-cascade-diagnosis-20261126/plan-probe.py
       - name: Build instrumented test-only jar
         shell: bash
         run: |
@@ -86,9 +87,9 @@ jobs:
           for f in evidence/server-*.log; do
             [ -f "$f" ] || continue
             echo "==== $f markers and errors ==== "
-            grep -Ei 'ORE_DIAG|STRUCTURE_|cascad|loaded a new chunk|exception|error|watchdog|timed out|crash' "$f" | head -100 || true
+            grep -Ei 'ORE_DIAG|STRUCTURE_|cascad|loaded a new chunk|exception|error|watchdog|timed out|crash' "$f" | head -160 || true
             echo "==== tail $f ==== "
-            tail -100 "$f"
+            tail -60 "$f"
           done
       - name: Upload evidence only, never the test jar
         if: always()
