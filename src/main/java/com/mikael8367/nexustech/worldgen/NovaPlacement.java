@@ -36,20 +36,26 @@ public final class NovaPlacement {
      * yMaxExclusive is the simulated world's height, at most 256 in 1.12.2.
      */
     public static Plan plan(NovaSchematic schematic,int x,int y,int z,int chunkX,int chunkZ,int yMaxExclusive) {
-        if(schematic==null || yMaxExclusive<=0 || yMaxExclusive>256) throw new IllegalArgumentException("invalid input");
-        long maxX=(long)x+5, maxY=(long)y+4, maxZ=(long)z+6;
-        if(y<0 || maxY>=yMaxExclusive || maxX>Integer.MAX_VALUE || maxZ>Integer.MAX_VALUE)
+        return planWithMargin(schematic,x,y,z,chunkX,chunkZ,yMaxExclusive,0);
+    }
+    /** Margin is explicit, inside the same chunk, and reserves coordinates only.
+     * No terrain read or write is made in the margin. */
+    public static Plan planWithMargin(NovaSchematic schematic,int x,int y,int z,int chunkX,int chunkZ,int yMaxExclusive,int margin) {
+        if(schematic==null || yMaxExclusive<=0 || yMaxExclusive>256 || margin<0 || margin>15) throw new IllegalArgumentException("invalid input");
+        long minX=(long)x-margin, minZ=(long)z-margin;
+        long maxX=(long)x+schematic.width()-1+margin, maxY=(long)y+schematic.height()-1, maxZ=(long)z+schematic.length()-1+margin;
+        if(y<0 || maxY>=yMaxExclusive || minX<Integer.MIN_VALUE || minZ<Integer.MIN_VALUE || maxX>Integer.MAX_VALUE || maxZ>Integer.MAX_VALUE)
             throw new IllegalArgumentException("coordinate overflow or height");
-        if((x>>4)!=chunkX || ((int)maxX>>4)!=chunkX || (z>>4)!=chunkZ || ((int)maxZ>>4)!=chunkZ)
+        if(((int)minX>>4)!=chunkX || ((int)maxX>>4)!=chunkX || ((int)minZ>>4)!=chunkZ || ((int)maxZ>>4)!=chunkZ)
             throw new IllegalArgumentException("outside authorised chunk");
-        List<Entry> out=new ArrayList<>(210);
+        List<Entry> out=new ArrayList<>(schematic.volume());
         for(NovaSchematic.Cell c:schematic.snapshot()) {
             int wx=x+c.x, wy=y+c.y, wz=z+c.z;
             NBTTagCompound tile=c.tileCopy();
             if(tile!=null) { tile.setInteger("x",wx); tile.setInteger("y",wy); tile.setInteger("z",wz); }
             out.add(new Entry(wx,wy,wz,c.id,c.metadata,tile));
         }
-        if(out.size()!=210) throw new IllegalArgumentException("invalid volume");
+        if(out.size()!=schematic.volume()) throw new IllegalArgumentException("invalid volume");
         return new Plan(chunkX,chunkZ,out);
     }
 
