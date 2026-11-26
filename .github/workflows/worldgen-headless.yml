@@ -1,0 +1,116 @@
+name: Isolated Forge worldgen headless investigation
+on:
+  push:
+    branches: ['isolated/worldgen-forge-headless-20261126']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Restore original and disabled-reactor patches, apply candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p evidence project
+          echo '4ebdefded13fa8bb3668e08e16b7658fd5b06998092a502daa2f68cb7eb9f9b8  NexusTech-projeto-montagens-livro-experimental.zip' | sha256sum -c
+          unzip -q NexusTech-projeto-montagens-livro-experimental.zip -d project
+          base64 -d .github/isolated-disabled-build/disabled.patch.gz.b64 | gzip -dc > evidence/disabled.patch
+          (cd project && patch --batch --forward -p1 < ../evidence/disabled.patch)
+          (cd project && patch --batch --forward -p1 < ../docs/experimentos/correcoes-desativado-20261125/testes.patch)
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('project/src/main/java/com/mikael8367/nexustech/ores/OreWorldGenerator.java')
+          s=p.read_text()
+          old='world.setBlockState(pos, OreRegistry.ORES.get(type).getDefaultState(), 2);'
+          assert s.count(old)==1
+          p.write_text(s.replace(old, 'world.setBlockState(pos, OreRegistry.ORES.get(type).getDefaultState(), 2 | 16);'))
+          print('Applied exact candidate: 2 | 16')
+          PY
+          python3 project/src/test/java/com/mikael8367/nexustech/nuclear/test_disabled_static.py
+      - name: Build reobfuscated jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd project
+          bash ./gradlew --no-daemon --stacktrace assemble 2>&1 | tee ../evidence/build.log
+          shopt -s nullglob
+          jars=(build/libs/*.jar)
+          [ "${#jars[@]}" -eq 1 ]
+          jar tf "${jars[0]}" | grep -Fx 'com/mikael8367/nexustech/nuclear/NuclearDisabled.class'
+          sha256sum "${jars[0]}" | tee ../evidence/jar-sha256.txt
+      - name: Install Forge 1.12.2 dedicated server
+        shell: bash
+        run: |
+          set -euo pipefail
+          df -h /
+          mkdir -p server/mods
+          cp project/build/libs/*.jar server/mods/
+          curl -fL --retry 3 -o server/installer.jar https://maven.minecraftforge.net/net/minecraftforge/forge/1.12.2-14.23.5.2860/forge-1.12.2-14.23.5.2860-installer.jar
+          cd server
+          java -jar installer.jar --installServer 2>&1 | tee ../evidence/forge-install.log
+          test -f forge-1.12.2-14.23.5.2860.jar
+          printf 'eula=true\n' > eula.txt
+          printf 'online-mode=false\nserver-port=25575\nlevel-name=world\nlevel-seed=847219\nview-distance=6\nmax-players=1\nenable-query=false\nenable-rcon=false\nspawn-protection=0\n' > server.properties
+      - name: Boot, generate spawn, inspect warnings, save and stop
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, subprocess, time
+          from pathlib import Path
+          log=Path('evidence/server-console.log')
+          with log.open('w') as out:
+            p=subprocess.Popen(['java','-Xms512M','-Xmx3G','-jar','forge-1.12.2-14.23.5.2860.jar','nogui'], cwd='server', stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT, text=True)
+            started=False
+            try:
+              for _ in range(720):
+                time.sleep(1)
+                text=log.read_text(errors='replace')
+                if re.search(r'Done \([0-9.]+s\)!',text):
+                  started=True; break
+                if p.poll() is not None: break
+              if not started: raise RuntimeError('Server did not reach Done within 720 seconds')
+              time.sleep(30)
+              p.stdin.write('save-all\nstop\n'); p.stdin.flush()
+              p.wait(timeout=90)
+              if p.returncode != 0: raise RuntimeError('Server exit code '+str(p.returncode))
+            finally:
+              if p.poll() is None:
+                p.kill(); p.wait()
+          text=log.read_text(errors='replace')
+          print('DONE marker:', started)
+          print('Region files:', list(Path('server/world/region').glob('*.mca')))
+          if not list(Path('server/world/region').glob('*.mca')): raise RuntimeError('No overworld region files saved')
+          if not re.search(r'nexustech',text,re.I): raise RuntimeError('No Nexus Tech log evidence')
+          lines=[x for x in text.splitlines() if re.search(r'cascad|loaded a new chunk',x,re.I)]
+          Path('evidence/cascade-matches.txt').write_text('\n'.join(lines)+'\n')
+          print('All cascade warning lines:', len(lines))
+          if lines: raise RuntimeError('Cascade warning observed; inspect cascade-matches.txt')
+          print('PASS for this seed and spawn workload only; broader worlds/modpacks untested')
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldgen-forge-headless-evidence
+          path: |
+            evidence/
+            server/logs/
+          if-no-files-found: warn
+      - name: Upload experimental jar only if all checks pass
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldgen-headless-experimental-jar
+          path: project/build/libs/*.jar
+          if-no-files-found: error
