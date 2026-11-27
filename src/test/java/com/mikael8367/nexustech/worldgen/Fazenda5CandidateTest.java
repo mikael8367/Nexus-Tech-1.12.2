@@ -19,7 +19,7 @@ public final class Fazenda5CandidateTest {
         return new Fazenda5Candidate.Snapshot(cx,cz,min,max,src,a,r);
     }
     static Fazenda5Candidate.Result go(Fazenda5Candidate.Snapshot s,long seed,int floor,int min,int max,int d) {
-        return Fazenda5Candidate.select(s,seed,floor,min,max,d);
+        return Fazenda5Candidate.select(s,seed,floor,min,max,d,new Fazenda5Candidate.Border(-30000000,-30000000,30000000,30000000));
     }
     static void reason(Fazenda5Candidate.Result r,Fazenda5Candidate.Rejection wanted) {yes(r.rejection==wanted,"wanted "+wanted+" got "+r.rejection);}
     public static void main(String[] args) {
@@ -64,11 +64,11 @@ public final class Fazenda5CandidateTest {
         Cell[] low=cells(0,3,2), high=cells(252,255,254);
         yes(go(snap(0,0,0,3,Source.CONFIRMED_LOADED_CHUNK,low,new boolean[low.length]),0,2,2,254,1).accepted(),"min height");
         yes(go(snap(0,0,252,255,Source.CONFIRMED_LOADED_CHUNK,high,new boolean[high.length]),0,254,2,254,1).accepted(),"max height");
-        for(int c:new int[]{-134217728,134217727}) {
+        for(int c:new int[]{-1875000,1874999}) {
             Fazenda5Candidate.Result e=go(snap(c,c,60,63,Source.CONFIRMED_LOADED_CHUNK,a,r),0,62,2,254,1);
             yes(e.accepted(),"boundary chunk"); long bx=(long)c*16; yes(e.x>bx && e.x+4L<bx+15,"boundary x");
         }
-        for(int c:new int[]{Integer.MIN_VALUE,-134217729,134217728,Integer.MAX_VALUE}) {
+        for(int c:new int[]{Integer.MIN_VALUE,-134217729,-1875001,1875000,134217728,Integer.MAX_VALUE}) {
             reason(go(snap(c,0,60,63,Source.CONFIRMED_LOADED_CHUNK,a,r),0,62,2,254,1),Fazenda5Candidate.Rejection.CHUNK_BOUNDS);
             reason(go(snap(0,c,60,63,Source.CONFIRMED_LOADED_CHUNK,a,r),0,62,2,254,1),Fazenda5Candidate.Rejection.CHUNK_BOUNDS);
         }
