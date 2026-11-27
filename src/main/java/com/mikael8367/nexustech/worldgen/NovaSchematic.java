@@ -22,6 +22,8 @@ public final class NovaSchematic {
     public static final String SHA256 = "cf585cc66defdf94eb60c3fb17a313061937f5833da5dbc7703cd2dc4bfa1576";
     public enum Resource {
         LEGACY_6X5X7(RESOURCE,SHA256,6,5,7,true),
+        ANEXO_5X2X5("/assets/nexustech/structures/nova_anexo_5x2x5_3c17a590.schematic.b64",
+                "35f4914a06f55e3a4043503cadf376392bc1c9ac3fe4dc51e1f13d7c467e6d4a",5,2,5,true),
         ANEXO_11X14X11("/assets/nexustech/structures/nova_anexo_11x14x11_sem_vidro.schematic",
                 "2dc25713290206fc8adb090492ccaf13701d7af859f53a3c5af9ee1931b17d8d",11,14,11,false);
         final String path, sha; final int width,height,length; final boolean base64;
@@ -61,7 +63,7 @@ public final class NovaSchematic {
         // getTagList silently returns empty for mismatched element type; inspect the original.
         NBTTagList raw=(NBTTagList)n.getTag("TileEntities");
         require(raw.tagCount()==0 || raw.getTagType()==10, "tile list type");
-        if(type==Resource.ANEXO_11X14X11) require(raw.tagCount()==0,"anexo tiles unsupported");
+        if(type==Resource.ANEXO_11X14X11 || type==Resource.ANEXO_5X2X5) require(raw.tagCount()==0,"anexo tiles unsupported");
         Map<Integer,NBTTagCompound> found=new HashMap<>();
         for(int i=0;i<list.tagCount();i++) {
             NBTTagCompound t=list.getCompoundTagAt(i);
