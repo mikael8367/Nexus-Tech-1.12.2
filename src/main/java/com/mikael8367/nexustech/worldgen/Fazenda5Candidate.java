@@ -14,9 +14,27 @@ public final class Fazenda5Candidate {
     private Fazenda5Candidate() {}
     public static final int WIDTH = 5, HEIGHT = 2, LENGTH = 5;
     public static final int CHUNK = 16, MAX_HEIGHT = 256;
+    // 1.12.2 World horizontal BlockPos validity: -30,000,000 inclusive to +30,000,000 exclusive.
+    public static final int WORLD_LIMIT = 30000000;
     public enum Cell { AIR, NATURAL_SOLID, WATER, OBSTACLE, UNKNOWN }
     public enum Source { CONFIRMED_LOADED_CHUNK, UNCONFIRMED }
-    public enum Rejection { NONE, INVALID_CONFIG, UNSAFE_SOURCE, CHUNK_BOUNDS, HEIGHT_BOUNDS, RARITY, TERRAIN }
+    public enum Rejection { NONE, INVALID_CONFIG, UNSAFE_SOURCE, CHUNK_BOUNDS, HEIGHT_BOUNDS, RARITY, TERRAIN, UNKNOWN_BORDER, BORDER_BOUNDS }
+    /** Caller-attested current effective border faces, continuous coordinates. Not a World query. */
+    public static final class Border {
+        public final double minX, minZ, maxX, maxZ;
+        public Border(double minX, double minZ, double maxX, double maxZ) {
+            if (!finite(minX) || !finite(minZ) || !finite(maxX) || !finite(maxZ)
+                    || minX >= maxX || minZ >= maxZ)
+                throw new IllegalArgumentException("invalid border");
+            this.minX=minX; this.minZ=minZ; this.maxX=maxX; this.maxZ=maxZ;
+        }
+        private static boolean finite(double d) { return !Double.isNaN(d) && !Double.isInfinite(d); }
+        // Entire block volumes plus one-block horizontal margin must fit inside all faces.
+        private boolean containsMargin(long x, long z) {
+            return x-1L >= minX && x+WIDTH+1L <= maxX
+                    && z-1L >= minZ && z+LENGTH+1L <= maxZ;
+        }
+    }
     public static final class Result {
         public final Rejection rejection;
         public final int x, y, z;
@@ -60,13 +78,18 @@ public final class Fazenda5Candidate {
      * including schematic-air columns: intentionally stricter than necessary.
      * Rechecking current state and locking placement are future integration work.
      */
+    /** Legacy callers without a border cannot be accepted. */
     public static Result select(Snapshot s, long worldSeed, int floorY, int minFloorY, int maxFloorY, int divisor) {
+        return select(s, worldSeed, floorY, minFloorY, maxFloorY, divisor, null);
+    }
+    public static Result select(Snapshot s, long worldSeed, int floorY, int minFloorY, int maxFloorY, int divisor, Border border) {
         if (s == null || divisor < 1 || divisor > 1000000 || minFloorY < 2 || maxFloorY > 254 || minFloorY > maxFloorY)
             return no(Rejection.INVALID_CONFIG);
         if (s.source != Source.CONFIRMED_LOADED_CHUNK) return no(Rejection.UNSAFE_SOURCE);
+        if (border == null) return no(Rejection.UNKNOWN_BORDER);
         long baseX=(long)s.chunkX*16L, baseZ=(long)s.chunkZ*16L;
-        // Entire chunk must have representable block coordinates, not only the chosen origin.
-        if (baseX < Integer.MIN_VALUE || baseX+15L > Integer.MAX_VALUE || baseZ < Integer.MIN_VALUE || baseZ+15L > Integer.MAX_VALUE)
+        // Entire chunk, including margin, must fit the vanilla horizontal coordinate range.
+        if (baseX < -WORLD_LIMIT || baseX+15L >= WORLD_LIMIT || baseZ < -WORLD_LIMIT || baseZ+15L >= WORLD_LIMIT)
             return no(Rejection.CHUNK_BOUNDS);
         if (floorY < minFloorY || floorY > maxFloorY || floorY-2 < s.minY || floorY+1 > s.maxY)
             return no(Rejection.HEIGHT_BOUNDS);
@@ -75,6 +98,7 @@ public final class Fazenda5Candidate {
         Random rng=new Random(h);
         if (rng.nextInt(divisor) != 0) return no(Rejection.RARITY);
         int lx=1+rng.nextInt(10), lz=1+rng.nextInt(10);
+        if (!border.containsMargin(baseX+lx, baseZ+lz)) return no(Rejection.BORDER_BOUNDS);
         for (int dz=0; dz<LENGTH; dz++) for (int dx=0; dx<WIDTH; dx++) {
             int x=lx+dx, z=lz+dz;
             if (!s.is(x,floorY-2,z,Cell.NATURAL_SOLID) || !s.is(x,floorY-1,z,Cell.NATURAL_SOLID)
