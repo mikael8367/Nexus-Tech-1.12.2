@@ -1,0 +1,49 @@
+name: Build isolado fazenda5
+on:
+  push:
+    branches: [isolated/build-fazenda5-20261127]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3e690bae7c42b6471387b05bfe23cfcf02096b1d
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+      - name: Compilar e reobfuscar
+        run: bash ./gradlew --no-daemon --max-workers 2 jar
+      - name: Verificar JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<"PY"
+          import base64, glob, hashlib, json, zipfile
+          jars=glob.glob("build/libs/*.jar")
+          assert len(jars)==1, jars
+          j=jars[0]
+          with zipfile.ZipFile(j) as z:
+              assert z.testzip() is None
+              names=z.namelist()
+              assert "mcmod.info" in names
+              info=json.loads(z.read("mcmod.info"))
+              assert any(x.get("modid")=="nexustech" and x.get("mcversion")=="1.12.2" for x in info)
+              p="assets/nexustech/structures/nova_anexo_5x2x5_3c17a590.schematic.b64"
+              data=base64.b64decode(z.read(p))
+              assert hashlib.sha256(data).hexdigest()=="35f4914a06f55e3a4043503cadf376392bc1c9ac3fe4dc51e1f13d7c467e6d4a"
+              assert any(n.endswith("NovaPlacement.class") for n in names)
+          print("JAR:",j,"sha256:",hashlib.sha256(open(j,"rb").read()).hexdigest())
+          print("Recurso confirmado; geracao nao validada em mundo")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-tech-fazenda5-desativada
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7
